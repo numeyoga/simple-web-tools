@@ -3,23 +3,31 @@
 (function () {
   const { el, icon } = window.UI;
 
-  /* Petite confirmation modale promisifiée (oui/non). */
+  /* Petite confirmation modale promisifiée (oui/non).
+     Important : `modal.close()` déclenche `onclose`. On mémorise la réponse
+     avant de fermer pour qu'`onclose` ne resolve pas `false` à notre place. */
   function confirmer({ titre, message, danger }) {
     return new Promise(resolve => {
+      let settled = false;
+      const finir = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
       let modal;
       modal = UI.Modal({
         title: titre, width: 420,
         body: el('div', { style: { font: '400 13px/1.5 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, message),
         footer: [
-          UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => { modal.close(); resolve(false); } }),
+          UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => { finir(false); modal.close(); } }),
           UI.Button({
             variant: danger ? 'destructive' : 'primary',
             icon: danger ? 'trash' : 'check',
             children: danger ? 'Supprimer' : 'Confirmer',
-            onclick: () => { modal.close(); resolve(true); },
+            onclick: () => { finir(true); modal.close(); },
           }),
         ],
-        onclose: () => resolve(false),
+        onclose: () => finir(false),
       });
     });
   }
