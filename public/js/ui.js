@@ -144,6 +144,139 @@ function Select(opts = {}) {
   return wrapper;
 }
 
+/* ------------------ Autocomplete (input + suggestions, free-text accepté) ------------------ */
+/* Comportement : champ libre — l'utilisateur peut taper n'importe quoi. Le dropdown
+   propose les valeurs déjà existantes qui matchent (contains, insensible à la casse).
+   Clavier : ↑/↓ pour parcourir, Entrée pour valider, Échap pour fermer. */
+function Autocomplete(opts = {}) {
+  const {
+    label, value = '', placeholder, options = [], hint, autoFocus,
+    style, onchange, onkeydown, name,
+  } = opts;
+
+  let suggestions = [];
+  let highlighted = -1;
+  let isOpen = false;
+
+  const input = el('input', {
+    type: 'text', value, placeholder, name,
+    autocomplete: 'off',
+    style: {
+      width: '100%', boxSizing: 'border-box', height: 32, padding: '0 10px',
+      border: '1px solid var(--cv-border-strong)', borderRadius: 8,
+      background: 'var(--cv-surface)', color: 'var(--cv-fg)',
+      font: '400 13px/1 var(--cv-font-sans)', outline: 'none',
+      transition: 'border-color 120ms, box-shadow 120ms',
+    },
+  });
+
+  const list = el('div', {
+    role: 'listbox',
+    style: {
+      position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+      maxHeight: 220, overflowY: 'auto', zIndex: 50,
+      background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
+      borderRadius: 8, boxShadow: 'var(--cv-shadow-md)', padding: 4,
+      display: 'none',
+    },
+  });
+
+  function recomputeSuggestions() {
+    const q = input.value.trim().toLowerCase();
+    /* Uniques, triées : matchs en tête (préfixe d'abord, puis contains). Si q vide, tout. */
+    const uniques = Array.from(new Set(options.filter(Boolean).map(s => s.trim()))).filter(Boolean);
+    if (!q) {
+      suggestions = uniques.sort((a, b) => a.localeCompare(b, 'fr')).slice(0, 50);
+    } else {
+      const prefix = uniques.filter(s => s.toLowerCase().startsWith(q));
+      const others = uniques.filter(s => !s.toLowerCase().startsWith(q) && s.toLowerCase().includes(q));
+      /* On n'inclut pas une suggestion strictement égale à ce qui est déjà tapé. */
+      suggestions = [...prefix, ...others].filter(s => s.toLowerCase() !== q).slice(0, 50);
+    }
+    highlighted = suggestions.length > 0 ? 0 : -1;
+  }
+
+  function renderList() {
+    if (!isOpen || suggestions.length === 0) { list.style.display = 'none'; list.replaceChildren(); return; }
+    list.style.display = 'block';
+    list.replaceChildren(...suggestions.map((s, i) => el('div', {
+      role: 'option',
+      onmousedown: e => { e.preventDefault(); /* éviter blur avant click */ },
+      onclick: () => { selectValue(s); },
+      onmouseenter: () => { highlighted = i; paintHighlight(); },
+      style: {
+        padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+        font: '400 13px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)',
+        background: i === highlighted ? 'var(--cv-surface-2)' : 'transparent',
+      },
+    }, s)));
+  }
+
+  function paintHighlight() {
+    Array.from(list.children).forEach((node, i) => {
+      node.style.background = i === highlighted ? 'var(--cv-surface-2)' : 'transparent';
+    });
+  }
+
+  function open() {
+    isOpen = true;
+    recomputeSuggestions();
+    renderList();
+  }
+  function close() { isOpen = false; renderList(); }
+
+  function selectValue(v) {
+    input.value = v;
+    if (onchange) onchange(v);
+    close();
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  input.addEventListener('focus', () => {
+    input.style.borderColor = 'var(--cv-accent-500)';
+    input.style.boxShadow = 'var(--cv-shadow-focus)';
+    open();
+  });
+  input.addEventListener('blur', () => {
+    input.style.borderColor = 'var(--cv-border-strong)';
+    input.style.boxShadow = 'none';
+    setTimeout(close, 100); // laisse le temps au mousedown sur la liste
+  });
+  input.addEventListener('input', () => {
+    if (onchange) onchange(input.value);
+    open();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (isOpen && suggestions.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); highlighted = (highlighted + 1) % suggestions.length; paintHighlight(); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); highlighted = (highlighted - 1 + suggestions.length) % suggestions.length; paintHighlight(); return; }
+      if (e.key === 'Enter' && highlighted >= 0) {
+        /* Entrée valide la suggestion surlignée ; sinon laisse passer pour valider le formulaire. */
+        e.preventDefault();
+        selectValue(suggestions[highlighted]);
+        return;
+      }
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    }
+    if (onkeydown) onkeydown(e);
+  });
+
+  if (autoFocus) setTimeout(() => input.focus(), 0);
+
+  const wrapper = el('label', {
+    style: { display: 'flex', flexDirection: 'column', gap: 4, position: 'relative', ...(style || {}) },
+  },
+    label ? el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, label) : null,
+    el('span', { style: { position: 'relative', display: 'flex', alignItems: 'center' } },
+      input,
+      list,
+    ),
+    hint ? el('span', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)' } }, hint) : null,
+  );
+  wrapper.input = input;
+  return wrapper;
+}
+
 /* ------------------ Badge ------------------ */
 function Badge(opts = {}) {
   const { variant = 'neutral', dot, children, style } = opts;
@@ -282,5 +415,5 @@ function ToastHost() {
   return { push };
 }
 
-window.UI = Object.assign(window.UI, { Button, IconButton, Input, Select, Badge, Kbd, Modal, ToastHost });
+window.UI = Object.assign(window.UI, { Button, IconButton, Input, Select, Autocomplete, Badge, Kbd, Modal, ToastHost });
 })();

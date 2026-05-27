@@ -2,7 +2,14 @@
 (function () {
   const { el, icon, fmtDuree, dureeVivante } = window.UI;
 
-  const COULEURS = ['#ea580c','#2563eb','#16a34a','#9333ea','#0891b2','#db2777','#ca8a04','#71717a'];
+  /* Palette curatée (16 teintes bien différenciées). Une couleur perso peut être saisie via le picker natif. */
+  const COULEURS = [
+    '#ea580c', '#d97706', '#ca8a04', '#65a30d',
+    '#16a34a', '#0d9488', '#0891b2', '#0284c7',
+    '#2563eb', '#4f46e5', '#7c3aed', '#9333ea',
+    '#c026d3', '#db2777', '#e11d48', '#475569',
+  ];
+  const norm = c => (c || '').trim().toLowerCase();
 
   function createProjets(store, opts) {
     let afficherArchive = false;
@@ -16,25 +23,79 @@
         : { nom: '', client: '', couleur: COULEURS[0] };
       let modal;
       let inputNom, inputClient;
-      const couleursRow = el('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } });
+      const couleursRow = el('div', {
+        style: { display: 'grid', gridTemplateColumns: 'repeat(9, 28px)', gap: 8, alignItems: 'center' },
+      });
+
+      /* Picker natif caché, déclenché par le bouton "+". */
+      const pickerNatif = el('input', {
+        type: 'color',
+        value: COULEURS.includes(norm(brouillon.couleur)) ? COULEURS[0] : brouillon.couleur,
+        oninput: e => { brouillon.couleur = e.target.value; paintCouleurs(); },
+        style: {
+          position: 'absolute', width: 0, height: 0, padding: 0, border: 0,
+          opacity: 0, pointerEvents: 'none',
+        },
+      });
 
       function paintCouleurs() {
+        const current = norm(brouillon.couleur);
+        const estDansPalette = COULEURS.some(c => norm(c) === current);
         couleursRow.replaceChildren(
-          ...COULEURS.map(c => el('button', {
-            onclick: () => { brouillon.couleur = c; paintCouleurs(); },
-            'aria-label': `Couleur ${c}`,
+          ...COULEURS.map(c => {
+            const selectionne = norm(c) === current;
+            return el('button', {
+              type: 'button',
+              onclick: () => { brouillon.couleur = c; paintCouleurs(); },
+              'aria-label': `Couleur ${c}`,
+              title: c,
+              style: {
+                width: 28, height: 28, borderRadius: 8,
+                border: selectionne ? '2px solid var(--cv-fg)' : '2px solid transparent',
+                background: c, cursor: 'pointer', padding: 0,
+                boxShadow: selectionne ? '0 0 0 2px var(--cv-surface) inset' : 'none',
+              },
+            });
+          }),
+          /* Bouton "couleur personnalisée" : ouvre le color picker natif.
+             Si une couleur perso est déjà choisie, on l'affiche dans le bouton. */
+          el('button', {
+            type: 'button',
+            onclick: () => pickerNatif.click(),
+            'aria-label': 'Couleur personnalisée',
+            title: estDansPalette ? 'Couleur personnalisée…' : `Couleur personnalisée : ${brouillon.couleur}`,
             style: {
-              width: 28, height: 28, borderRadius: 8,
-              border: brouillon.couleur === c ? '2px solid var(--cv-fg)' : '2px solid transparent',
-              background: c, cursor: 'pointer', padding: 0,
+              width: 28, height: 28, borderRadius: 8, padding: 0, cursor: 'pointer',
+              border: !estDansPalette ? '2px solid var(--cv-fg)' : '1px dashed var(--cv-border-strong)',
+              background: !estDansPalette
+                ? brouillon.couleur
+                : 'conic-gradient(from 180deg, #ef4444, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #ef4444)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', textShadow: '0 0 2px rgba(0,0,0,0.4)',
+              boxShadow: !estDansPalette ? '0 0 0 2px var(--cv-surface) inset' : 'none',
             },
-          })),
+          }, !estDansPalette ? '' : icon('plus', { size: 14, style: { color: 'var(--cv-fg)' } })),
+          pickerNatif,
         );
       }
       paintCouleurs();
 
       const nomW    = UI.Input({ label: 'Nom du projet', value: brouillon.nom, placeholder: 'Ex. Refonte site — Acme', autoFocus: !isEdit });
-      const clientW = UI.Input({ label: 'Client',        value: brouillon.client, placeholder: 'Ex. Acme SAS (facultatif)' });
+      /* Autocomplétion sur les clients déjà connus. L'utilisateur peut aussi taper
+         une nouvelle valeur libre — elle est créée à la volée. */
+      const clientsConnus = Array.from(new Set(
+        store.state.projets
+          .filter(p => p.client && p.id !== existant?.id)
+          .map(p => p.client.trim())
+          .filter(Boolean)
+      ));
+      const clientW = UI.Autocomplete({
+        label: 'Client',
+        value: brouillon.client,
+        options: clientsConnus,
+        placeholder: 'Ex. Acme SAS (facultatif)',
+        hint: clientsConnus.length > 0 ? `${clientsConnus.length} client${clientsConnus.length > 1 ? 's' : ''} déjà saisi${clientsConnus.length > 1 ? 's' : ''} — ou tape un nouveau nom` : null,
+      });
       inputNom = nomW.input; inputClient = clientW.input;
 
       const body = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
