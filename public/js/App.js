@@ -106,17 +106,30 @@
       }
     }
 
+    /* Sidebar : 100vh fixe, en flex-column. Logo + workspaceChip sont figés en haut,
+       widget + nav scrollent au besoin dans un conteneur interne (min-height:0 obligatoire
+       pour que le scroll ait lieu dans la sidebar plutôt que de pousser la page), et le
+       bloc Raccourcis reste collé en bas. Garantit qu'aucun débordement ne déclenche
+       de scroll de page, même sur écrans courts. */
+    const middleScroll = el('div', {
+      style: {
+        flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+        display: 'flex', flexDirection: 'column', gap: 14,
+        margin: '0 -4px', padding: '0 4px',
+      },
+    }, widget.el, navList);
+
     const sidebar = el('nav', {
       'aria-label': 'Navigation',
       style: {
         width: 264, flexShrink: 0,
         background: 'var(--cv-surface)', borderRight: '1px solid var(--cv-border)',
         padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 14,
-        position: 'sticky', top: 0, height: '100vh',
+        position: 'sticky', top: 0, height: '100vh', boxSizing: 'border-box',
       },
     },
       // Logo
-      el('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 4px' } },
+      el('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '2px 8px 4px', flexShrink: 0 } },
         el('div', {
           style: {
             width: 28, height: 28, borderRadius: 7,
@@ -127,15 +140,15 @@
         el('div', { style: { font: '600 15px/1 var(--cv-font-sans)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, 'Chrono'),
       ),
 
-      // Sélecteur d'espace
-      workspaceChip(),
+      // Sélecteur d'espace (figé en haut)
+      el('div', { style: { flexShrink: 0 } }, workspaceChip()),
 
-      widget.el,
-      navList,
+      // Zone scrollable : widget pointage + nav
+      middleScroll,
 
-      // Footer raccourcis
+      // Footer raccourcis (figé en bas)
       el('div', {
-        style: { marginTop: 'auto', padding: 10, border: '1px solid var(--cv-border)', borderRadius: 8, background: 'var(--cv-neutral-50)' },
+        style: { flexShrink: 0, padding: 10, border: '1px solid var(--cv-border)', borderRadius: 8, background: 'var(--cv-neutral-50)' },
       },
         el('div', {
           style: { font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 },
