@@ -155,7 +155,7 @@
       style: {
         flex: 1, minWidth: 0, padding: '24px 32px',
         display: 'flex', flexDirection: 'column', gap: 20,
-        maxWidth: 1280, width: '100%', boxSizing: 'border-box',
+        width: '100%', boxSizing: 'border-box',
       },
     });
 
