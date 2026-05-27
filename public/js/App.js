@@ -23,6 +23,51 @@
       onOuvrirQuickAdd: () => openQuickAdd(),
     });
 
+    function workspaceChip() {
+      const ws = window.WORKSPACES.getActive();
+      const list = window.WORKSPACES.getList();
+      const btn = el('button', {
+        onclick: () => window.ouvrirGestionEspaces({ store, toasts }),
+        title: 'Gérer les espaces de sauvegarde',
+        style: {
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 10px', borderRadius: 8,
+          border: '1px solid var(--cv-border)',
+          background: 'var(--cv-surface)', cursor: 'pointer',
+          font: 'inherit', color: 'var(--cv-fg)', textAlign: 'left',
+          transition: 'background 120ms, border-color 120ms',
+        },
+        onmouseenter: e => { e.currentTarget.style.background = 'var(--cv-surface-2)'; e.currentTarget.style.borderColor = 'var(--cv-border-strong)'; },
+        onmouseleave: e => { e.currentTarget.style.background = 'var(--cv-surface)'; e.currentTarget.style.borderColor = 'var(--cv-border)'; },
+      },
+        icon('database', { weight: 'fill', size: 14, style: { color: 'var(--cv-accent-500)' } }),
+        el('div', { style: { minWidth: 0, flex: 1 } },
+          el('div', {
+            style: {
+              font: '600 9px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)',
+              textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2,
+            },
+          }, 'Espace de sauvegarde'),
+          el('div', {
+            style: {
+              font: '500 12px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            },
+          }, ws.label),
+        ),
+        list.length > 1
+          ? el('span', {
+              style: {
+                font: '500 10px/1 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)',
+                padding: '2px 6px', background: 'var(--cv-neutral-100)', borderRadius: 4, flexShrink: 0,
+              },
+            }, `${list.length}`)
+          : null,
+        icon('caret-up-down', { size: 12, style: { color: 'var(--cv-fg-subtle)', flexShrink: 0 } }),
+      );
+      return btn;
+    }
+
     const navList = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 } },
       el('div', {
         style: {
@@ -80,8 +125,10 @@
           },
         }, icon('timer', { weight: 'fill', size: 16 })),
         el('div', { style: { font: '600 15px/1 var(--cv-font-sans)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, 'Chrono'),
-        el('div', { style: { marginLeft: 'auto', font: '500 10px/1 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)' } }, 'local'),
       ),
+
+      // Sélecteur d'espace
+      workspaceChip(),
 
       widget.el,
       navList,
@@ -98,6 +145,8 @@
             el('span', null, 'Démarrer / pause'), UI.Kbd('Espace')),
           el('div', { style: { display: 'flex', justifyContent: 'space-between' } },
             el('span', null, 'Nouveau chrono'), UI.Kbd('N')),
+          el('div', { style: { display: 'flex', justifyContent: 'space-between' } },
+            el('span', null, 'Arrêter l’actif'), UI.Kbd('S')),
         ),
       ),
     );
@@ -169,6 +218,11 @@
       if (e.key.toLowerCase() === 'n' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         openQuickAdd();
+      }
+      if (e.key.toLowerCase() === 's' && !e.metaKey && !e.ctrlKey && store.state.activeId) {
+        e.preventDefault();
+        store.actions.arreter();
+        toasts.push({ variant: 'info', title: 'Chrono arrêté' });
       }
     });
 

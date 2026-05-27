@@ -6,6 +6,14 @@
   const HEURE_FIN = 20;
   const PX_PAR_HEURE = 84;
 
+  const POINTAGE_TYPES = [
+    { value: 'arrivee',     label: 'Arrivée',         icon: 'sign-in',  color: 'var(--cv-success-600)' },
+    { value: 'pause_debut', label: 'Début de pause',  icon: 'pause',    color: 'var(--cv-warning-700)' },
+    { value: 'pause_fin',   label: 'Fin de pause',    icon: 'play',     color: 'var(--cv-warning-700)' },
+    { value: 'depart',      label: 'Départ',          icon: 'sign-out', color: 'var(--cv-fg-muted)' },
+  ];
+  const POINTAGE_META = Object.fromEntries(POINTAGE_TYPES.map(p => [p.value, p]));
+
   function createTimeline(store, opts) {
     let dateOffset = 0;
 
@@ -35,6 +43,87 @@
         }),
         label,
       );
+    }
+
+    function ouvrirEditionSession(s) {
+      const projets = store.state.projets;
+      let modal;
+
+      function tsVersLocal(ts) {
+        const d = new Date(ts);
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+      function localVersTs(v) { const t = new Date(v).getTime(); return isNaN(t) ? null : t; }
+
+      const projW  = UI.Select({
+        label: 'Projet', value: s.projetId,
+        options: projets.map(p => ({ value: p.id, label: p.nom + (p.archive ? ' (archivé)' : '') })),
+      });
+      const descW  = UI.Input({ label: 'Description', value: s.description || '', placeholder: 'Ex. maquette homepage v3' });
+      const debutW = UI.Input({ label: 'Début', value: tsVersLocal(s.debut), type: 'datetime-local' });
+      const finW   = s.statut === 'terminee'
+        ? UI.Input({ label: 'Fin', value: tsVersLocal(s.fin), type: 'datetime-local' })
+        : null;
+
+      const dureeAffichee = el('div', {
+        style: { font: '500 18px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 4 },
+      }, fmtDuree(dureeVivante(s)));
+      function recalcDuree() {
+        if (s.statut !== 'terminee') return;
+        const d = localVersTs(debutW.input.value);
+        const f = localVersTs(finW.input.value);
+        if (d != null && f != null && f >= d) dureeAffichee.textContent = fmtDuree(f - d);
+      }
+      debutW.input.addEventListener('input', recalcDuree);
+      if (finW) finW.input.addEventListener('input', recalcDuree);
+
+      function enregistrer() {
+        const patch = {
+          projetId: projW.input.value,
+          description: descW.input.value.trim(),
+        };
+        const debut = localVersTs(debutW.input.value);
+        if (debut != null) patch.debut = debut;
+        if (finW) {
+          const fin = localVersTs(finW.input.value);
+          if (fin != null) patch.fin = fin;
+          if (patch.debut != null && patch.fin != null && patch.fin < patch.debut) {
+            alert('La fin doit être après le début.');
+            return;
+          }
+        }
+        store.actions.majSession(s.id, patch);
+        modal.close();
+      }
+
+      function supprimer() {
+        store.actions.supprimerSession(s.id);
+        modal.close();
+      }
+
+      modal = UI.Modal({
+        title: 'Modifier la session', width: 480,
+        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+          projW,
+          descW,
+          el('div', { style: { display: 'flex', gap: 10 } },
+            el('div', { style: { flex: 1 } }, debutW),
+            finW ? el('div', { style: { flex: 1 } }, finW) : null,
+          ),
+          s.statut === 'terminee' ? el('div', null,
+            el('div', { style: { font: '500 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Durée calculée'),
+            dureeAffichee,
+          ) : el('div', {
+            style: { padding: '8px 10px', background: 'var(--cv-accent-50)', border: '1px solid var(--cv-accent-100)', borderRadius: 6, font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-accent-700)' },
+          }, 'Session encore active — la durée continue de courir.'),
+        ),
+        footer: [
+          UI.Button({ variant: 'destructive', icon: 'trash', children: 'Supprimer', onclick: supprimer, style: { marginRight: 'auto' } }),
+          UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
+          UI.Button({ variant: 'primary', icon: 'check', children: 'Enregistrer', onclick: enregistrer }),
+        ],
+      });
     }
 
     /* ----------------- TimelineChart ----------------- */
@@ -139,6 +228,7 @@
         const isActive = s.id === activeId;
         const block = el('div', {
           title: `${proj?.nom || 'Sans projet'} · ${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'} · ${fmtDuree(dureeMs)}`,
+          onclick: () => ouvrirEditionSession(s),
           style: {
             position: 'absolute', left, width,
             top: 32, height: 76,
@@ -208,10 +298,15 @@
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '10px 16px', borderBottom: '1px solid var(--cv-border)',
                   background: isActive ? 'var(--cv-accent-50)' : 'var(--cv-surface)',
-                  transition: 'background 120ms',
+                  transition: 'background 120ms', cursor: 'pointer',
                 },
                 onmouseenter: e => { if (!isActive) e.currentTarget.style.background = 'var(--cv-surface-2)'; },
                 onmouseleave: e => { if (!isActive) e.currentTarget.style.background = 'var(--cv-surface)'; },
+                onclick: e => {
+                  // Évite d'ouvrir l'édition quand on clique sur un bouton dans la ligne.
+                  if (e.target.closest('button')) return;
+                  ouvrirEditionSession(s);
+                },
               },
                 el('div', { style: { width: 4, alignSelf: 'stretch', borderRadius: 2, background: proj?.couleur || 'var(--cv-neutral-400)', flexShrink: 0 } }),
                 el('div', { style: { minWidth: 0, flex: 1 } },
@@ -229,11 +324,21 @@
                 }, fmtDuree(dureeVivante(s))),
                 (isActive && s.statut === 'en_cours') ? UI.Badge({ variant: 'accent', dot: true, children: 'en cours' })
                 : (isActive && s.statut === 'en_pause') ? UI.Badge({ variant: 'warning', dot: true, children: 'pause' })
-                : UI.IconButton({
-                    icon: 'play', label: 'Reprendre ce projet',
-                    title: 'Redémarrer un chrono sur ce projet',
-                    onclick: () => opts.onDemarrerSurProjet(s.projetId, s.description),
-                  }),
+                : el('div', { style: { display: 'flex', gap: 2, flexShrink: 0 } },
+                    UI.IconButton({
+                      icon: 'play', label: 'Reprendre ce projet',
+                      title: 'Redémarrer un chrono sur ce projet',
+                      onclick: () => opts.onDemarrerSurProjet(s.projetId, s.description),
+                    }),
+                    UI.IconButton({
+                      icon: 'pencil-simple', label: 'Modifier', size: 'sm',
+                      onclick: () => ouvrirEditionSession(s),
+                    }),
+                    UI.IconButton({
+                      icon: 'trash', label: 'Supprimer', size: 'sm',
+                      onclick: () => store.actions.supprimerSession(s.id),
+                    }),
+                  ),
               );
               return row;
             }),
@@ -307,6 +412,115 @@
       );
     }
 
+    /* ----------------- Pointages (édition) ----------------- */
+
+    function tsVersLocal(ts) {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    function localVersTs(v) { const t = new Date(v).getTime(); return isNaN(t) ? null : t; }
+
+    function ouvrirEditionPointage(p, jourDebut) {
+      const isNew = !p;
+      let modal;
+      const tsInitial = p?.at ?? (jourDebut + 9 * 3600_000);
+
+      const typeW = UI.Select({
+        label: 'Type', value: p?.type || 'arrivee',
+        options: POINTAGE_TYPES.map(t => ({ value: t.value, label: t.label })),
+      });
+      const timeW = UI.Input({ label: 'Heure', type: 'datetime-local', value: tsVersLocal(tsInitial), autoFocus: true });
+
+      function enregistrer() {
+        const t = localVersTs(timeW.input.value);
+        if (t == null) return;
+        const type = typeW.input.value;
+        if (isNew) store.actions.ajouterPointage(type, t);
+        else       store.actions.majPointage(p.id, { type, at: t });
+        modal.close();
+      }
+      function supprimer() {
+        if (!p) return;
+        store.actions.supprimerPointage(p.id);
+        modal.close();
+      }
+      timeW.input.addEventListener('keydown', e => { if (e.key === 'Enter') enregistrer(); });
+
+      const footer = [];
+      if (!isNew) footer.push(UI.Button({
+        variant: 'destructive', icon: 'trash', children: 'Supprimer',
+        onclick: supprimer, style: { marginRight: 'auto' },
+      }));
+      footer.push(UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }));
+      footer.push(UI.Button({ variant: 'primary', icon: 'check', children: 'Enregistrer', onclick: enregistrer }));
+
+      modal = UI.Modal({
+        title: isNew ? 'Ajouter un pointage' : 'Modifier le pointage', width: 420,
+        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } }, typeW, timeW),
+        footer,
+      });
+    }
+
+    function pointageSection(pointageJ, jourDebut) {
+      const ordres = pointageJ.slice().sort((a, b) => a.at - b.at);
+      return el('section', {
+        style: {
+          background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
+          borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden',
+        },
+      },
+        el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center' } },
+          el('div', null,
+            el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Pointages du jour'),
+            el('div', { style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } },
+              'Arrivée, pauses, départ — clique pour corriger une heure.'),
+          ),
+          el('div', { style: { marginLeft: 'auto' } },
+            UI.Button({
+              size: 'sm', icon: 'plus', children: 'Ajouter',
+              onclick: () => ouvrirEditionPointage(null, jourDebut),
+            }),
+          ),
+        ),
+        ordres.length === 0
+          ? el('div', {
+              style: { padding: '24px 16px', textAlign: 'center', color: 'var(--cv-fg-muted)', font: '400 13px/1.5 var(--cv-font-sans)' },
+            },
+              icon('clock', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
+              el('div', { style: { marginTop: 6 } }, 'Aucun pointage pour ce jour.'),
+              el('div', { style: { marginTop: 4, font: '400 12px/1.4 var(--cv-font-sans)' } },
+                'Utilise « Ajouter » pour reconstituer la journée.'),
+            )
+          : el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8, padding: 12 } },
+              ordres.map(p => {
+                const meta = POINTAGE_META[p.type] || POINTAGE_META.arrivee;
+                return el('button', {
+                  onclick: () => ouvrirEditionPointage(p, jourDebut),
+                  title: 'Modifier ou supprimer ce pointage',
+                  style: {
+                    display: 'inline-flex', alignItems: 'center', gap: 10,
+                    padding: '8px 12px', borderRadius: 8,
+                    background: 'var(--cv-neutral-50)', border: '1px solid var(--cv-border)',
+                    cursor: 'pointer', font: 'inherit', color: 'var(--cv-fg)', textAlign: 'left',
+                    transition: 'background 120ms, border-color 120ms',
+                  },
+                  onmouseenter: e => { e.currentTarget.style.background = 'var(--cv-surface-2)'; e.currentTarget.style.borderColor = 'var(--cv-border-strong)'; },
+                  onmouseleave: e => { e.currentTarget.style.background = 'var(--cv-neutral-50)'; e.currentTarget.style.borderColor = 'var(--cv-border)'; },
+                },
+                  icon(meta.icon, { size: 16, style: { color: meta.color } }),
+                  el('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 } },
+                    el('div', {
+                      style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' },
+                    }, meta.label),
+                    el('div', { style: { font: '500 13px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' } }, fmtHeure(p.at)),
+                  ),
+                );
+              }),
+            ),
+      );
+    }
+
     /* ----------------- Render principal ----------------- */
     function render() {
       const s = store.state;
@@ -321,10 +535,6 @@
         .sort((a, b) => a.at - b.at);
 
       const totalTravaille = sessionsJ.reduce((acc, x) => acc + dureeVivante(x), 0);
-      const totalFacturable = sessionsJ.reduce((acc, x) => {
-        const p = s.projets.find(pr => pr.id === x.projetId);
-        return acc + (p && p.tarif > 0 ? dureeVivante(x) : 0);
-      }, 0);
       const arrivee = pointageJ.find(p => p.type === 'arrivee');
       const dernierDepart = [...pointageJ].reverse().find(p => p.type === 'depart');
 
@@ -348,7 +558,6 @@
           el('div', { style: { flex: 1 } }),
           el('div', { style: { display: 'flex', gap: 28 } },
             statBloc('Temps travaillé', fmtDuree(totalTravaille), `${sessionsJ.length} session${sessionsJ.length > 1 ? 's' : ''}`),
-            statBloc('Facturable', fmtDuree(totalFacturable), `${Math.round((totalFacturable / Math.max(totalTravaille, 1)) * 100)}% du total`, { accent: true }),
             statBloc('Amplitude',
               arrivee ? `${fmtHeure(arrivee.at)} → ${dernierDepart ? fmtHeure(dernierDepart.at) : '···'}` : '—',
               arrivee ? (dernierDepart ? 'journée clôturée' : 'en cours') : 'pas encore arrivé',
@@ -376,7 +585,10 @@
         // Bas : sessions + répartition
         el('div', { style: { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 } },
           sessionsListe(sessionsJ, s.projets, s.activeId),
-          repartition(sessionsJ, s.projets),
+          el('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
+            pointageSection(pointageJ, jourDebut),
+            repartition(sessionsJ, s.projets),
+          ),
         ),
       );
     }

@@ -9,10 +9,13 @@
 
     const host = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } });
 
-    function ouvrirModalCreation() {
-      const brouillon = { nom: '', client: '', couleur: '#ea580c', tarif: 0 };
+    function ouvrirModalProjet(existant = null) {
+      const isEdit = !!existant;
+      const brouillon = existant
+        ? { nom: existant.nom, client: existant.client || '', couleur: existant.couleur }
+        : { nom: '', client: '', couleur: COULEURS[0] };
       let modal;
-      let inputNom, inputClient, inputTarif;
+      let inputNom, inputClient;
       const couleursRow = el('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } });
 
       function paintCouleurs() {
@@ -30,10 +33,9 @@
       }
       paintCouleurs();
 
-      const nomW    = UI.Input({ label: 'Nom du projet', value: '', placeholder: 'Ex. Refonte site — Acme', autoFocus: true });
-      const clientW = UI.Input({ label: 'Client',        value: '', placeholder: 'Ex. Acme SAS (facultatif)' });
-      const tarifW  = UI.Input({ label: 'Tarif horaire (€)', value: '', type: 'number', placeholder: '0', hint: 'Laisse à 0 si non facturable.' });
-      inputNom = nomW.input; inputClient = clientW.input; inputTarif = tarifW.input;
+      const nomW    = UI.Input({ label: 'Nom du projet', value: brouillon.nom, placeholder: 'Ex. Refonte site — Acme', autoFocus: !isEdit });
+      const clientW = UI.Input({ label: 'Client',        value: brouillon.client, placeholder: 'Ex. Acme SAS (facultatif)' });
+      inputNom = nomW.input; inputClient = clientW.input;
 
       const body = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
         nomW,
@@ -42,37 +44,55 @@
           el('div', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginBottom: 6 } }, 'Couleur'),
           couleursRow,
         ),
-        tarifW,
       );
 
-      function creer() {
+      function enregistrer() {
         const nom = inputNom.value.trim();
         if (!nom) return;
-        const client = inputClient.value.trim();
-        const tarif = Number(inputTarif.value) || 0;
-        store.actions.ajouterProjet(nom, client, brouillon.couleur, tarif);
+        const patch = {
+          nom,
+          client: inputClient.value.trim(),
+          couleur: brouillon.couleur,
+        };
+        if (isEdit) store.actions.majProjet(existant.id, patch);
+        else        store.actions.ajouterProjet(patch.nom, patch.client, patch.couleur);
         modal.close();
       }
 
-      const btnCreer = UI.Button({ variant: 'primary', icon: 'check', children: 'Créer', onclick: creer });
+      function supprimer() {
+        const { sessions, todos } = store.state;
+        const n = sessions.filter(s => s.projetId === existant.id).length;
+        const m = todos.filter(t => t.projetId === existant.id).length;
+        const msg = (n + m) > 0
+          ? `Supprimer le projet « ${existant.nom} » ? ${n} session${n>1?'s':''} et ${m} tâche${m>1?'s':''} seront aussi supprimées.`
+          : `Supprimer le projet « ${existant.nom} » ?`;
+        if (!confirm(msg)) return;
+        store.actions.supprimerProjet(existant.id);
+        modal.close();
+      }
+
+      const btnEnregistrer = UI.Button({ variant: 'primary', icon: 'check', children: isEdit ? 'Enregistrer' : 'Créer', onclick: enregistrer });
       const updateDisabled = () => {
-        btnCreer.disabled = !inputNom.value.trim();
-        btnCreer.style.opacity = btnCreer.disabled ? 0.5 : 1;
-        btnCreer.style.cursor = btnCreer.disabled ? 'not-allowed' : 'pointer';
+        btnEnregistrer.disabled = !inputNom.value.trim();
+        btnEnregistrer.style.opacity = btnEnregistrer.disabled ? 0.5 : 1;
+        btnEnregistrer.style.cursor = btnEnregistrer.disabled ? 'not-allowed' : 'pointer';
       };
       inputNom.addEventListener('input', updateDisabled);
       updateDisabled();
-      inputNom.addEventListener('keydown', e => { if (e.key === 'Enter') creer(); });
+      inputNom.addEventListener('keydown', e => { if (e.key === 'Enter') enregistrer(); });
+
+      const footer = [];
+      if (isEdit) footer.push(UI.Button({ variant: 'destructive', icon: 'trash', children: 'Supprimer', onclick: supprimer, style: { marginRight: 'auto' } }));
+      footer.push(UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }));
+      footer.push(btnEnregistrer);
 
       modal = UI.Modal({
-        title: 'Nouveau projet', width: 480,
-        body,
-        footer: [
-          UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
-          btnCreer,
-        ],
+        title: isEdit ? 'Modifier le projet' : 'Nouveau projet', width: 480,
+        body, footer,
       });
     }
+
+    function ouvrirModalCreation() { ouvrirModalProjet(null); }
 
     function render() {
       const { projets, sessions, todos } = store.state;
@@ -127,7 +147,6 @@
     }
 
     function carteProjet(p, t, td) {
-      const facturable = p.tarif > 0 ? t.duree : 0;
       return el('article', {
         style: {
           background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
@@ -143,20 +162,10 @@
           el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } }, p.client || '—'),
         ),
 
-        el('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, paddingLeft: 6 } },
-          el('div', null,
-            el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Temps total'),
-            el('div', { style: { font: '500 18px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 4, letterSpacing: '-0.01em' } }, fmtDuree(t.duree)),
-            el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', marginTop: 2 } }, `${t.count} session${t.count > 1 ? 's' : ''}`),
-          ),
-          el('div', null,
-            el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Facturable'),
-            el('div', {
-              style: { font: '500 18px/1 var(--cv-font-mono)', marginTop: 4, letterSpacing: '-0.01em', color: p.tarif > 0 ? 'var(--cv-accent-600)' : 'var(--cv-fg-subtle)' },
-            }, p.tarif > 0 ? `${Math.round(facturable / 3600_000 * p.tarif)} €` : '—'),
-            el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', marginTop: 2 } },
-              p.tarif > 0 ? `${p.tarif} €/h` : 'non facturé'),
-          ),
+        el('div', { style: { paddingLeft: 6 } },
+          el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Temps total'),
+          el('div', { style: { font: '500 22px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 6, letterSpacing: '-0.01em' } }, fmtDuree(t.duree)),
+          el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', marginTop: 2 } }, `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`),
         ),
 
         el('div', { style: { display: 'flex', gap: 6, paddingLeft: 6 } },
@@ -172,16 +181,26 @@
                   onclick: () => opts.onDemarrerSurProjet(p.id), style: { flex: 1 },
                 }),
                 UI.IconButton({
+                  icon: 'pencil-simple', label: 'Modifier', variant: 'secondary', size: 'sm',
+                  onclick: () => ouvrirModalProjet(p),
+                }),
+                UI.IconButton({
                   icon: 'archive', label: 'Archiver', variant: 'secondary', size: 'sm',
                   onclick: () => store.actions.archiverProjet(p.id),
                 }),
               ]
-            : UI.Button({
-                size: 'sm', variant: 'secondary', icon: 'arrow-counter-clockwise',
-                children: 'Désarchiver',
-                onclick: () => store.actions.archiverProjet(p.id),
-                style: { flex: 1 },
-              }),
+            : [
+                UI.Button({
+                  size: 'sm', variant: 'secondary', icon: 'arrow-counter-clockwise',
+                  children: 'Désarchiver',
+                  onclick: () => store.actions.archiverProjet(p.id),
+                  style: { flex: 1 },
+                }),
+                UI.IconButton({
+                  icon: 'pencil-simple', label: 'Modifier', variant: 'secondary', size: 'sm',
+                  onclick: () => ouvrirModalProjet(p),
+                }),
+              ],
         ),
       );
     }

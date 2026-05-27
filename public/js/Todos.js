@@ -1,6 +1,41 @@
 // js/Todos.js — liste de tâches : ajout, filtre par projet, groupes par échéance.
 (function () {
-  const { el, icon } = window.UI;
+  const { el, icon, startOfDay } = window.UI;
+
+  // Convertit une étiquette d'échéance ('today', 'tomorrow', 'fri', 'mon', ...) en timestamp absolu,
+  // ancré sur la date de création du todo (pour qu'un "today" créé hier devienne "overdue" aujourd'hui).
+  function resoudreEcheance(label, creeLe) {
+    if (!label) return null;
+    const base = startOfDay(new Date(creeLe || Date.now()));
+    const J = 86400000;
+    if (label === 'today')    return base;
+    if (label === 'tomorrow') return base + J;
+    // jour de la semaine : on cherche le prochain ≥ base (lundi=1 ... dimanche=0)
+    const dayMap = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 };
+    if (label in dayMap) {
+      const target = dayMap[label];
+      const baseDay = new Date(base).getDay();
+      let diff = (target - baseDay + 7) % 7;
+      if (diff === 0) diff = 0; // même jour ok
+      return base + diff * J;
+    }
+    if (label === 'week') return base + 6 * J;
+    return null;
+  }
+
+  // Catégorise un todo en fonction de la date d'échéance et d'aujourd'hui.
+  // Retourne : 'overdue' | 'today' | 'tomorrow' | 'week' | 'none' | 'done'.
+  function bucket(todo) {
+    if (todo.fait) return 'done';
+    const due = resoudreEcheance(todo.echeance, todo.creeLe);
+    if (due == null) return 'none';
+    const today = startOfDay();
+    const J = 86400000;
+    if (due < today)            return 'overdue';
+    if (due < today + J)        return 'today';
+    if (due < today + 2 * J)    return 'tomorrow';
+    return 'week';
+  }
 
   function createTodos(store, opts) {
     let filtreProjet = 'all';
@@ -118,16 +153,57 @@
       );
     }
 
-    function echeanceBadge(echeance) {
+    function echeanceBadge(b) {
       const map = {
         overdue:  { label: 'en retard',   variant: 'danger' },
         today:    { label: "aujourd'hui", variant: 'accent' },
         tomorrow: { label: 'demain',      variant: 'neutral' },
-        fri:      { label: 'vendredi',    variant: 'neutral' },
-        mon:      { label: 'lundi',       variant: 'neutral' },
+        week:     { label: 'cette semaine', variant: 'neutral' },
       };
-      const m = map[echeance] || { label: echeance, variant: 'neutral' };
+      const m = map[b];
+      if (!m) return null;
       return UI.Badge({ variant: m.variant, children: m.label });
+    }
+
+    function ouvrirEditionTodo(t) {
+      const projets = store.state.projets;
+      let modal;
+      const nomW    = UI.Input({ label: 'Titre', value: t.titre, autoFocus: true });
+      const projW   = UI.Select({
+        label: 'Projet', value: t.projetId,
+        options: projets.map(p => ({ value: p.id, label: p.nom + (p.archive ? ' (archivé)' : '') })),
+      });
+      const echW    = UI.Select({
+        label: 'Échéance', value: t.echeance || 'none',
+        options: [
+          { value: 'today',    label: "Aujourd'hui" },
+          { value: 'tomorrow', label: 'Demain' },
+          { value: 'fri',      label: 'Vendredi' },
+          { value: 'mon',      label: 'Lundi prochain' },
+          { value: 'week',     label: 'Cette semaine' },
+          { value: 'none',     label: 'Sans échéance' },
+        ],
+      });
+      function enregistrer() {
+        const titre = nomW.input.value.trim();
+        if (!titre) return;
+        const ech = echW.input.value;
+        store.actions.majTodo(t.id, {
+          titre,
+          projetId: projW.input.value,
+          echeance: ech === 'none' ? null : ech,
+        });
+        modal.close();
+      }
+      nomW.input.addEventListener('keydown', e => { if (e.key === 'Enter') enregistrer(); });
+      modal = UI.Modal({
+        title: 'Modifier la tâche', width: 460,
+        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } }, nomW, projW, echW),
+        footer: [
+          UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
+          UI.Button({ variant: 'primary', icon: 'check', children: 'Enregistrer', onclick: enregistrer }),
+        ],
+      });
     }
 
     function todoRow(t, faded) {
@@ -159,11 +235,14 @@
 
         el('div', { style: { minWidth: 0, flex: 1 } },
           el('div', {
+            title: 'Cliquer pour modifier',
+            onclick: () => { if (!t.fait) ouvrirEditionTodo(t); },
             style: {
               font: '400 13px/1.3 var(--cv-font-sans)',
               color: t.fait ? 'var(--cv-fg-subtle)' : 'var(--cv-fg)',
               textDecoration: t.fait ? 'line-through' : 'none',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              cursor: t.fait ? 'default' : 'pointer',
             },
           }, t.titre),
         ),
@@ -175,12 +254,16 @@
           proj.nom,
         ) : null,
 
-        (t.echeance && !t.fait) ? echeanceBadge(t.echeance) : null,
+        (t.echeance && !t.fait) ? echeanceBadge(bucket(t)) : null,
 
         el('div', { style: { display: 'flex', gap: 2, flexShrink: 0 } },
           !t.fait ? UI.IconButton({
             icon: 'play', label: 'Démarrer un chrono sur cette tâche',
             onclick: () => opts.onDemarrerSurTodo(t.projetId, t.titre),
+          }) : null,
+          !t.fait ? UI.IconButton({
+            icon: 'pencil-simple', label: 'Modifier', size: 'sm',
+            onclick: () => ouvrirEditionTodo(t),
           }) : null,
           UI.IconButton({
             icon: 'trash', label: 'Supprimer', size: 'sm',
@@ -196,12 +279,12 @@
       const filtered = todos.filter(t => filtreProjet === 'all' || t.projetId === filtreProjet);
 
       const groups = {
-        'En retard':     filtered.filter(t => !t.fait && t.echeance === 'overdue'),
-        "Aujourd'hui":   filtered.filter(t => !t.fait && t.echeance === 'today'),
-        'Demain':        filtered.filter(t => !t.fait && t.echeance === 'tomorrow'),
-        'Cette semaine': filtered.filter(t => !t.fait && ['fri','mon','tue','wed','thu','week'].includes(t.echeance)),
-        'Sans échéance': filtered.filter(t => !t.fait && !t.echeance),
-        'Terminé':       filtered.filter(t => t.fait),
+        'En retard':     filtered.filter(t => bucket(t) === 'overdue'),
+        "Aujourd'hui":   filtered.filter(t => bucket(t) === 'today'),
+        'Demain':        filtered.filter(t => bucket(t) === 'tomorrow'),
+        'Cette semaine': filtered.filter(t => bucket(t) === 'week'),
+        'Sans échéance': filtered.filter(t => bucket(t) === 'none'),
+        'Terminé':       filtered.filter(t => bucket(t) === 'done'),
       };
 
       const sections = [];

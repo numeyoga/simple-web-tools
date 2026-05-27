@@ -143,11 +143,10 @@
     }
 
     function exportCSV(sessionsSem, projets, lundi) {
-      const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)', 'Facturable (€)']];
+      const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)']];
       for (const s of sessionsSem.slice().sort((a, b) => a.debut - b.debut)) {
         const p = projets.find(pr => pr.id === s.projetId);
         const heures = dureeVivante(s) / 3600_000;
-        const montant = p && p.tarif > 0 ? (heures * p.tarif).toFixed(2) : '';
         rows.push([
           new Date(s.debut).toLocaleDateString('fr-FR'),
           p?.nom || '',
@@ -156,7 +155,6 @@
           new Date(s.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
           s.fin ? new Date(s.fin).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
           heures.toFixed(2),
-          montant,
         ]);
       }
       const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -196,8 +194,8 @@
         .filter(x => x.projet)
         .sort((a, b) => b.duree - a.duree);
 
-      const facturable = projetsTri.reduce((s, x) => s + (x.projet.tarif > 0 ? x.duree : 0), 0);
-      const chiffreAffaires = projetsTri.reduce((s, x) => s + (x.projet.tarif > 0 ? (x.duree / 3600_000) * x.projet.tarif : 0), 0);
+      const totalSessions = sessionsSem.length;
+      const joursActifs = parJour.filter(j => j.total > 0).length;
 
       const semLabel = semaineOffset === 0 ? 'Cette semaine'
         : semaineOffset === -1 ? 'Semaine dernière'
@@ -222,7 +220,7 @@
         ),
 
         // Stats top
-        el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 } },
+        el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 } },
           statCard('Total semaine', fmtDuree(totalSemaine), 'objectif 35h00', {
             extra: el('div', {
               style: { height: 4, background: 'var(--cv-neutral-100)', borderRadius: 2, marginTop: 10, overflow: 'hidden' },
@@ -234,12 +232,12 @@
               },
             })),
           }),
-          statCard('Facturable', fmtDuree(facturable),
-            `${Math.round((facturable / Math.max(totalSemaine, 1)) * 100)}% du total`, { accent: true }),
-          statCard("Chiffre d'affaires",
-            `${Math.round(chiffreAffaires).toLocaleString('fr-FR')} €`,
-            `${sessionsSem.length} sessions`, { mono: false }),
-          statCard('Moyenne/jour', fmtDuree(totalSemaine / 5), 'lun. → ven.'),
+          statCard('Sessions', String(totalSessions),
+            `réparties sur ${joursActifs} jour${joursActifs > 1 ? 's' : ''}`,
+            { mono: false }),
+          statCard('Moyenne / jour actif',
+            fmtDuree(joursActifs > 0 ? totalSemaine / joursActifs : 0),
+            joursActifs > 0 ? 'sur jours travaillés' : 'aucun jour travaillé'),
         ),
 
         // Graphique
@@ -267,28 +265,29 @@
             : el('table', { style: { width: '100%', borderCollapse: 'collapse' } },
                 el('thead', null,
                   el('tr', { style: { borderBottom: '1px solid var(--cv-border)', background: 'var(--cv-neutral-50)' } },
-                    Th('Projet'), Th('Client'), Th('Temps', 'right'), Th('Tarif', 'right'), Th('Montant', 'right'),
+                    Th('Projet'), Th('Client'), Th('Sessions', 'right'), Th('Temps', 'right'), Th('Part', 'right'),
                   ),
                 ),
                 el('tbody', null,
-                  projetsTri.map(({ id, duree, projet }) => el('tr', { style: { borderBottom: '1px solid var(--cv-border)' } },
-                    Td(el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-                      el('span', { style: { width: 8, height: 8, borderRadius: 2, background: projet.couleur } }),
-                      el('span', { style: { font: '500 13px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, projet.nom),
-                    )),
-                    Td(projet.client || '—', { muted: true }),
-                    Td(fmtDuree(duree), { align: 'right', mono: true }),
-                    Td(projet.tarif > 0 ? `${projet.tarif} €/h` : '—', { align: 'right', muted: true }),
-                    Td(projet.tarif > 0 ? `${Math.round((duree / 3600_000) * projet.tarif).toLocaleString('fr-FR')} €` : '—',
-                      { align: 'right', mono: true, style: { color: projet.tarif > 0 ? 'var(--cv-fg)' : 'var(--cv-fg-subtle)' } }),
-                  )),
+                  projetsTri.map(({ id, duree, projet }) => {
+                    const sessionsCount = sessionsSem.filter(s => s.projetId === id).length;
+                    const part = totalSemaine > 0 ? (duree / totalSemaine) * 100 : 0;
+                    return el('tr', { style: { borderBottom: '1px solid var(--cv-border)' } },
+                      Td(el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                        el('span', { style: { width: 8, height: 8, borderRadius: 2, background: projet.couleur } }),
+                        el('span', { style: { font: '500 13px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, projet.nom),
+                      )),
+                      Td(projet.client || '—', { muted: true }),
+                      Td(String(sessionsCount), { align: 'right', mono: true }),
+                      Td(fmtDuree(duree), { align: 'right', mono: true }),
+                      Td(`${part.toFixed(0)}\u00a0%`, { align: 'right', mono: true, muted: true }),
+                    );
+                  }),
                   el('tr', { style: { background: 'var(--cv-neutral-50)' } },
                     Td('Total', { colSpan: 2, strong: true }),
+                    Td(String(totalSessions), { align: 'right', mono: true, strong: true }),
                     Td(fmtDuree(totalSemaine), { align: 'right', mono: true, strong: true }),
-                    Td(''),
-                    Td(`${Math.round(chiffreAffaires).toLocaleString('fr-FR')} €`, {
-                      align: 'right', mono: true, strong: true, style: { color: 'var(--cv-accent-600)' },
-                    }),
+                    Td('100\u00a0%', { align: 'right', mono: true, muted: true }),
                   ),
                 ),
               ),
