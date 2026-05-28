@@ -95,9 +95,10 @@
             variant: 'ghost', size: 'sm', icon: 'sign-out', children: 'Partir',
             title: 'Clôturer la journée',
             onclick: () => {
-              if (s.activeId) store.actions.arreter();
+              // En pause : on clôt la pause d'abord pour avoir un historique propre.
+              // Le chrono suspendu par la pause sera repris puis stoppé net par 'depart' juste après.
               if (statut === 'pause') store.actions.pointer('pause_fin');
-              store.actions.pointer('depart');
+              store.actions.pointer('depart'); // stoppe automatiquement le chrono actif s'il y en a un
             },
           }) : null,
           statut === 'parti' ? el('div', {

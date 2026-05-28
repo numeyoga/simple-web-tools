@@ -388,10 +388,44 @@ function createStore() {
       const next = { ...s, ...patch };
       if (next.statut === 'terminee' && next.debut != null && next.fin != null) {
         next.duree = Math.max(0, next.fin - next.debut);
+      } else if (next.statut === 'en_cours' && patch.debut != null) {
+        // Pour une session encore en cours qui n'a jamais été mise en pause
+        // (duree accumulée = 0 et dernierDebut suivait debut), on resynchronise
+        // dernierDebut sur le nouveau debut pour que la durée vivante reflète
+        // immédiatement la correction d'heure et que la taille du bloc sur la
+        // timeline soit cohérente.
+        if ((s.duree || 0) === 0 && s.dernierDebut === s.debut) {
+          next.dernierDebut = patch.debut;
+        }
+      } else if (next.statut === 'en_pause' && patch.debut != null) {
+        // En pause, la durée accumulée n'est plus liée à l'heure d'arrivée :
+        // si la session n'a jamais effectivement tourné (duree=0), on ne touche
+        // à rien ; sinon, duree reste celle déjà capitalisée. Aucun ajustement
+        // automatique requis ici.
       }
       return next;
     });
     scheduleSave('sessions'); emitState();
+  }
+
+  // Saisie manuelle d'une session déjà terminée (correction / rattrapage).
+  // La session n'est PAS rendue active : elle a un début et une fin, donc
+  // statut 'terminee' et duree calculée immédiatement.
+  function ajouterSessionManuelle({ projetId, description = '', debut, fin }) {
+    if (!projetId || debut == null || fin == null) return null;
+    if (fin < debut) return null;
+    const id = UI.uid('s');
+    const session = {
+      id, projetId,
+      description: (description || '').trim(),
+      debut, fin,
+      dernierDebut: null,
+      duree: Math.max(0, fin - debut),
+      statut: 'terminee',
+    };
+    state.sessions = [...state.sessions, session];
+    scheduleSave('sessions'); emitState();
+    return id;
   }
 
   // TODOS
@@ -451,8 +485,67 @@ function createStore() {
     return { statut: 'present', events };
   }
   function pointer(type) {
-    state.pointage = [...state.pointage, { id: UI.uid('pt'), type, at: Date.now() }];
-    scheduleSave('pointage'); emitState();
+    const now = Date.now();
+    const evt = { id: UI.uid('pt'), type, at: now };
+    let sessionsChanged = false;
+    let activeChanged = false;
+
+    // — Départ du soir : on arrête tout chrono encore en cours/en pause.
+    //   (Aucune reprise automatique le lendemain : la session est marquée 'terminee'.)
+    if (type === 'depart' && state.activeId) {
+      const cur = state.sessions.find(s => s.id === state.activeId);
+      if (cur && cur.statut !== 'terminee') {
+        const addDuree = cur.statut === 'en_cours' ? (now - cur.dernierDebut) : 0;
+        state.sessions = state.sessions.map(s => s.id === cur.id
+          ? { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' }
+          : s);
+        state.activeId = null;
+        sessionsChanged = true;
+        activeChanged = true;
+      }
+    }
+
+    // — Début de pause : on met le chrono actif en pause et on mémorise lequel.
+    if (type === 'pause_debut' && state.activeId) {
+      const cur = state.sessions.find(s => s.id === state.activeId);
+      if (cur && cur.statut === 'en_cours') {
+        state.sessions = state.sessions.map(s => s.id === cur.id
+          ? { ...s, duree: (s.duree || 0) + (now - s.dernierDebut), dernierDebut: null, statut: 'en_pause' }
+          : s);
+        evt.sessionSuspendueId = cur.id;
+        sessionsChanged = true;
+      }
+    }
+
+    // — Fin de pause : on reprend le chrono suspendu par la dernière pause_debut,
+    //   à condition qu'il soit toujours en pause (et n'ait pas été arrêté/changé entre-temps).
+    if (type === 'pause_fin') {
+      const today = UI.startOfDay();
+      const lastDebut = state.pointage
+        .filter(p => p.type === 'pause_debut' && p.at >= today)
+        .sort((a, b) => a.at - b.at)
+        .slice(-1)[0];
+      const sid = lastDebut?.sessionSuspendueId;
+      if (sid) {
+        const sess = state.sessions.find(s => s.id === sid);
+        if (sess && sess.statut === 'en_pause') {
+          state.sessions = state.sessions.map(s => s.id === sid
+            ? { ...s, statut: 'en_cours', dernierDebut: now }
+            : s);
+          sessionsChanged = true;
+          if (!state.activeId) {
+            state.activeId = sid;
+            activeChanged = true;
+          }
+        }
+      }
+    }
+
+    state.pointage = [...state.pointage, evt];
+    scheduleSave('pointage');
+    if (sessionsChanged) scheduleSave('sessions');
+    if (activeChanged)   scheduleSave('meta');
+    emitState();
   }
   function ajouterPointage(type, at) {
     state.pointage = [...state.pointage, { id: UI.uid('pt'), type, at }];
@@ -488,6 +581,7 @@ function createStore() {
     init, onState, onTick,
     actions: {
       demarrer, pauserActive, reprendreActive, arreter, supprimerSession, majSession,
+      ajouterSessionManuelle,
       ajouterTodo, toggleTodo, supprimerTodo, majTodo,
       ajouterProjet, majProjet, archiverProjet, supprimerProjet,
       pointer, ajouterPointage, majPointage, supprimerPointage,

@@ -1,19 +1,83 @@
-// js/QuickAdd.js — modal "démarrer un chrono" : description + sélection de projet.
+// js/QuickAdd.js — modal "ajouter un chrono".
+//
+// Deux modes :
+//   • "live"   : démarre un chrono qui tourne immédiatement.
+//   • "manuel" : crée une session déjà terminée (début + fin saisis)
+//                — typiquement pour rattraper une plage oubliée. La session
+//                n'est PAS activée car elle a déjà une fin.
 (function () {
-  const { el, icon } = window.UI;
+  const { el, icon, fmtDuree } = window.UI;
 
-  function ouvrirQuickAdd(store, { projetPrefill = null, descriptionPrefill = '', onDemarre } = {}) {
+  function tsVersLocal(ts) {
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function localVersTs(v) { const t = new Date(v).getTime(); return isNaN(t) ? null : t; }
+
+  function ouvrirQuickAdd(store, {
+    projetPrefill = null,
+    descriptionPrefill = '',
+    mode: modePrefill = 'live',
+    debutPrefill = null,
+    finPrefill = null,
+    onDemarre,
+    onAjoutManuel,
+  } = {}) {
     let projetId = projetPrefill
       || (store.state.projets.find(p => !p.archive)?.id)
       || store.state.projets[0]?.id
       || '';
+    let mode = modePrefill === 'manuel' ? 'manuel' : 'live';
     let modal;
     let inputDesc;
+    let debutW, finW, dureeAffichee, errorBox;
 
-    const listHost = el('div', {
-      style: { display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 280, overflowY: 'auto' },
+    /* --- segmented control mode --- */
+    const segWrap = el('div', {
+      role: 'tablist',
+      style: {
+        display: 'inline-flex', padding: 3, borderRadius: 9,
+        background: 'var(--cv-neutral-100)', border: '1px solid var(--cv-border)',
+        alignSelf: 'flex-start',
+      },
     });
+    function segBtn(value, iconName, label) {
+      const btn = el('button', {
+        role: 'tab',
+        onclick: () => { mode = value; renderMode(); },
+        style: {
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '6px 12px', border: 'none', borderRadius: 6,
+          font: '500 12px/1 var(--cv-font-sans)', cursor: 'pointer',
+          background: 'transparent', color: 'var(--cv-fg-muted)',
+          transition: 'background 120ms, color 120ms',
+        },
+      },
+        icon(iconName, { size: 13 }),
+        label,
+      );
+      btn.dataset.value = value;
+      return btn;
+    }
+    const segLive   = segBtn('live',   'play',          'Démarrer maintenant');
+    const segManuel = segBtn('manuel', 'pencil-simple', 'Saisir manuellement');
+    segWrap.appendChild(segLive);
+    segWrap.appendChild(segManuel);
 
+    function paintSeg() {
+      for (const b of [segLive, segManuel]) {
+        const actif = b.dataset.value === mode;
+        b.style.background = actif ? 'var(--cv-surface)' : 'transparent';
+        b.style.color = actif ? 'var(--cv-fg)' : 'var(--cv-fg-muted)';
+        b.style.boxShadow = actif ? 'var(--cv-shadow-sm)' : 'none';
+      }
+    }
+
+    /* --- liste des projets --- */
+    const listHost = el('div', {
+      style: { display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' },
+    });
     function renderListe() {
       const projets = store.state.projets.filter(p => !p.archive);
       listHost.replaceChildren(...projets.map(p => el('button', {
@@ -39,11 +103,12 @@
     }
     renderListe();
 
+    /* --- description --- */
     inputDesc = el('input', {
       value: descriptionPrefill || '',
       placeholder: 'Ex. maquette homepage v3',
       autocomplete: 'off',
-      onkeydown: e => { if (e.key === 'Enter') submit(); },
+      onkeydown: e => { if (e.key === 'Enter' && mode === 'live') submit(); },
       style: {
         height: 40, padding: '0 12px',
         border: '1px solid var(--cv-border-strong)', borderRadius: 8,
@@ -55,18 +120,138 @@
       onblur:  e => { e.target.style.borderColor = 'var(--cv-border-strong)'; e.target.style.boxShadow = 'none'; },
     });
 
-    function submit() {
-      if (!projetId) return;
-      store.actions.demarrer(projetId, inputDesc.value);
-      onDemarre && onDemarre(projetId);
-      modal.close();
+    /* --- bloc "saisie manuelle" --- */
+    // Valeurs par défaut : si pas de prefill, on propose une plage d'une heure
+    // se terminant maintenant arrondie au quart d'heure le plus proche.
+    const now = new Date();
+    now.setSeconds(0, 0);
+    const finDefault = finPrefill != null ? finPrefill : now.getTime();
+    const debutDefault = debutPrefill != null ? debutPrefill : finDefault - 60 * 60_000;
+
+    debutW = window.UI.Input({ label: 'Début', type: 'datetime-local', value: tsVersLocal(debutDefault) });
+    finW   = window.UI.Input({ label: 'Fin',   type: 'datetime-local', value: tsVersLocal(finDefault) });
+    dureeAffichee = el('div', {
+      style: { font: '500 16px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' },
+    }, '—');
+    errorBox = el('div', {
+      style: {
+        display: 'none', padding: '6px 10px', borderRadius: 6,
+        background: 'var(--cv-danger-50, #fef2f2)', border: '1px solid var(--cv-danger-200, #fecaca)',
+        color: 'var(--cv-danger-700, #b91c1c)', font: '400 12px/1.3 var(--cv-font-sans)',
+      },
+    });
+
+    function recalcDuree() {
+      const d = localVersTs(debutW.input.value);
+      const f = localVersTs(finW.input.value);
+      if (d == null || f == null) { dureeAffichee.textContent = '—'; return; }
+      if (f < d) {
+        dureeAffichee.textContent = '—';
+        return;
+      }
+      dureeAffichee.textContent = fmtDuree(f - d);
+    }
+    debutW.input.addEventListener('input', () => { hideError(); recalcDuree(); });
+    finW.input.addEventListener('input',   () => { hideError(); recalcDuree(); });
+    debutW.input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+    finW.input.addEventListener('keydown',   e => { if (e.key === 'Enter') submit(); });
+    recalcDuree();
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.style.display = 'block';
+    }
+    function hideError() {
+      errorBox.style.display = 'none';
     }
 
+    const manuelBlock = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+      el('div', { style: { display: 'flex', gap: 10 } },
+        el('div', { style: { flex: 1 } }, debutW),
+        el('div', { style: { flex: 1 } }, finW),
+      ),
+      el('div', { style: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 12px', background: 'var(--cv-neutral-50)',
+        border: '1px solid var(--cv-border)', borderRadius: 8,
+      } },
+        el('span', { style: { font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Durée'),
+        dureeAffichee,
+      ),
+      errorBox,
+    );
+
+    /* --- footer dynamique --- */
+    const footerHint = el('div', {
+      style: {
+        marginRight: 'auto', display: 'flex', gap: 8, alignItems: 'center',
+        font: '400 12px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)',
+      },
+    });
+    const submitBtn = window.UI.Button({ variant: 'primary', icon: 'play', children: 'Démarrer', onclick: () => submit() });
+
+    function paintFooter() {
+      if (mode === 'live') {
+        footerHint.replaceChildren(window.UI.Kbd('Entrée'), document.createTextNode(' pour démarrer'));
+        submitBtn.innerHTML = '';
+        submitBtn.append(icon('play', { size: 14, weight: 'fill' }), document.createTextNode('Démarrer'));
+      } else {
+        footerHint.replaceChildren(window.UI.Kbd('Entrée'), document.createTextNode(' pour enregistrer'));
+        submitBtn.innerHTML = '';
+        submitBtn.append(icon('check', { size: 14 }), document.createTextNode('Enregistrer'));
+      }
+    }
+
+    /* --- swap body selon le mode --- */
+    const modeHost = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } });
+    function renderMode() {
+      paintSeg();
+      paintFooter();
+      modeHost.replaceChildren(
+        mode === 'manuel'
+          ? manuelBlock
+          : el('div', {
+              style: {
+                padding: '8px 12px', background: 'var(--cv-accent-50)',
+                border: '1px solid var(--cv-accent-100)', borderRadius: 8,
+                font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-accent-700)',
+                display: 'flex', alignItems: 'center', gap: 8,
+              },
+            },
+              icon('timer', { size: 14, weight: 'fill' }),
+              'Le chrono se lance maintenant et continue de tourner jusqu’à ce que tu l’arrêtes.',
+            ),
+      );
+    }
+
+    function submit() {
+      if (!projetId) return;
+      if (mode === 'live') {
+        store.actions.demarrer(projetId, inputDesc.value);
+        onDemarre && onDemarre(projetId);
+        modal.close();
+      } else {
+        const d = localVersTs(debutW.input.value);
+        const f = localVersTs(finW.input.value);
+        if (d == null || f == null) { showError('Renseigne un début et une fin valides.'); return; }
+        if (f <= d) { showError('La fin doit être postérieure au début.'); return; }
+        const id = store.actions.ajouterSessionManuelle({
+          projetId, description: inputDesc.value, debut: d, fin: f,
+        });
+        if (!id) { showError('Impossible d’enregistrer cette session.'); return; }
+        onAjoutManuel && onAjoutManuel(id, projetId);
+        modal.close();
+      }
+    }
+
+    /* --- corps du modal --- */
     const body = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+      segWrap,
       el('label', { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
-        el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, 'Sur quoi travailles-tu ?'),
+        el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, 'Sur quoi as-tu travaillé ?'),
         inputDesc,
       ),
+      modeHost,
       el('div', null,
         el('div', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginBottom: 6 } }, 'Projet'),
         listHost,
@@ -74,17 +259,13 @@
     );
 
     const footer = [
-      el('div', {
-        style: {
-          marginRight: 'auto', display: 'flex', gap: 8, alignItems: 'center',
-          font: '400 12px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)',
-        },
-      }, UI.Kbd('Entrée'), ' pour démarrer'),
-      UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
-      UI.Button({ variant: 'primary', icon: 'play', children: 'Démarrer', onclick: submit }),
+      footerHint,
+      window.UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
+      submitBtn,
     ];
 
-    modal = UI.Modal({ title: 'Démarrer un chrono', width: 520, body, footer });
+    modal = window.UI.Modal({ title: 'Ajouter un chrono', width: 540, body, footer });
+    renderMode();
     setTimeout(() => inputDesc.focus(), 50);
   }
 
