@@ -127,7 +127,7 @@
     }
 
     /* ----------------- TimelineChart ----------------- */
-    function timelineChart(jourDebut, sessionsJ, pointageJ, projets, activeId, isToday) {
+    function timelineChart(jourDebut, sessionsJ, pointageJ, projets, isToday) {
       const totalHours = HEURE_FIN - HEURE_DEBUT;
       const widthPx = totalHours * PX_PAR_HEURE;
       const hourToPx = h => (h - HEURE_DEBUT) * PX_PAR_HEURE;
@@ -219,37 +219,69 @@
         }));
       }
 
-      // sessions
-      for (const s of sessionsJ) {
-        const proj = projets.find(p => p.id === s.projetId);
+      // sessions — placement en « voies » (swim lanes) pour gérer les chronos
+      // en PARALLÈLE. La hauteur de la bande reste CONSTANTE : on divise la zone
+      // verticale réservée aux sessions par le nombre de voies nécessaires ce
+      // jour-là (chevauchement maximal). Une seule session => 1 voie pleine ;
+      // plusieurs en parallèle => voies empilées, sans changer la hauteur totale.
+      const SESSION_ZONE_TOP = 30;
+      const SESSION_ZONE_H = 104;
+      const LANE_GAP = 4;
+
+      // Étendue visuelle de chaque session : [debut, debut + durée affichée].
+      const placed = sessionsJ.map(s => {
         const dureeMs = dureeVivante(s);
+        return { s, dureeMs, start: s.debut, end: s.debut + Math.max(dureeMs, 60_000) };
+      }).sort((a, b) => a.start - b.start);
+
+      // Affectation gloutonne : on réutilise la première voie devenue libre.
+      const laneEnds = [];
+      for (const item of placed) {
+        let lane = laneEnds.findIndex(end => item.start >= end - 1000);
+        if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+        laneEnds[lane] = item.end;
+        item.lane = lane;
+      }
+      const laneCount = Math.max(1, laneEnds.length);
+      const laneH = (SESSION_ZONE_H - LANE_GAP * (laneCount - 1)) / laneCount;
+      const compact = laneH < 46;
+
+      for (const item of placed) {
+        const s = item.s;
+        const proj = projets.find(p => p.id === s.projetId);
+        const dureeMs = item.dureeMs;
         const left = tsToPx(s.debut);
         const width = Math.max(10, msToPx(dureeMs));
-        const isActive = s.id === activeId;
+        const isActive = s.statut !== 'terminee';
+        const enCours = s.statut === 'en_cours';
+        const top = SESSION_ZONE_TOP + item.lane * (laneH + LANE_GAP);
         const block = el('div', {
           title: `${proj?.nom || 'Sans projet'} · ${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'} · ${fmtDuree(dureeMs)}`,
           onclick: () => ouvrirEditionSession(s),
           style: {
             position: 'absolute', left, width,
-            top: 32, height: 76,
+            top, height: laneH,
             background: proj?.couleur || 'var(--cv-neutral-500)',
             borderRadius: 6,
-            boxShadow: isActive ? '0 0 0 3px rgba(234,88,12,0.35), var(--cv-shadow-md)' : 'var(--cv-shadow-sm)',
-            color: '#fff', padding: '8px 10px',
+            boxShadow: isActive ? '0 0 0 2px rgba(234,88,12,0.30), var(--cv-shadow-md)' : 'var(--cv-shadow-sm)',
+            color: '#fff', padding: compact ? '0 9px' : '7px 10px',
             overflow: 'hidden', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-            outline: isActive && s.statut === 'en_cours' ? '2px solid var(--cv-accent-500)' : 'none',
+            display: 'flex',
+            flexDirection: compact ? 'row' : 'column',
+            alignItems: compact ? 'center' : 'stretch',
+            justifyContent: 'space-between', gap: compact ? 8 : 0,
+            outline: enCours ? '2px solid var(--cv-accent-500)' : 'none',
           },
-        },
-          el('div', null,
-            el('div', { style: { font: '500 11px/1.2 var(--cv-font-sans)', opacity: 0.82, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, proj?.nom || 'Sans projet'),
-            (s.description && width > 80) ? el('div', { style: { marginTop: 2, font: '500 12px/1.3 var(--cv-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, s.description) : null,
-          ),
-          el('div', { style: { font: '500 11px/1 var(--cv-font-mono)', opacity: 0.9, display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-            el('span', null, fmtDuree(dureeMs)),
-            (isActive && s.statut === 'en_cours') ? el('span', { style: { width: 6, height: 6, borderRadius: '50%', background: '#fff', animation: 'cv-pulse 1.2s infinite' } }) : null,
-          ),
+        });
+        const titre = el('div', { style: { minWidth: 0, flex: 1, overflow: 'hidden' } },
+          el('div', { style: { font: '500 11px/1.2 var(--cv-font-sans)', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, proj?.nom || 'Sans projet'),
+          (!compact && s.description && width > 80) ? el('div', { style: { marginTop: 2, font: '500 12px/1.3 var(--cv-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, s.description) : null,
         );
+        const dureeLine = el('div', { style: { font: '500 11px/1 var(--cv-font-mono)', opacity: 0.95, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 } },
+          el('span', null, fmtDuree(dureeMs)),
+          enCours ? el('span', { style: { width: 6, height: 6, borderRadius: '50%', background: '#fff', animation: 'cv-pulse 1.2s infinite' } }) : null,
+        );
+        block.append(titre, dureeLine);
         line.appendChild(block);
       }
 
@@ -282,7 +314,7 @@
     }
 
     /* ----------------- Liste sessions ----------------- */
-    function sessionsListe(sessionsJ, projets, activeId) {
+    function sessionsListe(sessionsJ, projets) {
       const list = sessionsJ.length === 0
         ? el('div', { style: { padding: '32px 16px', textAlign: 'center', color: 'var(--cv-fg-muted)', font: '400 13px/1.5 var(--cv-font-sans)' } },
             icon('hourglass-low', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
@@ -292,7 +324,7 @@
         : el('div', null,
             sessionsJ.map(s => {
               const proj = projets.find(p => p.id === s.projetId);
-              const isActive = s.id === activeId;
+              const isActive = s.statut !== 'terminee';
               const row = el('div', {
                 style: {
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -322,8 +354,16 @@
                 el('div', {
                   style: { font: '500 15px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', minWidth: 56, textAlign: 'right' },
                 }, fmtDuree(dureeVivante(s))),
-                (isActive && s.statut === 'en_cours') ? UI.Badge({ variant: 'accent', dot: true, children: 'en cours' })
-                : (isActive && s.statut === 'en_pause') ? UI.Badge({ variant: 'warning', dot: true, children: 'pause' })
+                (isActive && s.statut === 'en_cours') ? el('div', { style: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 } },
+                    UI.Badge({ variant: 'accent', dot: true, children: 'en cours' }),
+                    UI.IconButton({ icon: 'pause', label: 'Mettre en pause', size: 'sm', onclick: () => store.actions.pauserSession(s.id) }),
+                    UI.IconButton({ icon: 'stop', label: 'Arrêter', size: 'sm', onclick: () => store.actions.arreterSession(s.id) }),
+                  )
+                : (isActive && s.statut === 'en_pause') ? el('div', { style: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 } },
+                    UI.Badge({ variant: 'warning', dot: true, children: 'pause' }),
+                    UI.IconButton({ icon: 'play', label: 'Reprendre', size: 'sm', onclick: () => store.actions.reprendreSession(s.id) }),
+                    UI.IconButton({ icon: 'stop', label: 'Arrêter', size: 'sm', onclick: () => store.actions.arreterSession(s.id) }),
+                  )
                 : el('div', { style: { display: 'flex', gap: 2, flexShrink: 0 } },
                     UI.IconButton({
                       icon: 'play', label: 'Reprendre ce projet',
@@ -571,7 +611,7 @@
             el('div', null,
               el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Journée en continu'),
               el('div', { style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } },
-                'Glisse pour faire défiler · survole un créneau pour les détails'),
+                'Les chronos en parallèle s’empilent en voies · glisse pour faire défiler'),
             ),
             el('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, font: '400 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
               legendeItem('var(--cv-success-500)', 'Présence'),
@@ -579,12 +619,12 @@
               legendeItem('var(--cv-fg)', 'Session'),
             ),
           ),
-          timelineChart(jourDebut, sessionsJ, pointageJ, s.projets, s.activeId, isToday),
+          timelineChart(jourDebut, sessionsJ, pointageJ, s.projets, isToday),
         ),
 
         // Bas : sessions + répartition
         el('div', { style: { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 } },
-          sessionsListe(sessionsJ, s.projets, s.activeId),
+          sessionsListe(sessionsJ, s.projets),
           el('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
             pointageSection(pointageJ, jourDebut),
             repartition(sessionsJ, s.projets),

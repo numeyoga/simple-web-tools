@@ -159,7 +159,7 @@
           el('div', { style: { display: 'flex', justifyContent: 'space-between' } },
             el('span', null, 'Nouveau chrono'), UI.Kbd('N')),
           el('div', { style: { display: 'flex', justifyContent: 'space-between' } },
-            el('span', null, 'Arrêter l’actif'), UI.Kbd('S')),
+            el('span', null, 'Tout arrêter'), UI.Kbd('S')),
         ),
       ),
     );
@@ -215,27 +215,26 @@
       if (e.target.matches && e.target.matches('input, textarea, select')) return;
       if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();
-        if (store.state.activeId) {
-          const s = store.state.sessions.find(x => x.id === store.state.activeId);
-          if (s?.statut === 'en_cours') {
-            store.actions.pauserActive();
-            toasts.push({ variant: 'info', title: 'Chrono en pause' });
-          } else if (s?.statut === 'en_pause') {
-            store.actions.reprendreActive();
-            toasts.push({ variant: 'success', title: 'Chrono repris' });
-          }
-        } else {
+        const actives = store.sessionsActives();
+        if (actives.length === 0) {
           openQuickAdd();
+        } else if (actives.some(s => s.statut === 'en_cours')) {
+          store.actions.pauserTout();
+          toasts.push({ variant: 'info', title: actives.length > 1 ? 'Chronos en pause' : 'Chrono en pause' });
+        } else {
+          store.actions.reprendreTout();
+          toasts.push({ variant: 'success', title: actives.length > 1 ? 'Chronos repris' : 'Chrono repris' });
         }
       }
       if (e.key.toLowerCase() === 'n' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         openQuickAdd();
       }
-      if (e.key.toLowerCase() === 's' && !e.metaKey && !e.ctrlKey && store.state.activeId) {
+      if (e.key.toLowerCase() === 's' && !e.metaKey && !e.ctrlKey && store.sessionsActives().length) {
         e.preventDefault();
-        store.actions.arreter();
-        toasts.push({ variant: 'info', title: 'Chrono arrêté' });
+        const n = store.sessionsActives().length;
+        store.actions.arreterTout();
+        toasts.push({ variant: 'info', title: n > 1 ? 'Chronos arrêtés' : 'Chrono arrêté' });
       }
     });
 

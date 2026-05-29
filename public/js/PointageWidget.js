@@ -30,8 +30,10 @@
     function render() {
       const s = store.state;
       const etat = store.etatPointage();
-      const active = s.activeId ? s.sessions.find(x => x.id === s.activeId) : null;
-      const projetActif = active ? s.projets.find(p => p.id === active.projetId) : null;
+      const actives = s.sessions
+        .filter(x => x.statut !== 'terminee')
+        .sort((a, b) => a.debut - b.debut);
+      const nbEnCours = actives.filter(x => x.statut === 'en_cours').length;
 
       const statut = etat.statut;
       const arrivee = etat.events.find(e => e.type === 'arrivee');
@@ -107,76 +109,93 @@
         ),
       );
 
-      // ----- bloc session active -----
-      const activeBlock = el('section', {
-        style: {
-          background: active ? 'var(--cv-fg)' : 'var(--cv-surface)',
-          color: active ? 'var(--cv-fg-inverse)' : 'var(--cv-fg)',
-          border: active ? '1px solid var(--cv-fg)' : '1px dashed var(--cv-border-strong)',
-          borderRadius: 10, padding: active ? 14 : 16,
-          display: 'flex', flexDirection: 'column', gap: 10,
-          transition: 'background 180ms, color 180ms',
+      // ----- chronos actifs (parallèles) -----
+      function chronoCard(active) {
+        const proj = s.projets.find(p => p.id === active.projetId);
+        const enCours = active.statut === 'en_cours';
+        return el('section', {
+          style: {
+            background: 'var(--cv-fg)', color: 'var(--cv-fg-inverse)',
+            border: '1px solid var(--cv-fg)', borderRadius: 10, padding: 12,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          },
         },
-      });
-
-      if (active) {
-        activeBlock.append(
           el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
             el('span', {
               style: {
-                width: 8, height: 8, borderRadius: '50%',
-                background: active.statut === 'en_cours' ? 'var(--cv-accent-400)' : 'var(--cv-neutral-400)',
-                animation: active.statut === 'en_cours' ? 'cv-pulse 1.2s infinite' : 'none',
+                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                background: enCours ? 'var(--cv-accent-400)' : 'var(--cv-neutral-400)',
+                animation: enCours ? 'cv-pulse 1.2s infinite' : 'none',
               },
             }),
-            el('span', {
-              style: { font: '600 11px/1 var(--cv-font-sans)', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.06em' },
-            }, active.statut === 'en_cours' ? 'Chrono actif' : 'Chrono en pause'),
-          ),
-          el('div', {
-            style: { font: '500 28px/1 var(--cv-font-mono)', letterSpacing: '-0.02em' },
-          }, fmtDuree(dureeVivante(active), { withSeconds: true })),
-          el('div', { style: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 18 } },
-            projetActif ? el('span', { style: { width: 8, height: 8, borderRadius: 2, background: projetActif.couleur, flexShrink: 0 } }) : null,
+            proj ? el('span', { style: { width: 8, height: 8, borderRadius: 2, background: proj.couleur, flexShrink: 0 } }) : null,
             el('div', { style: { minWidth: 0, flex: 1 } },
               el('div', {
-                style: { font: '500 13px/1.2 var(--cv-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-              }, projetActif?.nom || 'Sans projet'),
+                style: { font: '500 12px/1.2 var(--cv-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+              }, proj?.nom || 'Sans projet'),
               active.description ? el('div', {
-                style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 },
+                style: { font: '400 10px/1.3 var(--cv-font-sans)', color: 'rgba(255,255,255,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 },
               }, active.description) : null,
             ),
           ),
-          el('div', { style: { display: 'flex', gap: 6 } },
-            active.statut === 'en_cours'
-              ? el('button', {
-                  onclick: () => store.actions.pauserActive(),
-                  style: darkBtnStyle, title: 'Mettre en pause',
-                }, icon('pause', { size: 14 }), ' Pause')
-              : el('button', {
-                  onclick: () => store.actions.reprendreActive(),
-                  style: { ...darkBtnStyle, background: 'var(--cv-accent-500)', borderColor: 'var(--cv-accent-500)' },
-                  title: 'Reprendre',
-                }, icon('play', { size: 14 }), ' Reprendre'),
-            el('button', {
-              onclick: () => store.actions.arreter(),
-              style: { ...darkBtnStyle, flex: 0, padding: '0 10px' },
-              title: 'Arrêter & enregistrer',
-            }, icon('stop', { size: 14 })),
+          el('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+            el('div', {
+              style: { font: '500 20px/1 var(--cv-font-mono)', letterSpacing: '-0.02em', flex: 1 },
+            }, fmtDuree(dureeVivante(active), { withSeconds: true })),
+            enCours
+              ? el('button', { onclick: () => store.actions.pauserSession(active.id), style: { ...darkBtnStyle, flex: 0, padding: '0 11px' }, title: 'Mettre en pause' }, icon('pause', { size: 14 }))
+              : el('button', { onclick: () => store.actions.reprendreSession(active.id), style: { ...darkBtnStyle, flex: 0, padding: '0 11px', background: 'var(--cv-accent-500)', borderColor: 'var(--cv-accent-500)' }, title: 'Reprendre' }, icon('play', { size: 14 })),
+            el('button', { onclick: () => store.actions.arreterSession(active.id), style: { ...darkBtnStyle, flex: 0, padding: '0 11px' }, title: 'Arrêter & enregistrer' }, icon('stop', { size: 14 })),
           ),
         );
-      } else {
-        activeBlock.append(
+      }
+
+      let activeBlock;
+      if (actives.length === 0) {
+        activeBlock = el('section', {
+          style: {
+            background: 'var(--cv-surface)', color: 'var(--cv-fg)',
+            border: '1px dashed var(--cv-border-strong)', borderRadius: 10, padding: 16,
+            display: 'flex', flexDirection: 'column', gap: 10,
+          },
+        },
           el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
             icon('timer', { size: 16, style: { color: 'var(--cv-fg-subtle)' } }),
             el('span', { style: { font: '500 13px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, 'Aucun chrono actif'),
           ),
           el('div', { style: { font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
-            'Lance un chrono depuis un projet, une todo ou en un clic.'),
+            'Lance un ou plusieurs chronos en parallèle — depuis un projet, une todo ou en un clic.'),
           UI.Button({
             variant: 'primary', size: 'sm', icon: 'play', children: 'Démarrer un chrono',
             onclick: opts.onOuvrirQuickAdd,
             disabled: statut === 'parti',
+            style: { alignSelf: 'stretch' },
+          }),
+        );
+      } else {
+        const header = el('div', { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '0 2px' } },
+          el('span', {
+            style: { font: '600 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' },
+          }, actives.length > 1 ? `${actives.length} chronos en parallèle` : 'Chrono actif'),
+          (actives.length > 1 && nbEnCours > 0) ? el('span', {
+            style: { font: '500 10px/1 var(--cv-font-mono)', color: 'var(--cv-accent-600)', padding: '2px 6px', background: 'var(--cv-accent-50)', borderRadius: 4 },
+          }, `${nbEnCours} en cours`) : null,
+        );
+
+        const groupBar = actives.length > 1 ? el('div', { style: { display: 'flex', gap: 6 } },
+          nbEnCours > 0
+            ? UI.Button({ variant: 'secondary', size: 'sm', icon: 'pause', children: 'Tout mettre en pause', onclick: () => store.actions.pauserTout(), style: { flex: 1 } })
+            : UI.Button({ variant: 'secondary', size: 'sm', icon: 'play', children: 'Tout reprendre', onclick: () => store.actions.reprendreTout(), style: { flex: 1 } }),
+          UI.Button({ variant: 'secondary', size: 'sm', icon: 'stop', title: 'Tout arrêter & enregistrer', onclick: () => store.actions.arreterTout() }),
+        ) : null;
+
+        activeBlock = el('section', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+          header,
+          ...actives.map(chronoCard),
+          groupBar,
+          UI.Button({
+            variant: 'secondary', size: 'sm', icon: 'plus', children: 'Démarrer un autre chrono',
+            onclick: opts.onOuvrirQuickAdd, disabled: statut === 'parti',
             style: { alignSelf: 'stretch' },
           }),
         );

@@ -219,7 +219,7 @@
               },
             },
               icon('timer', { size: 14, weight: 'fill' }),
-              'Le chrono se lance maintenant et continue de tourner jusqu’à ce que tu l’arrêtes.',
+              'Le chrono se lance maintenant — en parallèle des chronos déjà actifs — et tourne jusqu’à ce que tu l’arrêtes.',
             ),
       );
     }

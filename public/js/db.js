@@ -167,7 +167,7 @@ function lsSave(state) {
   try {
     localStorage.setItem(lsKeyFor(wsActiveId()), JSON.stringify({
       projets: state.projets, todos: state.todos, sessions: state.sessions,
-      pointage: state.pointage, activeId: state.activeId,
+      pointage: state.pointage,
     }));
   } catch (e) {}
 }
@@ -214,18 +214,28 @@ function seed() {
     { id: 's10', projetId: 'p1', description: 'Corrections maquettes',   debut: at(14, 0, -3),  fin: at(15, 45, -3), duree: 1.75 * 3600_000,               statut: 'terminee' },
     { id: 's11', projetId: 'p4', description: 'Audit Atlas — écrans',    debut: at(9, 0, -4),   fin: at(12, 30, -4), duree: 3.5 * 3600_000,                statut: 'terminee' },
     { id: 's12', projetId: 'p5', description: 'Note de frais',           debut: at(14, 0, -4),  fin: at(14, 40, -4), duree: 40 * 60_000,                   statut: 'terminee' },
+    // — Aujourd'hui : une session qui CHEVAUCHE les autres (démontre les voies parallèles sur la timeline).
+    { id: 's13', projetId: 'p3', description: 'Helios — atelier specs',    debut: at(9, 30),  fin: at(12, 0),  duree: (12*60 - 9*60-30)*60_000,    statut: 'terminee' },
+  ];
+
+  // — Deux chronos ACTIFS en parallèle maintenant (l'un en cours, l'autre en pause).
+  const nowTs = Date.now();
+  const liveSessions = [
+    { id: 's14', projetId: 'p2', description: 'Design system — tokens v2', debut: nowTs - 38 * 60_000, dernierDebut: nowTs - 38 * 60_000, fin: null, duree: 0,            statut: 'en_cours' },
+    { id: 's15', projetId: 'p4', description: 'Atlas — synthèse audit',    debut: nowTs - 72 * 60_000, dernierDebut: null,                  fin: null, duree: 26 * 60_000,   statut: 'en_pause' },
   ];
 
   const pointage = [
     { id: 'pt1', type: 'arrivee',     at: at(8, 58) },
     { id: 'pt2', type: 'pause_debut', at: at(12, 45) },
+    { id: 'pt7', type: 'pause_fin',   at: at(13, 30) },
     { id: 'pt3', type: 'arrivee',     at: at(9, 2, -1) },
     { id: 'pt4', type: 'pause_debut', at: at(12, 30, -1) },
     { id: 'pt5', type: 'pause_fin',   at: at(13, 15, -1) },
     { id: 'pt6', type: 'depart',      at: at(18, 5, -1) },
   ];
 
-  return { projets, todos, sessions, pointage };
+  return { projets, todos, sessions: [...sessions, ...liveSessions], pointage };
 }
 
 function emptyData() {
@@ -239,7 +249,6 @@ function createStore() {
   const state = {
     loaded: false,
     projets: [], todos: [], sessions: [], pointage: [],
-    activeId: null,
   };
 
   const stateListeners = new Set();
@@ -268,7 +277,6 @@ function createStore() {
       if (dirtyStores.has('todos'))    promises.push(idbReplace('todos',    state.todos));
       if (dirtyStores.has('sessions')) promises.push(idbReplace('sessions', state.sessions));
       if (dirtyStores.has('pointage')) promises.push(idbReplace('pointage', state.pointage));
-      if (dirtyStores.has('meta'))     promises.push(idbSetMeta('activeSessionId', state.activeId));
       dirtyStores.clear();
       await Promise.all(promises);
     } else {
@@ -282,9 +290,8 @@ function createStore() {
     const db = await openDB();
     if (db) {
       usingIDB = true;
-      const [pr, td, se, pt, act] = await Promise.all([
+      const [pr, td, se, pt] = await Promise.all([
         idbAll('projets'), idbAll('todos'), idbAll('sessions'), idbAll('pointage'),
-        idbGetMeta('activeSessionId'),
       ]);
       const isFresh = pr.length === 0 && td.length === 0 && se.length === 0 && pt.length === 0;
       if (isFresh && seedIfEmpty && wsActive().seedOnInit !== false) {
@@ -299,7 +306,6 @@ function createStore() {
       } else {
         state.projets = pr; state.todos = td; state.sessions = se; state.pointage = pt;
       }
-      state.activeId = act || null;
     } else {
       usingIDB = false;
       const ls = lsLoad();
@@ -319,67 +325,86 @@ function createStore() {
   /* ============= Actions ============= */
 
   // SESSIONS
+  // Plusieurs chronos peuvent tourner EN PARALLÈLE : démarrer un chrono
+  // n'arrête jamais les autres. Les chronos « actifs » sont simplement toutes
+  // les sessions dont le statut n'est pas 'terminee' (en cours ou en pause).
+  function sessionsActives() {
+    return state.sessions.filter(s => s.statut !== 'terminee');
+  }
+
   function demarrer(projetId, description = '') {
     const now = Date.now();
     const newId = UI.uid('s');
-    let sessions = state.sessions.slice();
-    if (state.activeId) {
-      const cur = sessions.find(s => s.id === state.activeId);
-      if (cur && cur.statut !== 'terminee') {
-        const fin = now;
-        const addDuree = cur.statut === 'en_cours' ? (fin - cur.dernierDebut) : 0;
-        sessions = sessions.map(s => s.id === cur.id
-          ? { ...s, fin, duree: (s.duree || 0) + addDuree, statut: 'terminee', dernierDebut: null }
-          : s);
-      }
-    }
-    sessions.push({
+    state.sessions = [...state.sessions, {
       id: newId, projetId, description: description || '',
       debut: now, dernierDebut: now, fin: null, duree: 0, statut: 'en_cours',
-    });
-    state.sessions = sessions;
-    state.activeId = newId;
-    scheduleSave('sessions'); scheduleSave('meta'); emitState();
+    }];
+    scheduleSave('sessions'); emitState();
     return newId;
   }
 
-  function pauserActive() {
-    if (!state.activeId) return;
+  // --- Contrôle d'UN chrono précis ---
+  function pauserSession(id) {
     const now = Date.now();
     state.sessions = state.sessions.map(s => {
-      if (s.id !== state.activeId || s.statut !== 'en_cours') return s;
-      const addDuree = now - s.dernierDebut;
-      return { ...s, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'en_pause' };
+      if (s.id !== id || s.statut !== 'en_cours') return s;
+      return { ...s, duree: (s.duree || 0) + (now - s.dernierDebut), dernierDebut: null, statut: 'en_pause' };
     });
     scheduleSave('sessions'); emitState();
   }
-
-  function reprendreActive() {
-    if (!state.activeId) return;
+  function reprendreSession(id) {
     const now = Date.now();
-    state.sessions = state.sessions.map(s => s.id === state.activeId && s.statut === 'en_pause'
+    state.sessions = state.sessions.map(s => s.id === id && s.statut === 'en_pause'
       ? { ...s, statut: 'en_cours', dernierDebut: now }
-      : s
-    );
+      : s);
     scheduleSave('sessions'); emitState();
   }
-
-  function arreter() {
-    if (!state.activeId) return;
+  function arreterSession(id) {
     const now = Date.now();
     state.sessions = state.sessions.map(s => {
-      if (s.id !== state.activeId) return s;
+      if (s.id !== id || s.statut === 'terminee') return s;
       const addDuree = s.statut === 'en_cours' ? (now - s.dernierDebut) : 0;
       return { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' };
     });
-    state.activeId = null;
-    scheduleSave('sessions'); scheduleSave('meta'); emitState();
+    scheduleSave('sessions'); emitState();
+  }
+
+  // --- Contrôle GROUPÉ de tous les chronos actifs (1+) ---
+  function pauserTout() {
+    const now = Date.now();
+    let changed = false;
+    state.sessions = state.sessions.map(s => {
+      if (s.statut !== 'en_cours') return s;
+      changed = true;
+      return { ...s, duree: (s.duree || 0) + (now - s.dernierDebut), dernierDebut: null, statut: 'en_pause' };
+    });
+    if (changed) { scheduleSave('sessions'); emitState(); }
+  }
+  function reprendreTout() {
+    const now = Date.now();
+    let changed = false;
+    state.sessions = state.sessions.map(s => {
+      if (s.statut !== 'en_pause') return s;
+      changed = true;
+      return { ...s, statut: 'en_cours', dernierDebut: now };
+    });
+    if (changed) { scheduleSave('sessions'); emitState(); }
+  }
+  function arreterTout() {
+    const now = Date.now();
+    let changed = false;
+    state.sessions = state.sessions.map(s => {
+      if (s.statut === 'terminee') return s;
+      changed = true;
+      const addDuree = s.statut === 'en_cours' ? (now - s.dernierDebut) : 0;
+      return { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' };
+    });
+    if (changed) { scheduleSave('sessions'); emitState(); }
   }
 
   function supprimerSession(id) {
     state.sessions = state.sessions.filter(s => s.id !== id);
-    if (state.activeId === id) state.activeId = null;
-    scheduleSave('sessions'); scheduleSave('meta'); emitState();
+    scheduleSave('sessions'); emitState();
   }
 
   function majSession(id, patch) {
@@ -468,8 +493,7 @@ function createStore() {
     state.projets  = state.projets.filter(p => p.id !== id);
     state.sessions = state.sessions.filter(s => s.projetId !== id);
     state.todos    = state.todos.filter(t => t.projetId !== id);
-    if (state.activeId && !state.sessions.find(s => s.id === state.activeId)) state.activeId = null;
-    scheduleSave('projets'); scheduleSave('sessions'); scheduleSave('todos'); scheduleSave('meta');
+    scheduleSave('projets'); scheduleSave('sessions'); scheduleSave('todos');
     emitState();
   }
 
@@ -488,63 +512,58 @@ function createStore() {
     const now = Date.now();
     const evt = { id: UI.uid('pt'), type, at: now };
     let sessionsChanged = false;
-    let activeChanged = false;
 
-    // — Départ du soir : on arrête tout chrono encore en cours/en pause.
-    //   (Aucune reprise automatique le lendemain : la session est marquée 'terminee'.)
-    if (type === 'depart' && state.activeId) {
-      const cur = state.sessions.find(s => s.id === state.activeId);
-      if (cur && cur.statut !== 'terminee') {
-        const addDuree = cur.statut === 'en_cours' ? (now - cur.dernierDebut) : 0;
-        state.sessions = state.sessions.map(s => s.id === cur.id
-          ? { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' }
-          : s);
-        state.activeId = null;
+    // -- Départ du soir : on arrête TOUS les chronos encore actifs (en cours ou en pause).
+    //    (Aucune reprise automatique le lendemain : les sessions sont marquées 'terminee'.)
+    if (type === 'depart') {
+      state.sessions = state.sessions.map(s => {
+        if (s.statut === 'terminee') return s;
         sessionsChanged = true;
-        activeChanged = true;
-      }
+        const addDuree = s.statut === 'en_cours' ? (now - s.dernierDebut) : 0;
+        return { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' };
+      });
     }
 
-    // — Début de pause : on met le chrono actif en pause et on mémorise lequel.
-    if (type === 'pause_debut' && state.activeId) {
-      const cur = state.sessions.find(s => s.id === state.activeId);
-      if (cur && cur.statut === 'en_cours') {
-        state.sessions = state.sessions.map(s => s.id === cur.id
-          ? { ...s, duree: (s.duree || 0) + (now - s.dernierDebut), dernierDebut: null, statut: 'en_pause' }
-          : s);
-        evt.sessionSuspendueId = cur.id;
+    // -- Début de pause : on met en pause TOUS les chronos en cours et on mémorise
+    //    lesquels, pour pouvoir reprendre exactement ceux-là à la fin de la pause.
+    if (type === 'pause_debut') {
+      const suspendus = [];
+      state.sessions = state.sessions.map(s => {
+        if (s.statut !== 'en_cours') return s;
+        suspendus.push(s.id);
+        return { ...s, duree: (s.duree || 0) + (now - s.dernierDebut), dernierDebut: null, statut: 'en_pause' };
+      });
+      if (suspendus.length) {
+        evt.sessionsSuspenduesIds = suspendus;
         sessionsChanged = true;
       }
     }
 
-    // — Fin de pause : on reprend le chrono suspendu par la dernière pause_debut,
-    //   à condition qu'il soit toujours en pause (et n'ait pas été arrêté/changé entre-temps).
+    // -- Fin de pause : on reprend tous les chronos suspendus par la dernière
+    //    pause_debut, à condition qu'ils soient toujours en pause.
     if (type === 'pause_fin') {
       const today = UI.startOfDay();
       const lastDebut = state.pointage
         .filter(p => p.type === 'pause_debut' && p.at >= today)
         .sort((a, b) => a.at - b.at)
         .slice(-1)[0];
-      const sid = lastDebut?.sessionSuspendueId;
-      if (sid) {
-        const sess = state.sessions.find(s => s.id === sid);
-        if (sess && sess.statut === 'en_pause') {
-          state.sessions = state.sessions.map(s => s.id === sid
-            ? { ...s, statut: 'en_cours', dernierDebut: now }
-            : s);
-          sessionsChanged = true;
-          if (!state.activeId) {
-            state.activeId = sid;
-            activeChanged = true;
-          }
-        }
+      // Rétro-compat : ancien champ singulier sessionSuspendueId.
+      const ids = lastDebut
+        ? (lastDebut.sessionsSuspenduesIds
+            || (lastDebut.sessionSuspendueId ? [lastDebut.sessionSuspendueId] : []))
+        : [];
+      if (ids.length) {
+        const setIds = new Set(ids);
+        state.sessions = state.sessions.map(s => (setIds.has(s.id) && s.statut === 'en_pause')
+          ? { ...s, statut: 'en_cours', dernierDebut: now }
+          : s);
+        sessionsChanged = true;
       }
     }
 
     state.pointage = [...state.pointage, evt];
     scheduleSave('pointage');
     if (sessionsChanged) scheduleSave('sessions');
-    if (activeChanged)   scheduleSave('meta');
     emitState();
   }
   function ajouterPointage(type, at) {
@@ -571,7 +590,6 @@ function createStore() {
       data: {
         projets: state.projets, todos: state.todos,
         sessions: state.sessions, pointage: state.pointage,
-        activeId: state.activeId,
       },
     };
   }
@@ -580,13 +598,16 @@ function createStore() {
     state,
     init, onState, onTick,
     actions: {
-      demarrer, pauserActive, reprendreActive, arreter, supprimerSession, majSession,
+      demarrer, pauserSession, reprendreSession, arreterSession,
+      pauserTout, reprendreTout, arreterTout,
+      supprimerSession, majSession,
       ajouterSessionManuelle,
       ajouterTodo, toggleTodo, supprimerTodo, majTodo,
       ajouterProjet, majProjet, archiverProjet, supprimerProjet,
       pointer, ajouterPointage, majPointage, supprimerPointage,
     },
     etatPointage,
+    sessionsActives,
     exporterJSON,
   };
 }
