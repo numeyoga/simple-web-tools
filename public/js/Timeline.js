@@ -224,8 +224,11 @@
       // verticale réservée aux sessions par le nombre de voies nécessaires ce
       // jour-là (chevauchement maximal). Une seule session => 1 voie pleine ;
       // plusieurs en parallèle => voies empilées, sans changer la hauteur totale.
-      const SESSION_ZONE_TOP = 30;
-      const SESSION_ZONE_H = 104;
+      // Insets symétriques (16 px en haut / en bas du tracé de 140 px) pour que
+      // les sessions restent centrées dans le « canal » de présence, qu'il y ait
+      // une seule voie (bloc plein, centré) ou plusieurs voies empilées.
+      const SESSION_ZONE_TOP = 16;
+      const SESSION_ZONE_H = 108;
       const LANE_GAP = 4;
 
       // Étendue visuelle de chaque session : [debut, debut + durée affichée].
@@ -234,17 +237,48 @@
         return { s, dureeMs, start: s.debut, end: s.debut + Math.max(dureeMs, 60_000) };
       }).sort((a, b) => a.start - b.start);
 
-      // Affectation gloutonne : on réutilise la première voie devenue libre.
-      const laneEnds = [];
+      // Regroupement en « grappes » de sessions qui se chevauchent (composantes
+      // connexes), puis répartition en colonnes À L'INTÉRIEUR de chaque grappe.
+      // Conséquence : une session SANS chevauchement occupe toute la hauteur de la
+      // zone (donc centrée, marges égales en haut et en bas), tandis que des
+      // chronos réellement en parallèle se partagent la hauteur — sans jamais
+      // changer la hauteur totale de la bande, qui reste constante.
+      const clusters = [];
+      let cur = null;
       for (const item of placed) {
-        let lane = laneEnds.findIndex(end => item.start >= end - 1000);
-        if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
-        laneEnds[lane] = item.end;
-        item.lane = lane;
+        if (cur && item.start < cur.maxEnd - 1000) {
+          cur.items.push(item);
+          cur.maxEnd = Math.max(cur.maxEnd, item.end);
+        } else {
+          cur = { items: [item], maxEnd: item.end };
+          clusters.push(cur);
+        }
       }
-      const laneCount = Math.max(1, laneEnds.length);
-      const laneH = (SESSION_ZONE_H - LANE_GAP * (laneCount - 1)) / laneCount;
-      const compact = laneH < 46;
+      const overlaps = (a, b) => a.start < b.end - 1000 && b.start < a.end - 1000;
+      for (const cl of clusters) {
+        const colEnds = [];
+        for (const item of cl.items) {
+          let col = colEnds.findIndex(end => item.start >= end - 1000);
+          if (col === -1) { col = colEnds.length; colEnds.push(0); }
+          colEnds[col] = item.end;
+          item.col = col;
+        }
+        const cols = Math.max(1, colEnds.length);
+        // Expansion type « agenda » : chaque bloc s'étale sur les voies libres
+        // situées à côté (vers le bas) tant qu'AUCUN autre bloc ne le chevauche
+        // réellement dans le temps. L'espace vertical est donc toujours rempli :
+        // un bloc sans voisin instantané prend toute la hauteur restante, et les
+        // marges haut/bas demeurent cohérentes entre solo et multi.
+        for (const item of cl.items) {
+          let span = 1;
+          for (let c = item.col + 1; c < cols; c++) {
+            if (cl.items.some(o => o !== item && o.col === c && overlaps(o, item))) break;
+            span++;
+          }
+          item.cols = cols;
+          item.colSpan = span;
+        }
+      }
 
       for (const item of placed) {
         const s = item.s;
@@ -254,13 +288,16 @@
         const width = Math.max(10, msToPx(dureeMs));
         const isActive = s.statut !== 'terminee';
         const enCours = s.statut === 'en_cours';
-        const top = SESSION_ZONE_TOP + item.lane * (laneH + LANE_GAP);
+        const laneH = (SESSION_ZONE_H - LANE_GAP * (item.cols - 1)) / item.cols;
+        const blockH = laneH * item.colSpan + LANE_GAP * (item.colSpan - 1);
+        const compact = blockH < 46;
+        const top = SESSION_ZONE_TOP + item.col * (laneH + LANE_GAP);
         const block = el('div', {
           title: `${proj?.nom || 'Sans projet'} · ${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'} · ${fmtDuree(dureeMs)}`,
           onclick: () => ouvrirEditionSession(s),
           style: {
             position: 'absolute', left, width,
-            top, height: laneH,
+            top, height: blockH,
             background: proj?.couleur || 'var(--cv-neutral-500)',
             borderRadius: 6,
             boxShadow: isActive ? '0 0 0 2px rgba(234,88,12,0.30), var(--cv-shadow-md)' : 'var(--cv-shadow-sm)',
@@ -502,21 +539,33 @@
       });
     }
 
-    function pointageSection(pointageJ, jourDebut) {
+    function pointageSection(pointageJ, jourDebut, isToday) {
       const ordres = pointageJ.slice().sort((a, b) => a.at - b.at);
+      const aArrivee = pointageJ.some(e => e.type === 'arrivee');
+      const nowBoundary = isToday ? Date.now() : jourDebut + 86400000;
+      const presence = aArrivee ? UI.dureePresence(pointageJ, nowBoundary) : 0;
+      const estParti = pointageJ.some(e => e.type === 'depart');
       return el('section', {
         style: {
           background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
           borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden',
         },
       },
-        el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center' } },
-          el('div', null,
+        el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center', gap: 12 } },
+          el('div', { style: { minWidth: 0 } },
             el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Pointages du jour'),
             el('div', { style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } },
               'Arrivée, pauses, départ — clique pour corriger une heure.'),
           ),
-          el('div', { style: { marginLeft: 'auto' } },
+          aArrivee ? el('div', { style: { marginLeft: 'auto', textAlign: 'right' } },
+            el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } },
+              'Présence totale'),
+            el('div', { style: { display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end', marginTop: 4 } },
+              (isToday && !estParti) ? el('span', { style: { width: 6, height: 6, borderRadius: '50%', background: 'var(--cv-success-500)', animation: 'cv-pulse 2s infinite' } }) : null,
+              el('span', { style: { font: '500 16px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, fmtDuree(presence)),
+            ),
+          ) : null,
+          el('div', { style: { marginLeft: aArrivee ? 0 : 'auto' } },
             UI.Button({
               size: 'sm', icon: 'plus', children: 'Ajouter',
               onclick: () => ouvrirEditionPointage(null, jourDebut),
@@ -626,7 +675,7 @@
         el('div', { style: { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 } },
           sessionsListe(sessionsJ, s.projets),
           el('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
-            pointageSection(pointageJ, jourDebut),
+            pointageSection(pointageJ, jourDebut, isToday),
             repartition(sessionsJ, s.projets),
           ),
         ),

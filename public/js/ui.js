@@ -114,6 +114,49 @@ function Input(opts = {}) {
   return wrapper;
 }
 
+/* ------------------ Textarea (label + textarea + compteur) ------------------ */
+function Textarea(opts = {}) {
+  const {
+    label, value, placeholder, hint, maxLength, rows = 4,
+    style, autoFocus, oninput, name,
+  } = opts;
+
+  const counter = maxLength ? el('span', {
+    style: { font: '400 11px/1.3 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)', marginLeft: 'auto' },
+  }) : null;
+
+  const ta = el('textarea', {
+    placeholder, name, rows,
+    maxlength: maxLength || null,
+    oninput: e => { if (counter) updateCounter(); if (oninput) oninput(e); },
+    style: {
+      width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 72,
+      padding: '8px 10px',
+      border: '1px solid var(--cv-border-strong)', borderRadius: 8,
+      background: 'var(--cv-surface)', color: 'var(--cv-fg)',
+      font: '400 13px/1.5 var(--cv-font-sans)', outline: 'none',
+      transition: 'border-color 120ms, box-shadow 120ms',
+    },
+    onfocus: e => { e.target.style.borderColor = 'var(--cv-accent-500)'; e.target.style.boxShadow = 'var(--cv-shadow-focus)'; },
+  });
+  ta.value = value ?? '';
+  ta.addEventListener('blur', e => { e.target.style.borderColor = 'var(--cv-border-strong)'; e.target.style.boxShadow = 'none'; });
+  function updateCounter() { if (counter) counter.textContent = `${ta.value.length} / ${maxLength}`; }
+  updateCounter();
+  if (autoFocus) setTimeout(() => ta.focus(), 0);
+
+  const wrapper = el('label', { style: { display: 'flex', flexDirection: 'column', gap: 4, ...(style || {}) } },
+    (label || counter) ? el('span', { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
+      label ? el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, label) : null,
+      counter,
+    ) : null,
+    ta,
+    hint ? el('span', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)' } }, hint) : null,
+  );
+  wrapper.input = ta;
+  return wrapper;
+}
+
 /* ------------------ Select ------------------ */
 function Select(opts = {}) {
   const { label, value, options, onchange, style, size = 'md', name } = opts;
@@ -415,5 +458,5 @@ function ToastHost() {
   return { push };
 }
 
-window.UI = Object.assign(window.UI, { Button, IconButton, Input, Select, Autocomplete, Badge, Kbd, Modal, ToastHost });
+window.UI = Object.assign(window.UI, { Button, IconButton, Input, Textarea, Select, Autocomplete, Badge, Kbd, Modal, ToastHost });
 })();

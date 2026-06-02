@@ -107,8 +107,26 @@ function dureeVivante(session) {
   return session.duree || 0;
 }
 
+/* Durée de présence d'une journée à partir des pointages (arrivée/pauses/départ).
+   Parcourt les évènements triés et additionne les plages « présent ».
+   Si la journée n'est pas clôturée, ajoute le temps jusqu'à `now`. */
+function dureePresence(events, now = Date.now()) {
+  const evs = (events || []).slice().sort((a, b) => a.at - b.at);
+  let total = 0;
+  let openAt = null;
+  for (const e of evs) {
+    if (e.type === 'arrivee' || e.type === 'pause_fin') {
+      if (openAt == null) openAt = e.at;
+    } else if (e.type === 'pause_debut' || e.type === 'depart') {
+      if (openAt != null) { total += Math.max(0, e.at - openAt); openAt = null; }
+    }
+  }
+  if (openAt != null) total += Math.max(0, now - openAt);
+  return total;
+}
+
 /* ------------------------------------------------------------------ */
 /* Id court                                                            */
 function uid(p = '') { return p + Math.random().toString(36).slice(2, 9); }
 
-window.UI = Object.assign(window.UI || {}, { el, mount, icon, fmtDuree, fmtHeure, startOfDay, dureeVivante, uid });
+window.UI = Object.assign(window.UI || {}, { el, mount, icon, fmtDuree, fmtHeure, startOfDay, dureeVivante, dureePresence, uid });

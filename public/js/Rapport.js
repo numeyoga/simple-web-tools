@@ -142,6 +142,67 @@
       return el('div', { style: { display: 'flex', gap: 16 } }, axisY, bars);
     }
 
+    // Tableau récapitulatif de la distribution par jour : une ligne par jour,
+    // une colonne par projet ayant du temps cette semaine, + une colonne Total.
+    // Permet de lire les chiffres sans survoler chaque segment du diagramme.
+    function tableauParJour(parJour, projetsTri, totalSemaine) {
+      const jourNoms = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const cols = projetsTri; // [{ id, duree, projet }]
+
+      if (cols.length === 0) return el('div', { style: { display: 'none' } });
+
+      const cellTxt = ms => ms > 0 ? fmtDuree(ms) : '·';
+
+      const totauxProjet = cols.map(c =>
+        parJour.reduce((acc, j) => acc + (j.parProjet[c.id] || 0), 0)
+      );
+
+      return el('div', { style: { marginTop: 20, borderTop: '1px solid var(--cv-border)', overflowX: 'auto' } },
+        el('div', { style: { font: '600 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '16px 0 10px' } },
+          'Détail chiffré'),
+        el('table', { style: { width: '100%', borderCollapse: 'collapse', minWidth: 480 } },
+          el('thead', null,
+            el('tr', { style: { borderBottom: '1px solid var(--cv-border)' } },
+              Th('Jour'),
+              ...cols.map(c => el('th', {
+                style: { padding: '8px 12px', textAlign: 'right', font: '500 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' },
+              },
+                el('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' } },
+                  el('span', { style: { width: 8, height: 8, borderRadius: 2, background: c.projet.couleur, flexShrink: 0 } }),
+                  el('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 } }, c.projet.nom),
+                ),
+              )),
+              Th('Total', 'right'),
+            ),
+          ),
+          el('tbody', null,
+            parJour.map((j, i) => {
+              const isToday = j.date.getTime() === today.getTime();
+              return el('tr', {
+                style: {
+                  borderBottom: '1px solid var(--cv-border)',
+                  background: isToday ? 'var(--cv-accent-50)' : 'transparent',
+                },
+              },
+                Td(`${jourNoms[i]} ${j.date.getDate()}`, { strong: isToday, muted: j.total === 0 }),
+                ...cols.map(c => {
+                  const v = j.parProjet[c.id] || 0;
+                  return Td(cellTxt(v), { align: 'right', mono: true, muted: v === 0 });
+                }),
+                Td(j.total > 0 ? fmtDuree(j.total) : '·', { align: 'right', mono: true, strong: j.total > 0, muted: j.total === 0 }),
+              );
+            }),
+            el('tr', { style: { background: 'var(--cv-neutral-50)' } },
+              Td('Total', { strong: true }),
+              ...totauxProjet.map(v => Td(cellTxt(v), { align: 'right', mono: true, strong: true, muted: v === 0 })),
+              Td(fmtDuree(totalSemaine), { align: 'right', mono: true, strong: true }),
+            ),
+          ),
+        ),
+      );
+    }
+
     function exportCSV(sessionsSem, projets, lundi) {
       const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)']];
       for (const s of sessionsSem.slice().sort((a, b) => a.debut - b.debut)) {
@@ -250,6 +311,7 @@
               'Segments colorés = projets'),
           ),
           barresSemaine(parJour, projets, maxJour),
+          tableauParJour(parJour, projetsTri, totalSemaine),
         ),
 
         // Table projets

@@ -366,7 +366,42 @@ function createStore() {
       const addDuree = s.statut === 'en_cours' ? (now - s.dernierDebut) : 0;
       return { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' };
     });
+    tronquerSurPresence([id], now);
     scheduleSave('sessions'); emitState();
+  }
+
+  // Si, après avoir terminé une (ou plusieurs) session(s), le total travaillé du
+  // jour dépasse le temps de présence pointé, on rogne les sessions qui viennent
+  // d'être arrêtées pour ramener le total au niveau de la présence. Un temps de
+  // travail supérieur à la présence n'a pas de sens. Sans pointage d'arrivée pour
+  // ce jour-là, on ne touche à rien (présence inconnue).
+  function tronquerSurPresence(endedIds, now) {
+    const jourDebut = UI.startOfDay(new Date(now));
+    const jourFin = jourDebut + 86400000;
+    const events = state.pointage.filter(p => p.at >= jourDebut && p.at < jourFin);
+    if (!events.some(e => e.type === 'arrivee')) return false;
+    const presence = UI.dureePresence(events, now);
+    const sessionsJour = state.sessions.filter(s => s.debut >= jourDebut && s.debut < jourFin);
+    const total = sessionsJour.reduce((acc, s) => acc + UI.dureeVivante(s), 0);
+    let excess = total - presence;
+    if (excess <= 1000) return false; // tolérance 1 s
+    // On rogne les sessions tout juste arrêtées, de la plus longue à la plus courte.
+    const cibles = state.sessions
+      .filter(s => endedIds.includes(s.id) && s.statut === 'terminee')
+      .sort((a, b) => (b.duree || 0) - (a.duree || 0));
+    const coupes = new Map();
+    for (const s of cibles) {
+      if (excess <= 0) break;
+      const cut = Math.min(s.duree || 0, excess);
+      if (cut > 0) { coupes.set(s.id, cut); excess -= cut; }
+    }
+    if (coupes.size === 0) return false;
+    state.sessions = state.sessions.map(s => {
+      const cut = coupes.get(s.id);
+      if (!cut) return s;
+      return { ...s, duree: Math.max(0, (s.duree || 0) - cut), fin: s.fin != null ? s.fin - cut : s.fin };
+    });
+    return true;
   }
 
   // --- Contrôle GROUPÉ de tous les chronos actifs (1+) ---
@@ -393,13 +428,15 @@ function createStore() {
   function arreterTout() {
     const now = Date.now();
     let changed = false;
+    const endedIds = [];
     state.sessions = state.sessions.map(s => {
       if (s.statut === 'terminee') return s;
       changed = true;
+      endedIds.push(s.id);
       const addDuree = s.statut === 'en_cours' ? (now - s.dernierDebut) : 0;
       return { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' };
     });
-    if (changed) { scheduleSave('sessions'); emitState(); }
+    if (changed) { tronquerSurPresence(endedIds, now); scheduleSave('sessions'); emitState(); }
   }
 
   function supprimerSession(id) {
@@ -454,9 +491,9 @@ function createStore() {
   }
 
   // TODOS
-  function ajouterTodo(titre, projetId, echeance = null) {
+  function ajouterTodo(titre, projetId, echeance = null, description = '') {
     state.todos = [
-      { id: UI.uid('t'), titre, fait: false, projetId, echeance, creeLe: Date.now() },
+      { id: UI.uid('t'), titre, description: (description || '').slice(0, 2000), fait: false, projetId: projetId || null, echeance, creeLe: Date.now() },
       ...state.todos,
     ];
     scheduleSave('todos'); emitState();
@@ -515,10 +552,12 @@ function createStore() {
 
     // -- Départ du soir : on arrête TOUS les chronos encore actifs (en cours ou en pause).
     //    (Aucune reprise automatique le lendemain : les sessions sont marquées 'terminee'.)
+    let departEndedIds = [];
     if (type === 'depart') {
       state.sessions = state.sessions.map(s => {
         if (s.statut === 'terminee') return s;
         sessionsChanged = true;
+        departEndedIds.push(s.id);
         const addDuree = s.statut === 'en_cours' ? (now - s.dernierDebut) : 0;
         return { ...s, fin: now, duree: (s.duree || 0) + addDuree, dernierDebut: null, statut: 'terminee' };
       });
@@ -562,6 +601,9 @@ function createStore() {
     }
 
     state.pointage = [...state.pointage, evt];
+    // Le départ vient de clôturer la présence : on rogne au besoin les sessions
+    // tout juste arrêtées pour que le travail ne dépasse pas la présence.
+    if (type === 'depart' && departEndedIds.length) tronquerSurPresence(departEndedIds, now);
     scheduleSave('pointage');
     if (sessionsChanged) scheduleSave('sessions');
     emitState();

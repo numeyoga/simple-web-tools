@@ -53,7 +53,9 @@
     // Refs vers les inputs du form (préservées entre rendus de la liste)
     let inputTitre, selectProjet, selectEcheance;
 
+    // draftProjet peut valoir 'none' (sans projet) — dans ce cas on ne le réécrit pas.
     function ensureDraftProjet() {
+      if (draftProjet === 'none') return;
       const projets = store.state.projets;
       if (!projets.find(p => p.id === draftProjet) && projets.length > 0) {
         draftProjet = (projets.find(p => !p.archive) || projets[0]).id;
@@ -83,8 +85,11 @@
       inputTitre = inputW.input;
 
       const selectPW = UI.Select({
-        value: draftProjet, onchange: v => draftProjet = v,
-        options: projets.filter(p => !p.archive).map(p => ({ value: p.id, label: p.nom })),
+        value: draftProjet || 'none', onchange: v => draftProjet = v,
+        options: [
+          { value: 'none', label: 'Sans projet' },
+          ...projets.filter(p => !p.archive).map(p => ({ value: p.id, label: p.nom })),
+        ],
         style: { width: 220 },
       });
       selectProjet = selectPW.input;
@@ -117,10 +122,10 @@
 
     function submit() {
       const titre = (inputTitre?.value || '').trim();
-      const proj  = selectProjet?.value || draftProjet;
+      const projVal = selectProjet?.value || draftProjet || 'none';
       const ech   = selectEcheance?.value || draftEcheance;
-      if (!titre || !proj) return;
-      store.actions.ajouterTodo(titre, proj, ech === 'none' ? null : ech);
+      if (!titre) return;
+      store.actions.ajouterTodo(titre, projVal === 'none' ? null : projVal, ech === 'none' ? null : ech);
       inputTitre.value = '';
       inputTitre.focus();
     }
@@ -147,6 +152,7 @@
       const projets = store.state.projets;
       filtresSlot.replaceChildren(
         chip('Tous', filtreProjet === 'all', () => { filtreProjet = 'all'; renderFiltres(); renderList(); }),
+        chip('Sans projet', filtreProjet === 'none', () => { filtreProjet = 'none'; renderFiltres(); renderList(); }),
         ...projets.filter(p => !p.archive).map(p =>
           chip(p.nom, filtreProjet === p.id, () => { filtreProjet = p.id; renderFiltres(); renderList(); }, p.couleur)
         ),
@@ -169,9 +175,17 @@
       const projets = store.state.projets;
       let modal;
       const nomW    = UI.Input({ label: 'Titre', value: t.titre, autoFocus: true });
+      const descW   = UI.Textarea({
+        label: 'Description', value: t.description || '',
+        placeholder: 'Notes, détails, critères d’acceptation… (facultatif)',
+        maxLength: 2000, rows: 4,
+      });
       const projW   = UI.Select({
-        label: 'Projet', value: t.projetId,
-        options: projets.map(p => ({ value: p.id, label: p.nom + (p.archive ? ' (archivé)' : '') })),
+        label: 'Projet', value: t.projetId || 'none',
+        options: [
+          { value: 'none', label: 'Sans projet' },
+          ...projets.map(p => ({ value: p.id, label: p.nom + (p.archive ? ' (archivé)' : '') })),
+        ],
       });
       const echW    = UI.Select({
         label: 'Échéance', value: t.echeance || 'none',
@@ -188,18 +202,26 @@
         const titre = nomW.input.value.trim();
         if (!titre) return;
         const ech = echW.input.value;
+        const proj = projW.input.value;
         store.actions.majTodo(t.id, {
           titre,
-          projetId: projW.input.value,
+          description: descW.input.value.trim().slice(0, 2000),
+          projetId: proj === 'none' ? null : proj,
           echeance: ech === 'none' ? null : ech,
         });
+        modal.close();
+      }
+      function supprimer() {
+        if (!confirm(`Effacer la tâche « ${t.titre} » ? Cette action est définitive.`)) return;
+        store.actions.supprimerTodo(t.id);
         modal.close();
       }
       nomW.input.addEventListener('keydown', e => { if (e.key === 'Enter') enregistrer(); });
       modal = UI.Modal({
         title: 'Modifier la tâche', width: 460,
-        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } }, nomW, projW, echW),
+        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } }, nomW, descW, projW, echW),
         footer: [
+          UI.Button({ variant: 'destructive', icon: 'trash', children: 'Effacer', onclick: supprimer, style: { marginRight: 'auto' } }),
           UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
           UI.Button({ variant: 'primary', icon: 'check', children: 'Enregistrer', onclick: enregistrer }),
         ],
@@ -208,10 +230,11 @@
 
     function todoRow(t, faded) {
       const proj = store.state.projets.find(p => p.id === t.projetId);
+      const hasDesc = !!(t.description && t.description.trim());
       const row = el('div', {
         style: {
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '10px 14px', height: 44,
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          padding: '11px 14px', minHeight: 44, boxSizing: 'border-box',
           borderBottom: '1px solid var(--cv-border)',
           background: 'var(--cv-surface)',
           opacity: faded ? 0.6 : 1,
@@ -224,7 +247,7 @@
           onclick: () => store.actions.toggleTodo(t.id),
           'aria-label': t.fait ? 'Rouvrir' : 'Terminer',
           style: {
-            width: 18, height: 18, borderRadius: 4,
+            width: 18, height: 18, borderRadius: 4, marginTop: 1,
             border: `1.5px solid ${t.fait ? 'var(--cv-success-500)' : 'var(--cv-border-strong)'}`,
             background: t.fait ? 'var(--cv-success-500)' : 'transparent',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -245,30 +268,46 @@
               cursor: t.fait ? 'default' : 'pointer',
             },
           }, t.titre),
+          hasDesc ? el('div', {
+            title: t.description,
+            style: {
+              marginTop: 3,
+              font: '400 12px/1.45 var(--cv-font-sans)', color: 'var(--cv-fg-muted)',
+              display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            },
+          }, t.description) : null,
         ),
 
-        proj ? el('span', {
-          style: { display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', flexShrink: 0 },
-        },
-          el('span', { style: { width: 6, height: 6, borderRadius: 2, background: proj.couleur } }),
-          proj.nom,
-        ) : null,
+        el('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 1 } },
+          proj ? el('span', {
+            style: { display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' },
+          },
+            el('span', { style: { width: 6, height: 6, borderRadius: 2, background: proj.couleur } }),
+            proj.nom,
+          ) : el('span', {
+            style: { font: '400 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', fontStyle: 'italic' },
+          }, 'Sans projet'),
 
-        (t.echeance && !t.fait) ? echeanceBadge(bucket(t)) : null,
+          (t.echeance && !t.fait) ? echeanceBadge(bucket(t)) : null,
 
-        el('div', { style: { display: 'flex', gap: 2, flexShrink: 0 } },
-          !t.fait ? UI.IconButton({
-            icon: 'play', label: 'Démarrer un chrono sur cette tâche',
-            onclick: () => opts.onDemarrerSurTodo(t.projetId, t.titre),
-          }) : null,
-          !t.fait ? UI.IconButton({
-            icon: 'pencil-simple', label: 'Modifier', size: 'sm',
-            onclick: () => ouvrirEditionTodo(t),
-          }) : null,
-          UI.IconButton({
-            icon: 'trash', label: 'Supprimer', size: 'sm',
-            onclick: () => store.actions.supprimerTodo(t.id),
-          }),
+          el('div', { style: { display: 'flex', gap: 2 } },
+            !t.fait ? UI.IconButton({
+              icon: 'play', label: 'Démarrer un chrono sur cette tâche',
+              onclick: () => opts.onDemarrerSurTodo(t.projetId, t.titre),
+            }) : null,
+            !t.fait ? UI.IconButton({
+              icon: 'pencil-simple', label: 'Modifier', size: 'sm',
+              onclick: () => ouvrirEditionTodo(t),
+            }) : null,
+            UI.IconButton({
+              icon: 'trash', label: 'Effacer', size: 'sm',
+              onclick: () => {
+                if (!confirm(`Effacer la tâche « ${t.titre} » ? Cette action est définitive.`)) return;
+                store.actions.supprimerTodo(t.id);
+              },
+            }),
+          ),
         ),
       );
       return row;

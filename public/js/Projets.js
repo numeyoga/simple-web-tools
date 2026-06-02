@@ -14,6 +14,14 @@
   function createProjets(store, opts) {
     let afficherArchive = false;
 
+    // Préférence : afficher/masquer les temps cumulés + nombre de sessions sur les
+    // cartes. Masqués par défaut (peu utile dans tous les cas, et coûteux visuellement).
+    // Persistée en localStorage. Quand c'est masqué, chaque carte propose un calcul
+    // à la demande, projet par projet.
+    const PREF_TOTAUX = 'chrono.prefs.projetsTotaux';
+    let afficherTotaux = localStorage.getItem(PREF_TOTAUX) === '1';
+    const calcules = new Set(); // projets dont le total a été calculé à la demande
+
     const host = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } });
 
     function ouvrirModalProjet(existant = null) {
@@ -181,6 +189,18 @@
           ),
           el('div', { style: { marginLeft: 'auto', display: 'flex', gap: 8 } },
             UI.Button({
+              variant: afficherTotaux ? 'primary' : 'secondary',
+              icon: afficherTotaux ? 'clock' : 'clock-countdown',
+              children: afficherTotaux ? 'Totaux affichés' : 'Totaux masqués',
+              title: 'Afficher ou masquer les temps cumulés et le nombre de sessions sur toutes les cartes',
+              onclick: () => {
+                afficherTotaux = !afficherTotaux;
+                localStorage.setItem(PREF_TOTAUX, afficherTotaux ? '1' : '0');
+                calcules.clear();
+                render();
+              },
+            }),
+            UI.Button({
               variant: afficherArchive ? 'primary' : 'secondary',
               icon: 'archive', children: afficherArchive ? 'Archivés' : 'Actifs',
               onclick: () => { afficherArchive = !afficherArchive; render(); },
@@ -223,11 +243,30 @@
           el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } }, p.client || '—'),
         ),
 
-        el('div', { style: { paddingLeft: 6 } },
-          el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Temps total'),
-          el('div', { style: { font: '500 22px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 6, letterSpacing: '-0.01em' } }, fmtDuree(t.duree)),
-          el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', marginTop: 2 } }, `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`),
-        ),
+        (afficherTotaux || calcules.has(p.id))
+          ? el('div', { style: { paddingLeft: 6 } },
+              el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Temps total'),
+              el('div', { style: { font: '500 22px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 6, letterSpacing: '-0.01em' } }, fmtDuree(t.duree)),
+              el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', marginTop: 2 } }, `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`),
+            )
+          : el('div', { style: { paddingLeft: 6 } },
+              el('button', {
+                onclick: () => { calcules.add(p.id); render(); },
+                title: 'Calculer le temps cumulé et le nombre de sessions de ce projet',
+                style: {
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+                  border: '1px dashed var(--cv-border-strong)', background: 'transparent',
+                  color: 'var(--cv-fg-muted)', font: '500 12px/1 var(--cv-font-sans)',
+                  transition: 'background 120ms, color 120ms',
+                },
+                onmouseenter: e => { e.currentTarget.style.background = 'var(--cv-surface-2)'; e.currentTarget.style.color = 'var(--cv-fg)'; },
+                onmouseleave: e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--cv-fg-muted)'; },
+              },
+                icon('clock-countdown', { size: 14 }),
+                'Calculer le temps',
+              ),
+            ),
 
         el('div', { style: { display: 'flex', gap: 6, paddingLeft: 6 } },
           UI.Badge({ variant: 'neutral', children: `${td.open} todo${td.open > 1 ? 's' : ''}` }),
