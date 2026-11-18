@@ -26,4 +26,8 @@ jobs:
           allow-licenses: >-
             MIT, MIT-0, ISC, 0BSD, BSD-2-Clause, BSD-3-Clause, Apache-2.0, BlueOak-1.0.0,
             MPL-2.0, OFL-1.1, CC0-1.0, CC-BY-4.0, Python-2.0, Unlicense
+          # uri-js (eslint > ajv@6, development only) is reported as
+          # "BSD-2-Clause AND BSD-2-Clause-Views": both permissive and MIT-compatible.
+          # Pinned to the exact version so that an update is reviewed again.
+          allow-dependencies-licenses: pkg:npm/uri-js@4.4.1
           comment-summary-in-pr: on-failure
