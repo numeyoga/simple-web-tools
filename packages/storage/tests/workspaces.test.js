@@ -108,6 +108,19 @@ describe('workspace registry', () => {
     expect(second.registry.list()).toEqual([{ id: 'ok', label: 'OK', createdAt: 5 }]);
   });
 
+  it('keeps an unreadable list recoverable instead of overwriting it', () => {
+    const { storage, registry } = setup({ 'chrono-workspaces': '{not json' });
+    expect(registry.list().map((w) => w.id)).toEqual(['default']);
+    expect(storage.getItem('chrono-workspaces')).toBe('{not json');
+    expect(storage.getItem('chrono-workspaces-unreadable')).toBe('{not json');
+  });
+
+  it('saves the default list when nothing is stored', () => {
+    const { storage, registry } = setup({});
+    registry.list();
+    expect(JSON.parse(storage.getItem('chrono-workspaces') ?? '[]')).toHaveLength(1);
+  });
+
   it('does not touch the keys of another app', () => {
     const storage = memoryStorage({ 'locavern-workspaces': 'x' });
     createWorkspaceRegistry({ app: 'chrono', storage, now: () => 1 }).list();
