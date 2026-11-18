@@ -84,25 +84,33 @@ export function createWorkspaceRegistry({ app, storage, now, defaultLabel = 'Mai
   assertAppName(app);
   const listKey = storageName(app, 'workspaces');
   const activeKey = storageName(app, 'workspace-active');
+  const unreadableKey = storageName(app, 'workspaces-unreadable');
 
   /** @param {readonly Workspace[]} workspaces */
   function save(workspaces) {
     storage.setItem(listKey, JSON.stringify(workspaces));
   }
 
-  /** @returns {Workspace[]} never empty: a missing or unreadable list becomes the default one */
+  /**
+   * Never empty: a missing list becomes the default one and is saved. An unreadable list is
+   * not overwritten here: its raw value is kept under the `workspaces-unreadable` key, so the
+   * ids of the other workspaces, and therefore their databases, can still be recovered.
+   * @returns {Workspace[]}
+   */
   function list() {
-    try {
-      const raw = storage.getItem(listKey);
-      if (raw) {
+    const raw = storage.getItem(listKey);
+    if (raw) {
+      try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           const valid = parsed.filter(isWorkspace);
           if (valid.length > 0) return valid;
         }
+      } catch {
+        // Unreadable list: handled below.
       }
-    } catch {
-      // Unreadable list: fall through to the default workspace.
+      if (storage.getItem(unreadableKey) === null) storage.setItem(unreadableKey, raw);
+      return [{ id: DEFAULT_ID, label: defaultLabel, createdAt: now() }];
     }
     const fresh = [{ id: DEFAULT_ID, label: defaultLabel, createdAt: now() }];
     save(fresh);
