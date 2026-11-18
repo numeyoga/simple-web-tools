@@ -1,17 +1,5 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowJs": true,
-    "checkJs": true,
-    "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "exactOptionalPropertyTypes": false,
-    "noUncheckedIndexedAccess": true,
-    "lib": ["ESNext", "DOM", "DOM.Iterable"]
-  },
+  "extends": "@simple-web-tools/config/jsconfig.base.json",
   "include": ["src/**/*.js", "src/**/*.d.ts", "tests/**/*.js"],
   "exclude": ["node_modules", "dist", "public/vendor"]
 }

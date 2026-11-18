@@ -71,4 +71,6 @@ ${items}
 `,
 );
 
-console.log(`Assembled ${apps.length} app(s) into _site/: ${apps.map((a) => a.name).join(', ')}`);
+process.stdout.write(
+  `Assembled ${apps.length} app(s) into _site/: ${apps.map((a) => a.name).join(', ')}\n`,
+);
