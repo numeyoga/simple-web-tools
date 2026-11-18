@@ -77,7 +77,7 @@ Puis ouvrir <http://localhost:8000>.
 ## Tests
 
 ```sh
-node --test tests/
+node --test tests/*.test.mjs
 ```
 
 Aucune dépendance à installer. `tests/helpers/load.mjs` charge les scripts de
@@ -88,7 +88,7 @@ le store utilise donc son repli localStorage).
 
 La CI GitLab (`.gitlab-ci.yml`) comporte deux jobs :
 
-1. `test` lance `node --test tests/` (image `node:22-alpine`) sur toutes les
+1. `test` lance `node --test tests/*.test.mjs` (image `node:22-alpine`) sur toutes les
    branches et les merge requests ;
 2. `pages` publie le dossier `public/` sur GitLab Pages, uniquement sur la
    branche par défaut et seulement si `test` a réussi.
