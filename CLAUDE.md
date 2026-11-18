@@ -31,3 +31,16 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 - Commits: `type(scope): summary`, where the scope is the app or package name.
 - `apps/chrono` is legacy (global IIFE scripts, French identifiers, `node:test`) until its
   port. Keep fixes there minimal, and do not add new code in that style.
+
+## Project skills
+
+`.claude/skills/` holds the skills this roadmap needs, so they also work in cloud sessions:
+
+- `covenant-design-system`: read it before any UI work (design tokens, components,
+  accessibility). Chrono's interface is the visual reference: when the two apps differ,
+  compare before aligning Chrono on Locavern (roadmap step 4).
+- `testing`: test strategy; its stack reference for this repository is
+  `references/stacks/vanilla-web.md`.
+
+They are copies of the maintainer's personal skills. Keep local improvements small and note
+them in the commit, so they can be merged back.

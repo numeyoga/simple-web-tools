@@ -21,7 +21,8 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 - [ ] `packages/config`: ESLint, Prettier and `jsconfig` bases. Lint `scripts/` too.
 - [ ] `packages/covenant`: a single copy of the design system. Today Locavern and Chrono each
-      carry their own version, and Chrono's loads Google Fonts from a CDN.
+      carry their own version, and Chrono's loads Google Fonts from a CDN. Translate the
+      `covenant-design-system` skill (`.claude/skills/`) to English at the same time.
 - [ ] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
 - [ ] `packages/storage`: IndexedDB opening and migrations, single-writer Web Lock, workspaces,
       JSON export and import, name prefixing.
