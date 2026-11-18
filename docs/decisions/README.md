@@ -12,3 +12,4 @@ never edited after the fact; a later record supersedes it.
 | [0004](0004-reference-architecture.md)       | Locavern's architecture is the reference                   | 2026-11-18 |
 | [0005](0005-single-origin-hosting.md)        | All apps on one GitHub Pages origin, with prefixed storage | 2026-11-18 |
 | [0006](0006-mit-license.md)                  | MIT license                                                | 2026-11-18 |
+| [0007](0007-supply-chain-security.md)        | Supply-chain and workflow security                         | 2026-11-18 |

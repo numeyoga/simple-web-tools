@@ -30,6 +30,10 @@ npm run verify
 npm run test:e2e
 ```
 
+Pull requests also run the [automated security checks](docs/decisions/0007-supply-chain-security.md):
+dependency audit and review, CodeQL and a workflow audit. A new dependency needs a license
+compatible with MIT and a reason in the app's README.
+
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org/), with the app or package name as

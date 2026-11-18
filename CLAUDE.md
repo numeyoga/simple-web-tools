@@ -8,6 +8,7 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 - `npm install` at the root: one lockfile for every workspace.
 - `npm run verify`: typecheck, lint, format check, unit tests, build. Run it before
   every commit.
+- `npm run audit`: registry signatures and advisories in shipped dependencies.
 - `npm run test:e2e`: Playwright, per app.
 - `npm run <script> -w <app>` targets one app; `npm run site` builds the Pages site in `_site/`.
 
@@ -25,6 +26,8 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 - Calendar dates: local `YYYY-MM-DD`; never `toISOString()` for a date, never add days as
   `24 * 3600 * 1000`.
 - A storage schema change comes with a migration and a test that loads the previous format.
+- Install scripts are disabled (`.npmrc`). GitHub Actions are pinned by SHA with a version
+  comment; keep it that way when editing workflows (decision 0007).
 - Commits: `type(scope): summary`, where the scope is the app or package name.
 - `apps/chrono` is legacy (global IIFE scripts, French identifiers, `node:test`) until its
   port. Keep fixes there minimal, and do not add new code in that style.

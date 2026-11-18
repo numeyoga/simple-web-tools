@@ -89,7 +89,7 @@ Registre issu de la [restitution du 12 novembre 2026](../../choix-technique.md) 
 | Analyse statique         | ESLint (flat config) et TypeScript (`tsc -p jsconfig.json`)                                                          | Vérifié          |
 | Formatage                | Prettier                                                                                                             | Vérifié          |
 | CI et déploiement        | GitHub Actions (`.github/workflows/ci.yml` et `.github/workflows/deploy.yml` vers GitHub Pages)                      | Vérifié          |
-| Environnement            | Node.js 24 dans `.nvmrc`                                                                                             | Vérifié          |
+| Environnement            | Node.js 26 dans le `.nvmrc` racine du monorepo                                                                       | Vérifié          |
 
 ## Architecture et conventions
 

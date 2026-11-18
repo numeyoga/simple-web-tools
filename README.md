@@ -18,7 +18,7 @@ The apps are published together on GitHub Pages, one sub-path per app.
 
 ## Getting started
 
-Requirements: Node.js 24 (see [`.nvmrc`](.nvmrc)) and npm.
+Requirements: Node.js 26 (see [`.nvmrc`](.nvmrc)) and npm.
 
 ```bash
 npm install            # installs every workspace
