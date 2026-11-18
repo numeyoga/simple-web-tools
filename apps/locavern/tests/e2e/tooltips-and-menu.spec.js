@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 /**
  * Helper to hover a button, wait for the hover delay, and assert the top-layer
@@ -117,10 +117,7 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     }
 
     // Axe-core avec menu ouvert en thème clair
-    const lightMenuAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightMenuAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.keyboard.press('Escape');
     await expect(leftMenu).toBeHidden();
@@ -159,10 +156,7 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await rightBtn.focus();
     await expect(page.locator('.lc-tooltip:popover-open')).toBeVisible();
-    const darkTipAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkTipAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
     await page.keyboard.press('Escape');
 
     // Bouton d'ajout rapide de colonne & bouton config statuts

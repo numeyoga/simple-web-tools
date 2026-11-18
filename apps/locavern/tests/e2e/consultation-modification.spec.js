@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 /**
  * Helper: format current month day in YYYY-MM-DD for Calendar tests.
@@ -129,10 +129,7 @@ test.describe('Choix explicite Consultation vs Modification sur tous les éléme
     await expect(page.locator('button[title]')).toHaveCount(0);
 
     // WCAG 2.2 AA sur Tâche en Consultation (thème clair)
-    const taskConsultAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(taskConsultAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Bascule Consulter -> Modifier -> Consulter puis fermeture
     await page.locator('#btn-switch-task-edit').click();
@@ -241,10 +238,7 @@ test.describe('Choix explicite Consultation vs Modification sur tous les éléme
     await expect(page.locator('button[title]')).toHaveCount(0);
 
     // WCAG 2.2 AA sur Consultation de note (thème clair + sombre + reflow 320 px)
-    const noteConsultLightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(noteConsultLightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Clic sur le crayon de la liste -> ouvre directement l’éditeur inline sur Note Secondaire
     await page.getByRole('button', { name: 'Modifier la note « Note Secondaire »' }).click();
@@ -295,10 +289,7 @@ test.describe('Choix explicite Consultation vs Modification sur tous les éléme
     // WCAG 2.2 AA en thème sombre + reflow 320 px sur Consultation de tableau blanc
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    const wbConsultDarkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(wbConsultDarkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const wbOverflow320 = await page.evaluate(

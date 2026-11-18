@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP (Étape 3)', () => {
   test('persiste après rechargement, verrouille le 2e onglet et restaure une archive ZIP', async ({
@@ -115,10 +115,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await page.locator('input[name="import-mode"][value="projects"]').check();
     await expect(page.locator('#import-project-selection')).toBeVisible();
 
-    const axeResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Décocher "Alpha Archive" et garder "Beta Archive"
     await page.getByLabel(/Alpha Archive/).uncheck();

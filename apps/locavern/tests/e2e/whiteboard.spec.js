@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 const TINY_PNG_PATH = new URL('./fixtures/tiny.png', import.meta.url).pathname;
 
@@ -205,18 +205,12 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     expect(pngDownload.suggestedFilename()).toBe('schema-architecture.png');
 
     // Audit axe-core WCAG 2.2 AA en thème clair
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Basculer en thème sombre et vérifier axe-core
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Vérifier reflow à 320 px
     await page.setViewportSize({ width: 320, height: 640 });
@@ -292,10 +286,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     const worldTransform = await page.locator('.lc-wb-world').getAttribute('transform');
     expect(worldTransform).toContain('translate(');
 
-    const axeResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
   });
 
   test('flèches aimantées aux formes : attachement, suivi des déplacements, persistance et détachement', async ({
@@ -385,10 +376,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     await expect(editArrow).not.toHaveAttribute('data-end-bound', String(rectId));
     await expect(editArrow).toHaveAttribute('data-start-bound', String(stickyId));
 
-    const axeResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
   });
 
   test('grille d’alignement SVG, bascule d’affichage, magnétisme optionnel et export propre', async ({
@@ -471,10 +459,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     expect(exportedSvg).not.toContain('lc-wb-grid-layer');
     expect(exportedSvg).not.toContain('grid-minor');
 
-    const axeResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
   });
 
   test('affichage en taille maximum : modale sur la zone visible de main, conservation d’état, fermetures, thèmes et reflow 320 px', async ({
@@ -595,10 +580,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     // Audit axe-core WCAG 2.2 AA en thème clair (modale ouverte)
     await maxBtn.click();
     await expect(maxDialog).toBeVisible();
-    const lightMaxAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightMaxAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Fermeture par clic sur le ::backdrop (dans la zone barre latérale)
     await page.mouse.click(60, 240);
@@ -610,10 +592,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await maxBtn.click();
     await expect(maxDialog).toBeVisible();
-    const darkMaxAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkMaxAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     await expect(maxDialog).toBeVisible();
@@ -828,9 +807,6 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     );
     expect(new Set(arrowStrokeMatches).size).toBe(5);
 
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
   });
 });

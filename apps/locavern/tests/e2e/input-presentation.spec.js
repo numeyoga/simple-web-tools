@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / modale)', () => {
   test('configure chaque écran dans les préférences, persiste au rechargement et respecte WCAG 2.2 AA', async ({
@@ -38,10 +38,7 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
     ).toBeChecked();
 
     // Accessibilité en thème clair et à 320 px
-    const lightPrefAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightPrefAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const prefOverflow320 = await page.evaluate(
@@ -93,10 +90,7 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
       expect(projectBox.height).toBeGreaterThanOrEqual(795);
     }
 
-    const projectDrawerAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(projectDrawerAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#project-name-input').fill('Projet Alpha');
     await page.locator('#modal-project button[type="submit"]').click();
@@ -117,10 +111,7 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
       expect(taskBox.x + taskBox.width).toBeLessThan(1180);
     }
 
-    const taskModalAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(taskModalAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const taskOverflow320 = await page.evaluate(
@@ -192,10 +183,7 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
     await expect(wbDialog).not.toHaveClass(/cv-drawer/);
     await expect(wbDialog).toHaveCSS('opacity', '1');
 
-    const wbModalDarkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(wbModalDarkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#whiteboard-dialog-title-input').fill('Tableau modale');
     await page.locator('#dialog-whiteboard button[type="submit"]').click();

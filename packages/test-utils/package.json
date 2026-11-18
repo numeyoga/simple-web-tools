@@ -1,0 +1,41 @@
+{
+  "name": "@simple-web-tools/test-utils",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Test helpers for the Simple Web Tools workspaces: fake IndexedDB for Vitest, Playwright and axe presets",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/test-utils"
+  },
+  "exports": {
+    "./fake-indexeddb": "./src/fake-indexeddb.js",
+    "./indexeddb": "./src/indexeddb.js",
+    "./playwright": "./src/playwright.js",
+    "./axe": "./src/axe.js"
+  },
+  "scripts": {
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "fake-indexeddb": "^6.2.8"
+  },
+  "peerDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
+    "vitest": "^5.1.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
+    "@simple-web-tools/config": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

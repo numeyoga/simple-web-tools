@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Corbeille locale et rétention configurable (Todo 20)', () => {
   test('conserve les éléments supprimés, configure la rétention, restaure et purge définitivement, WCAG 2.2 AA', async ({
@@ -47,10 +47,7 @@ test.describe('Corbeille locale et rétention configurable (Todo 20)', () => {
     );
     await expect(page.locator('#modal-trash-body')).toContainText('Tâche récupérable');
 
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Restaurer la tâche depuis la corbeille
     await page.getByRole('button', { name: 'Restaurer Tâche récupérable' }).click();
@@ -78,10 +75,7 @@ test.describe('Corbeille locale et rétention configurable (Todo 20)', () => {
     await expect(page.locator('#modal-trash-body')).toContainText('Projet Archive Corbeille');
     await expect(page.locator('#modal-trash-body')).toContainText('1 tâche');
 
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Purger définitivement l’élément
     await page
