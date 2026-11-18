@@ -10,7 +10,7 @@ Convergence work between the apps, in order. Each step leaves `main` deployable.
 
 ## 2. Publish
 
-- [ ] Create the public GitHub repository and enable Pages ("GitHub Actions" source).
+- [x] Create the public GitHub repository and enable Pages ("GitHub Actions" source).
 - [ ] Replace Locavern's old Pages site with a redirect to its new path.
 - [ ] Put a "this app has moved" notice on Chrono's GitLab Pages site, with a link to
       [Moving your data](moving-your-data.md). Archive the old repositories afterwards.
@@ -23,6 +23,8 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 - [ ] `packages/covenant`: a single copy of the design system. Today Locavern and Chrono each
       carry their own version, and Chrono's loads Google Fonts from a CDN. Translate the
       `covenant-design-system` skill (`.claude/skills/`) to English at the same time.
+      **Do this after the interface comparison of step 4**: extracting Locavern's copy first
+      would make Locavern's look the default, which the comparison exists to avoid.
 - [ ] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
 - [ ] `packages/storage`: IndexedDB opening and migrations, single-writer Web Lock, workspaces,
       JSON export and import, name prefixing.
@@ -31,7 +33,7 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 ## 4. Port Chrono
 
-- [ ] **Before porting, compare the two interfaces.** Chrono's interface is considered more
+- [ ] **Before porting, and before `packages/covenant`, compare the two interfaces.** Chrono's interface is considered more
       attractive than Locavern's. List the visual differences (density, typography,
       surfaces, color use, icons, motion, layout) and decide which ones become Covenant
       defaults, so that the port keeps Chrono's look instead of falling back to Locavern's.
