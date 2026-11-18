@@ -28,7 +28,7 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 - [ ] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
 - [ ] `packages/storage`: IndexedDB opening and migrations, single-writer Web Lock, workspaces,
       JSON export and import, name prefixing.
-- [ ] `packages/dates`: local calendar dates, DST-safe arithmetic.
+- [x] `packages/dates`: local calendar dates, DST-safe arithmetic.
 - [ ] `packages/test-utils`: fake IndexedDB setup, Playwright and axe presets.
 
 ## 4. Port Chrono

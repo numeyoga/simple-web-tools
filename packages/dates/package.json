@@ -1,0 +1,28 @@
+{
+  "name": "@simple-web-tools/dates",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local calendar dates (YYYY-MM-DD) and DST-safe arithmetic for the Simple Web Tools workspaces",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/dates"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@simple-web-tools/config": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
