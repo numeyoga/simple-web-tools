@@ -1,0 +1,23 @@
+(A) 2026-11-15 Enrichir la palette Ctrl+K pour ouvrir directement projets, tâches, notes et tableaux blancs +Recherche @amelioration @raccourcis
+(A) 2026-11-15 Étendre la recherche locale au contenu des descriptions, checklists, notes Tiptap et textes du tableau blanc +Recherche @amelioration @ui
+(A) 2026-11-15 Ajouter un mode d'import ZIP par fusion ou sélection de projet sans écraser les données locales existantes +Stockage @amelioration @export
+(A) 2026-11-15 Activer la purge des images locales orphelines dans IndexedDB via selectReferencedAssetIds et delete_asset après suppression ou modification +Stockage @amelioration @indexeddb
+(B) 2026-11-15 Ajouter la vue Calendrier mensuelle et hebdomadaire des échéances avec report par glisser-déposer et clavier +Calendrier @nouvelle-fonctionnalite @clavier @ui
+(B) 2026-11-15 Afficher une notification invitant à recharger lorsqu'une nouvelle version du Service Worker est prête hors ligne +PWA @amelioration @pwa
+(B) 2026-11-15 Ajouter le raccourci « Ouvrir les tableaux blancs » sur chaque carte projet et un filtre Actifs/Archivés +Projets @amelioration @ui
+(B) 2026-11-15 Supporter l'API File System Access (showSaveFilePicker) avec repli téléchargement et afficher l'ancienneté de la dernière sauvegarde ZIP +Stockage @amelioration @export
+(B) 2026-11-15 Ajouter la sélection multiple, la duplication d'éléments (Ctrl+D) et le bouton Ajuster à la vue sur le tableau blanc +TableauBlanc @amelioration @clavier @svg
+(B) 2026-11-15 Permettre aux flèches du tableau blanc de s'aimanter aux formes et de suivre leurs déplacements +TableauBlanc @amelioration @svg
+(B) 2026-11-15 Créer une vue d'accueil Aujourd'hui synthétisant tâches en retard, échéances proches, priorités hautes et éléments récents +TableauDeBord @nouvelle-fonctionnalite @ui
+(B) 2026-11-15 Ajouter les filtres par priorité et échéance sur le Kanban et signaler les tâches sans statut ou à statut inconnu +Taches @amelioration @ui
+(B) 2026-11-15 Ajouter un champ d'ajout rapide de tâche en tête de vue Liste et en haut des colonnes Kanban +Taches @amelioration @ui
+(B) 2026-11-15 Mettre visuellement en évidence les tâches en retard, du jour ou de la semaine en vue Liste et Kanban +Taches @amelioration @ui
+(C) 2026-11-15 Ajouter l'export local des tâches datées au format iCalendar (.ics) +Calendrier @nouvelle-fonctionnalite @export
+(C) 2026-11-15 Exposer les niveaux de titre H1/H3 dans la barre Tiptap et ajouter la duplication et l'export Markdown (.md) des notes +Notes @amelioration @editeur @export
+(C) 2026-11-15 Ajouter des étiquettes transversales (tags) sur les tâches et les notes pour filtrer au-delà des projets +Productivite @nouvelle-fonctionnalite @ui
+(C) 2026-11-15 Permettre de lier directement tâches, notes et tableaux blancs par références locales internes +Productivite @nouvelle-fonctionnalite @ui
+(C) 2026-11-15 Proposer un chiffrement optionnel par mot de passe des archives ZIP via Web Crypto API (AES-GCM + PBKDF2) +Stockage @nouvelle-fonctionnalite @export @securite
+(C) 2026-11-15 Implémenter une corbeille locale conservant les éléments supprimés pendant un délai configurable avant purge définitive +Stockage @nouvelle-fonctionnalite @indexeddb
+(C) 2026-11-15 Ajouter une grille d'alignement et un magnétisme optionnel sur le canevas SVG +TableauBlanc @amelioration @svg
+(D) 2026-11-15 Ajouter des modèles locaux réutilisables pour checklists de tâches, trames de notes et canevas de tableau blanc +Productivite @nouvelle-fonctionnalite @ui
+(D) 2026-11-15 Supporter les tâches récurrentes (quotidienne, hebdomadaire, mensuelle) générant localement l'occurrence suivante à la complétion +Taches @nouvelle-fonctionnalite @core
