@@ -53,3 +53,5 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
   They do not reach the deployed apps, but they should be cleared by an upgrade.
 - Locavern's main bundle exceeds Vite's chunk size warning; the notes editor is a candidate
   for a lazy import.
+- `apps/locavern/skills/system/run-workflow/` is an agent tooling skill left over from
+  Locavern's first commit, unrelated to the app. Remove it during a cleanup.
