@@ -30,6 +30,10 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 ## 4. Port Chrono
 
+- [ ] **Before porting, compare the two interfaces.** Chrono's interface is considered more
+      attractive than Locavern's. List the visual differences (density, typography,
+      surfaces, color use, icons, motion, layout) and decide which ones become Covenant
+      defaults, so that the port keeps Chrono's look instead of falling back to Locavern's.
 - [ ] IIFE scripts to ES modules with Vite; `src/core` and `src/adapters` split.
 - [ ] English identifiers; English and French interface.
 - [ ] Single-writer multi-tab model; storage on `packages/storage`.

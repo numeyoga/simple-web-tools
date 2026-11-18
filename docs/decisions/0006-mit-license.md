@@ -4,7 +4,9 @@ Status: accepted, 2026-11-18
 
 ## Context
 
-The repository is public. Locavern was already under the MIT license. The bundled third-party
+The repository is public. Locavern was already under the MIT license. The Covenant design
+system used by every app is the author's own work, so it can be published under the same
+license. The bundled third-party
 assets use permissive licenses: Phosphor Icons (MIT), IBM Plex (SIL OFL 1.1).
 
 ## Decision
