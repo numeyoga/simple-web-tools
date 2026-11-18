@@ -6,19 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
   <link rel="stylesheet" href="assets/covenant.css">
-  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
-  <style>
-    @keyframes cv-fade        { from { opacity: 0 } to { opacity: 1 } }
-    @keyframes cv-modal-in    { from { opacity: 0; transform: translateY(8px) scale(0.98) } to { opacity: 1; transform: none } }
-    @keyframes cv-pulse       { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
-    @keyframes cv-slide-in    { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
-    html, body { margin: 0; height: 100%; }
-    body { background: var(--cv-bg); color: var(--cv-fg); font-family: var(--cv-font-sans); }
-    button, select, input, textarea { font-family: inherit; }
-    *::-webkit-scrollbar        { width: 10px; height: 10px; }
-    *::-webkit-scrollbar-thumb  { background: var(--cv-neutral-300); border-radius: 6px; border: 2px solid var(--cv-bg); }
-    *::-webkit-scrollbar-thumb:hover { background: var(--cv-neutral-400); }
-  </style>
+  <link rel="stylesheet" href="assets/app.css">
+  <!-- Phosphor Icons 2.1.1 (MIT), servi localement : regular, fill (play, timer...) et bold (coche des todos) -->
+  <link rel="stylesheet" href="assets/vendor/phosphor/regular/style.css">
+  <link rel="stylesheet" href="assets/vendor/phosphor/fill/style.css">
+  <link rel="stylesheet" href="assets/vendor/phosphor/bold/style.css">
 </head>
 <body data-screen-label="Chrono">
   <div id="root"></div>

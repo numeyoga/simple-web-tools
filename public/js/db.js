@@ -7,8 +7,11 @@
 //   recharge la page : le store est entièrement reconstruit.
 //
 // Schéma IDB :
-//   projets  : { id, nom, couleur, client, archive, tarif }
+//   projets  : { id, nom, couleur, client, archive }
 //   todos    : { id, titre, fait, projetId, echeance, creeLe }
+//                echeance : null ou date locale 'AAAA-MM-JJ' (absolue, indépendante de creeLe).
+//                Anciennes données : étiquettes relatives ('today', 'tomorrow', 'mon'..'sun',
+//                'week') converties au chargement par migrerEcheancesTodos().
 //   sessions : { id, projetId, description, debut, dernierDebut, fin, duree, statut }
 //                statut : 'terminee' | 'en_cours' | 'en_pause'
 //   pointage : { id, type, at } — type : 'arrivee' | 'pause_debut' | 'pause_fin' | 'depart'
@@ -110,14 +113,24 @@ async function idbAll(store) {
     req.onerror = () => rej(req.error);
   });
 }
-async function idbReplace(store, items) {
+/* Écriture différentielle d'un store : `put` des objets dont la référence diffère
+   de l'instantané `vu` (Map id → objet déjà écrit/lu), `delete` des ids de
+   l'instantané absents de `items`. Une seule transaction ; ne touche pas aux
+   objets ajoutés par un autre onglet. Renvoie true si quelque chose a été écrit. */
+async function idbSync(store, items, vu) {
   const db = await openDB(); if (!db) return false;
+  const ids = new Set(items.map(it => it.id));
+  const aEcrire = items.filter(it => vu.get(it.id) !== it);
+  const aSupprimer = [...vu.keys()].filter(id => !ids.has(id));
+  if (!aEcrire.length && !aSupprimer.length) return false;
   return new Promise((res, rej) => {
     const tx = db.transaction(store, 'readwrite');
-    const s = tx.objectStore(store); s.clear();
-    items.forEach(it => s.put(it));
+    const s = tx.objectStore(store);
+    aEcrire.forEach(it => s.put(it));
+    aSupprimer.forEach(id => s.delete(id));
     tx.oncomplete = () => res(true);
     tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error || new Error('tx-abort'));
   });
 }
 async function idbGetMeta(key) {
@@ -173,6 +186,59 @@ function lsSave(state) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Échéances de todos : étiquettes relatives -> dates absolues         */
+
+const JOURS_ECHEANCE = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 };
+const RE_DATE_ECHEANCE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// 'AAAA-MM-JJ' est-elle une vraie date du calendrier ? (refuse 2026-02-30, 2026-13-01)
+function estDateEcheance(v) {
+  const m = typeof v === 'string' ? RE_DATE_ECHEANCE.exec(v) : null;
+  if (!m) return false;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3];
+}
+
+// Convertit une étiquette relative ('today', 'tomorrow', 'mon'..'sun', 'week') en date
+// locale 'AAAA-MM-JJ', ancrée sur `ancre` (timestamp). Étiquette inconnue ou vide : null.
+// Pour un jour de la semaine : le prochain jour ≥ ancre (même jour accepté). 'week' : ancre + 6 j.
+// Calcul par jours calendaires (setDate) et non en ms : un jour de changement d'heure
+// ne dure pas 24 h.
+function echeanceRelativeVersDate(label, ancre = Date.now()) {
+  if (typeof label !== 'string' || !label) return null;
+  const d = new Date(ancre);
+  d.setHours(0, 0, 0, 0);
+  let decalage;
+  if (label === 'today')         decalage = 0;
+  else if (label === 'tomorrow') decalage = 1;
+  else if (label === 'week')     decalage = 6;
+  else if (Object.prototype.hasOwnProperty.call(JOURS_ECHEANCE, label)) {
+    decalage = (JOURS_ECHEANCE[label] - d.getDay() + 7) % 7;
+  } else return null;
+  d.setDate(d.getDate() + decalage);
+  return UI.fmtDateISO(d);
+}
+
+// Migre les échéances d'une liste de todos vers le format 'AAAA-MM-JJ'.
+// - étiquette relative : convertie, ancrée sur creeLe (même sens qu'avant la migration) ;
+// - null / undefined / date 'AAAA-MM-JJ' valide : inchangés ;
+// - toute autre valeur : null.
+// Les todos inchangés gardent leur référence (l'écriture IndexedDB est différentielle).
+// Fonction pure : n'écrit rien. Renvoie { todos, change }.
+function migrerEcheancesTodos(todos) {
+  if (!Array.isArray(todos)) return { todos, change: false };
+  let change = false;
+  const migres = todos.map(t => {
+    if (!t || typeof t !== 'object') return t;
+    const e = t.echeance;
+    if (e == null || estDateEcheance(e)) return t;
+    change = true;
+    return { ...t, echeance: echeanceRelativeVersDate(e, t.creeLe || Date.now()) };
+  });
+  return { todos: change ? migres : todos, change };
+}
+
+/* ------------------------------------------------------------------ */
 /* Données de démonstration                                            */
 
 function at(h, m = 0, offsetDays = 0) {
@@ -190,15 +256,17 @@ function seed() {
     { id: 'p6', nom: 'Migration v2 — Phoenix',     client: 'Phoenix Ltd', couleur: '#0891b2', archive: true  },
   ];
 
+  // Échéances absolues. Mêmes résultats qu'avec les anciennes étiquettes relatives ancrées sur creeLe.
+  const jour = offset => UI.fmtDateISO(new Date(at(0, 0, offset)));
   const todos = [
-    { id: 't1', titre: 'Valider la palette avec Orion',     fait: false, projetId: 'p1', echeance: 'today',    creeLe: at(8, 30, -1) },
-    { id: 't2', titre: 'Maquette écran « panier »',         fait: false, projetId: 'p1', echeance: 'today',    creeLe: at(9, 0, -1) },
-    { id: 't3', titre: 'Composants Input + Select v2',      fait: false, projetId: 'p2', echeance: 'tomorrow', creeLe: at(14, 0, -2) },
-    { id: 't4', titre: 'Spec écran onboarding Helios',      fait: false, projetId: 'p3', echeance: 'fri',      creeLe: at(10, 0, -3) },
-    { id: 't5', titre: 'Facture Orion — octobre',           fait: false, projetId: 'p5', echeance: 'today',    creeLe: at(8, 0) },
-    { id: 't6', titre: 'Kick-off call Atlas',               fait: true,  projetId: 'p4', echeance: null,       creeLe: at(9, 0, -2) },
-    { id: 't7', titre: 'Trier les références concurrentes', fait: true,  projetId: 'p4', echeance: null,       creeLe: at(11, 0, -2) },
-    { id: 't8', titre: 'Tokens de couleur — contraste AA',  fait: false, projetId: 'p2', echeance: null,       creeLe: at(15, 0, -2) },
+    { id: 't1', titre: 'Valider la palette avec Orion',     fait: false, projetId: 'p1', echeance: jour(-1), creeLe: at(8, 30, -1) },
+    { id: 't2', titre: 'Maquette écran « panier »',         fait: false, projetId: 'p1', echeance: jour(-1), creeLe: at(9, 0, -1) },
+    { id: 't3', titre: 'Composants Input + Select v2',      fait: false, projetId: 'p2', echeance: jour(-1), creeLe: at(14, 0, -2) },
+    { id: 't4', titre: 'Spec écran onboarding Helios',      fait: false, projetId: 'p3', echeance: echeanceRelativeVersDate('fri', at(10, 0, -3)), creeLe: at(10, 0, -3) },
+    { id: 't5', titre: 'Facture Orion — octobre',           fait: false, projetId: 'p5', echeance: jour(0),  creeLe: at(8, 0) },
+    { id: 't6', titre: 'Kick-off call Atlas',               fait: true,  projetId: 'p4', echeance: null,     creeLe: at(9, 0, -2) },
+    { id: 't7', titre: 'Trier les références concurrentes', fait: true,  projetId: 'p4', echeance: null,     creeLe: at(11, 0, -2) },
+    { id: 't8', titre: 'Tokens de couleur — contraste AA',  fait: false, projetId: 'p2', echeance: null,     creeLe: at(15, 0, -2) },
   ];
 
   const sessions = [
@@ -270,19 +338,73 @@ function createStore() {
     saveTimer = setTimeout(flush, 80);
   }
 
+  // Instantané de ce qui a été écrit ou lu en IndexedDB : id → objet (référence).
+  const persiste = {};
+  function resetPersiste() {
+    for (const n of STORE_NAMES) persiste[n] = new Map(state[n].map(it => [it.id, it]));
+  }
+
+  let canal = null; // BroadcastChannel du workspace (onglets multiples, IndexedDB)
+
   async function flush() {
+    clearTimeout(saveTimer); saveTimer = null;
     if (usingIDB) {
-      const promises = [];
-      if (dirtyStores.has('projets'))  promises.push(idbReplace('projets',  state.projets));
-      if (dirtyStores.has('todos'))    promises.push(idbReplace('todos',    state.todos));
-      if (dirtyStores.has('sessions')) promises.push(idbReplace('sessions', state.sessions));
-      if (dirtyStores.has('pointage')) promises.push(idbReplace('pointage', state.pointage));
+      const noms = STORE_NAMES.filter(n => dirtyStores.has(n));
       dirtyStores.clear();
-      await Promise.all(promises);
-    } else {
+      let ecrit = false;
+      await Promise.all(noms.map(async n => {
+        const items = state[n];
+        try {
+          if (await idbSync(n, items, persiste[n])) ecrit = true;
+          persiste[n] = new Map(items.map(it => [it.id, it]));
+        } catch (e) {
+          console.warn('[db] écriture échouée (' + n + ')', e);
+          dirtyStores.add(n); // à retenter au prochain flush
+        }
+      }));
+      if (ecrit && canal) { try { canal.postMessage('maj'); } catch (e) {} }
+    } else if (dirtyStores.size) {
       dirtyStores.clear();
       lsSave(state);
     }
+  }
+
+  // Vide les écritures en attente tout de suite (fermeture / masquage de l'onglet).
+  function flushMaintenant() {
+    clearTimeout(saveTimer); saveTimer = null;
+    if (state.loaded && dirtyStores.size) flush();
+  }
+  window.addEventListener('pagehide', flushMaintenant);
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushMaintenant();
+    });
+  }
+
+  // Un autre onglet a écrit : on vide nos écritures en attente, on relit tout
+  // depuis la persistance, on remplace l'état et on réinitialise l'instantané.
+  async function recharger() {
+    if (!state.loaded) return;
+    let lus = null;
+    for (let essai = 0; essai < 3 && !lus; essai++) {
+      await flush();
+      let relu;
+      if (usingIDB) {
+        const r = await Promise.all(STORE_NAMES.map(idbAll));
+        relu = Object.fromEntries(STORE_NAMES.map((n, i) => [n, r[i]]));
+      } else {
+        relu = lsLoad();
+      }
+      if (!relu) return;
+      if (!dirtyStores.size) lus = relu; // sinon une modif locale est arrivée entre-temps : on réessaie
+    }
+    if (!lus) return;
+    for (const n of STORE_NAMES) state[n] = Array.isArray(lus[n]) ? lus[n] : [];
+    resetPersiste(); // instantané AVANT migration : les todos migrés sont ainsi réécrits
+    const mig = migrerEcheancesTodos(state.todos);
+    state.todos = mig.todos;
+    emitState();
+    if (mig.change) scheduleSave('todos');
   }
 
   /* --- chargement initial --- */
@@ -306,6 +428,11 @@ function createStore() {
       } else {
         state.projets = pr; state.todos = td; state.sessions = se; state.pointage = pt;
       }
+      resetPersiste();
+      if (typeof BroadcastChannel !== 'undefined') {
+        canal = new BroadcastChannel('chrono:' + wsActiveId());
+        canal.onmessage = () => { recharger(); };
+      }
     } else {
       usingIDB = false;
       const ls = lsLoad();
@@ -316,8 +443,16 @@ function createStore() {
       } else {
         Object.assign(state, emptyData());
       }
+      // Repli localStorage : un autre onglet a écrit la clé du workspace.
+      const cle = lsKeyFor(wsActiveId());
+      window.addEventListener('storage', e => { if (e.key == null || e.key === cle) recharger(); });
     }
+    // Anciennes échéances relatives -> dates absolues. En IndexedDB, resetPersiste() a déjà
+    // été appelé sur les données lues : les todos migrés diffèrent de l'instantané et seront écrits.
+    const mig = migrerEcheancesTodos(state.todos);
+    state.todos = mig.todos;
     state.loaded = true;
+    if (mig.change) scheduleSave('todos'); // après state.loaded : scheduleSave n'écrit rien avant
     emitState();
     setInterval(emitTick, 1000);
   }
@@ -370,36 +505,35 @@ function createStore() {
     scheduleSave('sessions'); emitState();
   }
 
-  // Si, après avoir terminé une (ou plusieurs) session(s), le total travaillé du
-  // jour dépasse le temps de présence pointé, on rogne les sessions qui viennent
-  // d'être arrêtées pour ramener le total au niveau de la présence. Un temps de
-  // travail supérieur à la présence n'a pas de sens. Sans pointage d'arrivée pour
-  // ce jour-là, on ne touche à rien (présence inconnue).
+  // Un temps de travail supérieur à la présence n'a pas de sens. Pour chaque session
+  // tout juste arrêtée, la durée ne doit pas dépasser le temps de présence qui
+  // chevauche son intervalle [debut, fin] (les chronos parallèles sont donc
+  // autorisés : chaque session est jugée séparément). Sans pointage d'arrivée
+  // pour ce jour-là, on ne touche à rien (présence inconnue).
+  // Si la session n'a jamais été mise en pause (duree == fin - debut), on avance
+  // `debut` de la quantité coupée pour que le bloc dessiné corresponde au temps
+  // compté ; sinon seule `duree` change.
   function tronquerSurPresence(endedIds, now) {
     const jourDebut = UI.startOfDay(new Date(now));
     const jourFin = jourDebut + 86400000;
     const events = state.pointage.filter(p => p.at >= jourDebut && p.at < jourFin);
     if (!events.some(e => e.type === 'arrivee')) return false;
-    const presence = UI.dureePresence(events, now);
-    const sessionsJour = state.sessions.filter(s => s.debut >= jourDebut && s.debut < jourFin);
-    const total = sessionsJour.reduce((acc, s) => acc + UI.dureeVivante(s), 0);
-    let excess = total - presence;
-    if (excess <= 1000) return false; // tolérance 1 s
-    // On rogne les sessions tout juste arrêtées, de la plus longue à la plus courte.
-    const cibles = state.sessions
-      .filter(s => endedIds.includes(s.id) && s.statut === 'terminee')
-      .sort((a, b) => (b.duree || 0) - (a.duree || 0));
-    const coupes = new Map();
-    for (const s of cibles) {
-      if (excess <= 0) break;
-      const cut = Math.min(s.duree || 0, excess);
-      if (cut > 0) { coupes.set(s.id, cut); excess -= cut; }
+    const plages = UI.plagesPresence(events, now);
+    const coupes = new Map(); // id → { couvert, cut, sansPause }
+    for (const s of state.sessions) {
+      if (!endedIds.includes(s.id) || s.statut !== 'terminee') continue;
+      if (s.debut < jourDebut || s.debut >= jourFin) continue;
+      const duree = s.duree || 0;
+      const couvert = plages.reduce((acc, p) => acc + Math.max(0, Math.min(s.fin, p.fin) - Math.max(s.debut, p.debut)), 0);
+      if (duree > couvert + 1000) { // tolérance 1 s
+        coupes.set(s.id, { couvert, cut: duree - couvert, sansPause: Math.abs(duree - (s.fin - s.debut)) <= 1000 });
+      }
     }
     if (coupes.size === 0) return false;
     state.sessions = state.sessions.map(s => {
-      const cut = coupes.get(s.id);
-      if (!cut) return s;
-      return { ...s, duree: Math.max(0, (s.duree || 0) - cut), fin: s.fin != null ? s.fin - cut : s.fin };
+      const c = coupes.get(s.id);
+      if (!c) return s;
+      return { ...s, duree: c.couvert, debut: c.sansPause ? s.debut + c.cut : s.debut };
     });
     return true;
   }
@@ -449,7 +583,15 @@ function createStore() {
       if (s.id !== id) return s;
       const next = { ...s, ...patch };
       if (next.statut === 'terminee' && next.debut != null && next.fin != null) {
-        next.duree = Math.max(0, next.fin - next.debut);
+        if (patch.duree != null) {
+          // durée fournie explicitement : elle l'emporte.
+        } else if (s.statut === 'terminee' && s.debut != null && s.fin != null) {
+          // On conserve le temps de pause déjà décompté (ancien bloc - ancienne durée).
+          const pauses = Math.max(0, (s.fin - s.debut) - (s.duree || 0));
+          next.duree = Math.max(0, (next.fin - next.debut) - pauses);
+        } else {
+          next.duree = Math.max(0, next.fin - next.debut);
+        }
       } else if (next.statut === 'en_cours' && patch.debut != null) {
         // Pour une session encore en cours qui n'a jamais été mise en pause
         // (duree accumulée = 0 et dernierDebut suivait debut), on resynchronise
@@ -651,6 +793,7 @@ function createStore() {
     etatPointage,
     sessionsActives,
     exporterJSON,
+    flush, recharger,
   };
 }
 
@@ -659,14 +802,28 @@ window.createStore = createStore;
 /* ------------------------------------------------------------------ */
 /* API workspaces exposée                                              */
 
+// Garde les éléments « objet avec un id texte » (et un statut connu pour les sessions).
+const STATUTS_SESSION = ['terminee', 'en_cours', 'en_pause'];
+const estObjetAvecId = x => !!x && typeof x === 'object' && !Array.isArray(x) && typeof x.id === 'string';
+const estSessionValide = x => estObjetAvecId(x) && STATUTS_SESSION.includes(x.statut);
+
 async function importerJSONDansWorkspace(id, payload) {
   const data = payload?.data || payload;
   if (!data || typeof data !== 'object') throw new Error('format invalide');
-  const projets  = Array.isArray(data.projets)  ? data.projets  : [];
-  const todos    = Array.isArray(data.todos)    ? data.todos    : [];
-  const sessions = Array.isArray(data.sessions) ? data.sessions : [];
-  const pointage = Array.isArray(data.pointage) ? data.pointage : [];
-  const activeId = data.activeId || null;
+  const brut = {
+    projets:  Array.isArray(data.projets)  ? data.projets  : [],
+    todos:    Array.isArray(data.todos)    ? data.todos    : [],
+    sessions: Array.isArray(data.sessions) ? data.sessions : [],
+    pointage: Array.isArray(data.pointage) ? data.pointage : [],
+  };
+  const projets  = brut.projets.filter(estObjetAvecId);
+  const todos    = migrerEcheancesTodos(brut.todos.filter(estObjetAvecId)).todos;
+  const sessions = brut.sessions.filter(estSessionValide);
+  const pointage = brut.pointage.filter(estObjetAvecId);
+  const nbBrut = brut.projets.length + brut.todos.length + brut.sessions.length + brut.pointage.length;
+  if (nbBrut > 0 && projets.length + todos.length + sessions.length + pointage.length === 0) {
+    throw new Error('aucune donnée valide');
+  }
 
   // Si on importe dans le workspace courant, on doit fermer la connexion ouverte.
   if (id === wsActiveId() && _dbPromise) {
@@ -676,17 +833,28 @@ async function importerJSONDansWorkspace(id, payload) {
   }
 
   // On va viser directement le bon DB. On l'ouvre, on écrase chaque store.
-  const dbName = dbNameFor(id);
-  const db = await new Promise((res, rej) => {
-    const req = indexedDB.open(dbName, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const d = req.result;
-      for (const s of STORE_NAMES) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
-      if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'key' });
-    };
-    req.onsuccess = () => res(req.result);
-    req.onerror   = () => rej(req.error);
-  });
+  // Sans IndexedDB (ou si l'ouverture échoue), on écrit le repli localStorage.
+  let db = null;
+  if ('indexedDB' in window) {
+    try {
+      db = await new Promise((res, rej) => {
+        const req = indexedDB.open(dbNameFor(id), DB_VERSION);
+        req.onupgradeneeded = () => {
+          const d = req.result;
+          for (const s of STORE_NAMES) if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' });
+          if (!d.objectStoreNames.contains('meta')) d.createObjectStore('meta', { keyPath: 'key' });
+        };
+        req.onsuccess = () => res(req.result);
+        req.onerror   = () => rej(req.error);
+        req.onblocked = () => rej(new Error('idb-blocked'));
+      });
+    } catch (e) { console.warn('[db] import : IndexedDB indisponible, repli localStorage', e?.message || e); }
+  }
+  if (!db) {
+    // Même format que lsSave.
+    localStorage.setItem(lsKeyFor(id), JSON.stringify({ projets, todos, sessions, pointage }));
+    return;
+  }
   await new Promise((res, rej) => {
     const tx = db.transaction([...STORE_NAMES, 'meta'], 'readwrite');
     const put = (name, items) => {
@@ -698,12 +866,15 @@ async function importerJSONDansWorkspace(id, payload) {
     put('todos',    todos);
     put('sessions', sessions);
     put('pointage', pointage);
-    const m = tx.objectStore('meta'); m.clear();
-    if (activeId) m.put({ key: 'activeSessionId', value: activeId });
+    tx.objectStore('meta').clear();
     tx.oncomplete = () => res();
     tx.onerror    = () => rej(tx.error);
   });
   db.close();
+  // Prévient les autres onglets de ce workspace (ils relisent la base).
+  if (typeof BroadcastChannel !== 'undefined') {
+    try { const c = new BroadcastChannel('chrono:' + id); c.postMessage('maj'); c.close(); } catch (e) {}
+  }
 }
 
 window.WORKSPACES = {
@@ -756,7 +927,7 @@ window.WORKSPACES = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chrono-${ws.id}-${new Date().toISOString().slice(0,10)}.json`;
+    a.download = `chrono-${ws.id}-${UI.fmtDateISO()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   },

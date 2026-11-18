@@ -76,26 +76,17 @@
 
     /* --- liste des projets --- */
     const listHost = el('div', {
-      style: { display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 240, overflowY: 'auto' },
+      class: 'ch-pile ch-g4', style: { maxHeight: 240, overflowY: 'auto' },
     });
     function renderListe() {
       const projets = store.state.projets.filter(p => !p.archive);
       listHost.replaceChildren(...projets.map(p => el('button', {
         onclick: () => { projetId = p.id; renderListe(); },
-        style: {
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '8px 10px', borderRadius: 8,
-          border: `1px solid ${projetId === p.id ? 'var(--cv-accent-500)' : 'transparent'}`,
-          background: projetId === p.id ? 'var(--cv-accent-50)' : 'transparent',
-          color: 'var(--cv-fg)', cursor: 'pointer',
-          textAlign: 'left', transition: 'all 120ms',
-        },
-        onmouseenter: e => { if (projetId !== p.id) e.currentTarget.style.background = 'var(--cv-surface-2)'; },
-        onmouseleave: e => { if (projetId !== p.id) e.currentTarget.style.background = 'transparent'; },
+        class: projetId === p.id ? 'ch-option est-actif' : 'ch-option',
       },
         el('span', { style: { width: 10, height: 10, borderRadius: 3, background: p.couleur, flexShrink: 0 } }),
-        el('div', { style: { flex: 1, minWidth: 0 } },
-          el('div', { style: { font: '500 13px/1.2 var(--cv-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, p.nom),
+        el('div', { class: 'ch-souple' },
+          el('div', { class: 'ch-ellipse', style: { font: '500 13px/1.2 var(--cv-font-sans)' } }, p.nom),
           p.client ? el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } }, p.client) : null,
         ),
         projetId === p.id ? icon('check-circle', { weight: 'fill', size: 16, style: { color: 'var(--cv-accent-500)' } }) : null,
@@ -165,17 +156,16 @@
       errorBox.style.display = 'none';
     }
 
-    const manuelBlock = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-      el('div', { style: { display: 'flex', gap: 10 } },
+    const manuelBlock = el('div', { class: 'ch-pile ch-g10' },
+      el('div', { class: 'ch-flex ch-g10' },
         el('div', { style: { flex: 1 } }, debutW),
         el('div', { style: { flex: 1 } }, finW),
       ),
-      el('div', { style: {
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px', background: 'var(--cv-neutral-50)',
-        border: '1px solid var(--cv-border)', borderRadius: 8,
-      } },
-        el('span', { style: { font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Durée'),
+      el('div', {
+        class: 'ch-flex-c ch-entre',
+        style: { padding: '8px 12px', background: 'var(--cv-neutral-50)', border: '1px solid var(--cv-border)', borderRadius: 8 },
+      },
+        el('span', { class: 'ch-surtitre' }, 'Durée'),
         dureeAffichee,
       ),
       errorBox,
@@ -183,9 +173,9 @@
 
     /* --- footer dynamique --- */
     const footerHint = el('div', {
+      class: 'ch-flex-c ch-g8',
       style: {
-        marginRight: 'auto', display: 'flex', gap: 8, alignItems: 'center',
-        font: '400 12px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)',
+        marginRight: 'auto', font: '400 12px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)',
       },
     });
     const submitBtn = window.UI.Button({ variant: 'primary', icon: 'play', children: 'Démarrer', onclick: () => submit() });
@@ -203,7 +193,7 @@
     }
 
     /* --- swap body selon le mode --- */
-    const modeHost = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } });
+    const modeHost = el('div', { class: 'ch-pile ch-g14' });
     function renderMode() {
       paintSeg();
       paintFooter();
@@ -211,11 +201,11 @@
         mode === 'manuel'
           ? manuelBlock
           : el('div', {
+              class: 'ch-flex-c ch-g8',
               style: {
                 padding: '8px 12px', background: 'var(--cv-accent-50)',
                 border: '1px solid var(--cv-accent-100)', borderRadius: 8,
                 font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-accent-700)',
-                display: 'flex', alignItems: 'center', gap: 8,
               },
             },
               icon('timer', { size: 14, weight: 'fill' }),
@@ -245,15 +235,15 @@
     }
 
     /* --- corps du modal --- */
-    const body = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+    const body = el('div', { class: 'ch-pile ch-g14' },
       segWrap,
-      el('label', { style: { display: 'flex', flexDirection: 'column', gap: 4 } },
-        el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, 'Sur quoi as-tu travaillé ?'),
+      el('label', { class: 'ch-pile ch-g4' },
+        el('span', { class: 'ch-label' }, 'Sur quoi as-tu travaillé ?'),
         inputDesc,
       ),
       modeHost,
       el('div', null,
-        el('div', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginBottom: 6 } }, 'Projet'),
+        el('div', { class: 'ch-label', style: { marginBottom: 6 } }, 'Projet'),
         listHost,
       ),
     );

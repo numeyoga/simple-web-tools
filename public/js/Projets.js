@@ -22,7 +22,7 @@
     let afficherTotaux = localStorage.getItem(PREF_TOTAUX) === '1';
     const calcules = new Set(); // projets dont le total a été calculé à la demande
 
-    const host = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } });
+    const host = el('div', { class: 'ch-pile ch-g16' });
 
     function ouvrirModalProjet(existant = null) {
       const isEdit = !!existant;
@@ -106,11 +106,11 @@
       });
       inputNom = nomW.input; inputClient = clientW.input;
 
-      const body = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+      const body = el('div', { class: 'ch-pile ch-g12' },
         nomW,
         clientW,
         el('div', null,
-          el('div', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginBottom: 6 } }, 'Couleur'),
+          el('div', { class: 'ch-label', style: { marginBottom: 6 } }, 'Couleur'),
           couleursRow,
         ),
       );
@@ -181,13 +181,13 @@
 
       host.replaceChildren(
         // Header
-        el('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
+        el('div', { class: 'ch-flex-c ch-g12' },
           el('div', null,
-            el('div', { style: { font: '600 20px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, 'Projets'),
-            el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 4 } },
+            el('div', { class: 'ch-titre-page' }, 'Projets'),
+            el('div', { class: 'ch-meta', style: { marginTop: 4 } },
               `${projets.filter(p => !p.archive).length} actifs · ${projets.filter(p => p.archive).length} archivés`),
           ),
-          el('div', { style: { marginLeft: 'auto', display: 'flex', gap: 8 } },
+          el('div', { class: 'ch-flex ch-g8', style: { marginLeft: 'auto' } },
             UI.Button({
               variant: afficherTotaux ? 'primary' : 'secondary',
               icon: afficherTotaux ? 'clock' : 'clock-countdown',
@@ -229,23 +229,17 @@
 
     function carteProjet(p, t, td) {
       return el('article', {
-        style: {
-          background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
-          borderRadius: 12, padding: 16,
-          display: 'flex', flexDirection: 'column', gap: 12,
-          boxShadow: 'var(--cv-shadow-sm)',
-          position: 'relative', overflow: 'hidden',
-        },
+        class: 'ch-carte ch-carte--rogne ch-pile ch-g12', style: { padding: 16, position: 'relative' },
       },
         el('div', { style: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 4, background: p.couleur } }),
         el('div', { style: { paddingLeft: 6 } },
           el('div', { style: { font: '600 14px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, p.nom),
-          el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } }, p.client || '—'),
+          el('div', { class: 'ch-meta', style: { marginTop: 2 } }, p.client || '—'),
         ),
 
         (afficherTotaux || calcules.has(p.id))
           ? el('div', { style: { paddingLeft: 6 } },
-              el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Temps total'),
+              el('div', { class: 'ch-surtitre ch-surtitre--xs' }, 'Temps total'),
               el('div', { style: { font: '500 22px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 6, letterSpacing: '-0.01em' } }, fmtDuree(t.duree)),
               el('div', { style: { font: '400 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', marginTop: 2 } }, `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`),
             )
@@ -253,27 +247,19 @@
               el('button', {
                 onclick: () => { calcules.add(p.id); render(); },
                 title: 'Calculer le temps cumulé et le nombre de sessions de ce projet',
-                style: {
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
-                  border: '1px dashed var(--cv-border-strong)', background: 'transparent',
-                  color: 'var(--cv-fg-muted)', font: '500 12px/1 var(--cv-font-sans)',
-                  transition: 'background 120ms, color 120ms',
-                },
-                onmouseenter: e => { e.currentTarget.style.background = 'var(--cv-surface-2)'; e.currentTarget.style.color = 'var(--cv-fg)'; },
-                onmouseleave: e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--cv-fg-muted)'; },
+                class: 'ch-btn-pointille',
               },
                 icon('clock-countdown', { size: 14 }),
                 'Calculer le temps',
               ),
             ),
 
-        el('div', { style: { display: 'flex', gap: 6, paddingLeft: 6 } },
+        el('div', { class: 'ch-flex ch-g6', style: { paddingLeft: 6 } },
           UI.Badge({ variant: 'neutral', children: `${td.open} todo${td.open > 1 ? 's' : ''}` }),
           td.done > 0 ? UI.Badge({ variant: 'success', children: `${td.done} faites` }) : null,
         ),
 
-        el('div', { style: { display: 'flex', gap: 6, marginTop: 'auto', paddingLeft: 6 } },
+        el('div', { class: 'ch-flex ch-g6', style: { marginTop: 'auto', paddingLeft: 6 } },
           !p.archive
             ? [
                 UI.Button({

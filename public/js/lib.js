@@ -107,26 +107,39 @@ function dureeVivante(session) {
   return session.duree || 0;
 }
 
-/* Durée de présence d'une journée à partir des pointages (arrivée/pauses/départ).
-   Parcourt les évènements triés et additionne les plages « présent ».
-   Si la journée n'est pas clôturée, ajoute le temps jusqu'à `now`. */
-function dureePresence(events, now = Date.now()) {
+/* Plages de présence d'une journée à partir des pointages : liste d'intervalles
+   { debut, fin }. arrivee/pause_fin ouvrent une plage, pause_debut/depart la
+   ferment ; une plage encore ouverte se termine à `now`. */
+function plagesPresence(events, now = Date.now()) {
   const evs = (events || []).slice().sort((a, b) => a.at - b.at);
-  let total = 0;
+  const plages = [];
   let openAt = null;
   for (const e of evs) {
     if (e.type === 'arrivee' || e.type === 'pause_fin') {
       if (openAt == null) openAt = e.at;
     } else if (e.type === 'pause_debut' || e.type === 'depart') {
-      if (openAt != null) { total += Math.max(0, e.at - openAt); openAt = null; }
+      if (openAt != null) { plages.push({ debut: openAt, fin: Math.max(openAt, e.at) }); openAt = null; }
     }
   }
-  if (openAt != null) total += Math.max(0, now - openAt);
-  return total;
+  if (openAt != null) plages.push({ debut: openAt, fin: Math.max(openAt, now) });
+  return plages;
+}
+
+/* Durée de présence d'une journée : somme des plages de présence.
+   Si la journée n'est pas clôturée, la dernière plage court jusqu'à `now`. */
+function dureePresence(events, now = Date.now()) {
+  return plagesPresence(events, now).reduce((total, p) => total + (p.fin - p.debut), 0);
+}
+
+/* Date locale au format AAAA-MM-JJ. Ne pas utiliser toISOString(), qui
+   convertit en UTC : en France, lundi 00:00 deviendrait « dimanche ». */
+function fmtDateISO(d = new Date()) {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 }
 
 /* ------------------------------------------------------------------ */
 /* Id court                                                            */
 function uid(p = '') { return p + Math.random().toString(36).slice(2, 9); }
 
-window.UI = Object.assign(window.UI || {}, { el, mount, icon, fmtDuree, fmtHeure, startOfDay, dureeVivante, dureePresence, uid });
+window.UI = Object.assign(window.UI || {}, { el, mount, icon, fmtDuree, fmtHeure, startOfDay, dureeVivante, plagesPresence, dureePresence, fmtDateISO, uid });

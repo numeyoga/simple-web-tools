@@ -54,7 +54,7 @@
     let pendingLabel = '';
 
     /* Conteneur unique re-rendu en place pour éviter de fermer/rouvrir la modale. */
-    const body = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } });
+    const body = el('div', { class: 'ch-pile ch-g14' });
 
     function ligneEspace(ws, activeId) {
       const isActive  = ws.id === activeId;
@@ -78,17 +78,17 @@
             },
             ref: node => { setTimeout(() => { node.focus(); node.select(); }, 10); },
           })
-        : el('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 } },
-            el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+        : el('div', { class: 'ch-souple ch-pile ch-g2' },
+            el('div', { class: 'ch-flex-c ch-g8' },
               el('span', {
+                class: 'ch-ellipse',
                 style: {
                   font: '500 14px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 },
               }, ws.label),
               isActive ? UI.Badge({ variant: 'accent', dot: true, children: 'actif' }) : null,
             ),
-            el('div', { style: { display: 'flex', alignItems: 'center', gap: 10, font: '400 11px/1.3 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)' } },
+            el('div', { class: 'ch-flex-c ch-g10', style: { font: '400 11px/1.3 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)' } },
               el('span', null, ws.id),
               ws.creeLe ? el('span', null, '·') : null,
               ws.creeLe ? el('span', null, `créé ${fmtDate(ws.creeLe)}`) : null,
@@ -106,8 +106,8 @@
       const peutSupprimer = list.length > 1 && !isActive;
 
       return el('div', {
+        class: 'ch-flex-c ch-g10',
         style: {
-          display: 'flex', alignItems: 'center', gap: 10,
           padding: '10px 12px', borderRadius: 8,
           border: `1px solid ${isActive ? 'var(--cv-accent-500)' : 'var(--cv-border)'}`,
           background: isActive ? 'var(--cv-accent-50)' : 'var(--cv-surface)',
@@ -126,12 +126,12 @@
         titre,
 
         isEditing
-          ? el('div', { style: { display: 'flex', gap: 4 } },
+          ? el('div', { class: 'ch-flex ch-g4' },
               UI.IconButton({ icon: 'check', label: 'Valider', variant: 'ghost', onclick: commitRename }),
               UI.IconButton({ icon: 'x', label: 'Annuler', variant: 'ghost',
                 onclick: () => { editingId = null; pendingLabel = ''; render(); } }),
             )
-          : el('div', { style: { display: 'flex', gap: 4, flexShrink: 0 } },
+          : el('div', { class: 'ch-flex ch-g4', style: { flexShrink: 0 } },
               !isActive ? UI.Button({
                 size: 'sm', variant: 'primary', icon: 'arrow-right', children: 'Basculer',
                 onclick: async () => {
@@ -199,19 +199,19 @@
       }
 
       return el('div', {
+        class: 'ch-pile ch-g10',
         style: {
           padding: 12, border: '1px dashed var(--cv-border-strong)', borderRadius: 10,
-          display: 'flex', flexDirection: 'column', gap: 10,
           background: 'var(--cv-neutral-50)',
         },
       },
         el('div', { style: { font: '600 12px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Nouvel espace'),
-        el('div', { style: { display: 'flex', gap: 8 } },
+        el('div', { class: 'ch-flex ch-g8' },
           input,
           UI.Button({ variant: 'primary', icon: 'plus', children: 'Créer', onclick: creer }),
         ),
         el('label', {
-          style: { display: 'flex', alignItems: 'center', gap: 8, font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', cursor: 'pointer' },
+          class: 'ch-meta ch-flex-c ch-g8', style: { cursor: 'pointer' },
         },
           checkbox,
           el('span', null, 'Inclure des données de démonstration au démarrage'),
@@ -251,16 +251,12 @@
       });
 
       return el('div', {
-        style: {
-          padding: 12, border: '1px solid var(--cv-border)', borderRadius: 10,
-          background: 'var(--cv-surface)',
-          display: 'flex', flexDirection: 'column', gap: 8,
-        },
+        class: 'ch-panneau ch-pile ch-g8', style: { padding: 12 },
       },
         el('div', { style: { font: '600 12px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Sauvegarde'),
-        el('div', { style: { font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
+        el('div', { class: 'ch-note' },
           'Exporte ou importe l’espace actif au format JSON. Pratique pour archiver ou migrer.'),
-        el('div', { style: { display: 'flex', gap: 8 } },
+        el('div', { class: 'ch-flex ch-g8' },
           UI.Button({
             variant: 'secondary', size: 'sm', icon: 'download-simple', children: 'Exporter JSON',
             onclick: async () => {
@@ -285,9 +281,9 @@
       const list = window.WORKSPACES.getList();
       const activeId = window.WORKSPACES.getActiveId();
       body.replaceChildren(
-        el('div', { style: { font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
+        el('div', { class: 'ch-note' },
           'Chaque espace est une base IndexedDB isolée. Idéal pour séparer perso / pro, ou faire des essais sans toucher à tes vraies données.'),
-        el('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+        el('div', { class: 'ch-pile ch-g8' },
           ...list.map(ws => ligneEspace(ws, activeId)),
         ),
         blocCreation(),

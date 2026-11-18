@@ -14,14 +14,26 @@
   ];
   const POINTAGE_META = Object.fromEntries(POINTAGE_TYPES.map(p => [p.value, p]));
 
+  // Échelle horizontale du graphique (px depuis le bord gauche du contenu).
+  const CHART_PAD_X = 16;
+  const hourToPx = h => (h - HEURE_DEBUT) * PX_PAR_HEURE;
+  const tsToPx = ts => {
+    const d = new Date(ts);
+    const h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+    return hourToPx(h);
+  };
+
+  // Pose une clé de focus stable (dataset.focusKey) sur un élément déjà construit.
+  const cle = (node, key) => { node.dataset.focusKey = key; return node; };
+
   function createTimeline(store, opts) {
     let dateOffset = 0;
 
-    const host = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } });
+    const host = el('div', { class: 'ch-pile ch-g20' });
 
     function statBloc(label, valeur, sousTexte, { accent, mono = true } = {}) {
       return el('div', null,
-        el('div', { style: { font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, label),
+        el('div', { class: 'ch-surtitre' }, label),
         el('div', {
           style: {
             marginTop: 4, font: `500 22px/1 ${mono ? 'var(--cv-font-mono)' : 'var(--cv-font-sans)'}`,
@@ -69,11 +81,26 @@
       const dureeAffichee = el('div', {
         style: { font: '500 18px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 4 },
       }, fmtDuree(dureeVivante(s)));
+      // Même règle que majSession (db.js) : le temps de pause déjà décompté sur
+      // la session d'origine est conservé, la durée enregistrée = bloc - pauses.
+      const pausesOrigine = (s.statut === 'terminee' && s.debut != null && s.fin != null)
+        ? Math.max(0, (s.fin - s.debut) - (s.duree || 0))
+        : 0;
+      function libellePause(ms) {
+        const min = Math.max(1, Math.round(ms / 60000));
+        const h = Math.floor(min / 60);
+        return h > 0 ? `${h} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
+      }
+      const pausesNote = pausesOrigine > 0
+        ? el('div', {
+            class: 'ch-legende', style: { marginTop: 4 },
+          }, `dont ${libellePause(pausesOrigine)} de pause déduites`)
+        : null;
       function recalcDuree() {
         if (s.statut !== 'terminee') return;
         const d = localVersTs(debutW.input.value);
         const f = localVersTs(finW.input.value);
-        if (d != null && f != null && f >= d) dureeAffichee.textContent = fmtDuree(f - d);
+        if (d != null && f != null && f >= d) dureeAffichee.textContent = fmtDuree(Math.max(0, (f - d) - pausesOrigine));
       }
       debutW.input.addEventListener('input', recalcDuree);
       if (finW) finW.input.addEventListener('input', recalcDuree);
@@ -104,16 +131,17 @@
 
       modal = UI.Modal({
         title: 'Modifier la session', width: 480,
-        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
+        body: el('div', { class: 'ch-pile ch-g12' },
           projW,
           descW,
-          el('div', { style: { display: 'flex', gap: 10 } },
+          el('div', { class: 'ch-flex ch-g10' },
             el('div', { style: { flex: 1 } }, debutW),
             finW ? el('div', { style: { flex: 1 } }, finW) : null,
           ),
           s.statut === 'terminee' ? el('div', null,
             el('div', { style: { font: '500 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, 'Durée calculée'),
             dureeAffichee,
+            pausesNote,
           ) : el('div', {
             style: { padding: '8px 10px', background: 'var(--cv-accent-50)', border: '1px solid var(--cv-accent-100)', borderRadius: 6, font: '400 12px/1.4 var(--cv-font-sans)', color: 'var(--cv-accent-700)' },
           }, 'Session encore active — la durée continue de courir.'),
@@ -130,13 +158,7 @@
     function timelineChart(jourDebut, sessionsJ, pointageJ, projets, isToday) {
       const totalHours = HEURE_FIN - HEURE_DEBUT;
       const widthPx = totalHours * PX_PAR_HEURE;
-      const hourToPx = h => (h - HEURE_DEBUT) * PX_PAR_HEURE;
       const msToPx = ms => (ms / 3600_000) * PX_PAR_HEURE;
-      const tsToPx = ts => {
-        const d = new Date(ts);
-        const h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
-        return hourToPx(h);
-      };
 
       // segments présence
       const presenceSegs = [];
@@ -168,9 +190,9 @@
       for (let i = 0; i <= totalHours; i++) {
         const h = HEURE_DEBUT + i;
         rule.appendChild(el('div', {
+          class: 'ch-mono-xs',
           style: {
             position: 'absolute', left: hourToPx(h), top: 0, transform: 'translateX(-50%)',
-            font: '500 10px/1 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)',
           },
         }, `${String(h).padStart(2,'0')}:00`));
       }
@@ -293,6 +315,7 @@
         const compact = blockH < 46;
         const top = SESSION_ZONE_TOP + item.col * (laneH + LANE_GAP);
         const block = el('div', {
+          dataset: { focusKey: `session-bloc:${s.id}` },
           title: `${proj?.nom || 'Sans projet'} · ${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'} · ${fmtDuree(dureeMs)}`,
           onclick: () => ouvrirEditionSession(s),
           style: {
@@ -310,13 +333,13 @@
             outline: enCours ? '2px solid var(--cv-accent-500)' : 'none',
           },
         });
-        const titre = el('div', { style: { minWidth: 0, flex: 1, overflow: 'hidden' } },
-          el('div', { style: { font: '500 11px/1.2 var(--cv-font-sans)', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, proj?.nom || 'Sans projet'),
-          (!compact && s.description && width > 80) ? el('div', { style: { marginTop: 2, font: '500 12px/1.3 var(--cv-font-sans)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, s.description) : null,
+        const titre = el('div', { class: 'ch-souple', style: { overflow: 'hidden' } },
+          el('div', { class: 'ch-ellipse', style: { font: '500 11px/1.2 var(--cv-font-sans)', opacity: 0.85 } }, proj?.nom || 'Sans projet'),
+          (!compact && s.description && width > 80) ? el('div', { class: 'ch-ellipse', style: { marginTop: 2, font: '500 12px/1.3 var(--cv-font-sans)' } }, s.description) : null,
         );
-        const dureeLine = el('div', { style: { font: '500 11px/1 var(--cv-font-mono)', opacity: 0.95, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 } },
+        const dureeLine = el('div', { class: 'ch-flex-c', style: { font: '500 11px/1 var(--cv-font-mono)', opacity: 0.95, gap: 5, flexShrink: 0 } },
           el('span', null, fmtDuree(dureeMs)),
-          enCours ? el('span', { style: { width: 6, height: 6, borderRadius: '50%', background: '#fff', animation: 'cv-pulse 1.2s infinite' } }) : null,
+          enCours ? el('span', { class: 'ch-point', style: { background: '#fff', animation: 'cv-pulse 1.2s infinite' } }) : null,
         );
         block.append(titre, dureeLine);
         line.appendChild(block);
@@ -343,8 +366,11 @@
         ));
       }
 
-      return el('div', { style: { overflowX: 'auto', overflowY: 'hidden', padding: '16px 0 12px' } },
-        el('div', { style: { width: widthPx, position: 'relative', paddingLeft: 16, paddingRight: 16 } },
+      return el('div', {
+        dataset: { role: 'timeline-scroll', jour: String(jourDebut) },
+        style: { overflowX: 'auto', overflowY: 'hidden', padding: '16px 0 12px' },
+      },
+        el('div', { style: { width: widthPx, position: 'relative', paddingLeft: CHART_PAD_X, paddingRight: CHART_PAD_X } },
           rule, line,
         ),
       );
@@ -353,24 +379,18 @@
     /* ----------------- Liste sessions ----------------- */
     function sessionsListe(sessionsJ, projets) {
       const list = sessionsJ.length === 0
-        ? el('div', { style: { padding: '32px 16px', textAlign: 'center', color: 'var(--cv-fg-muted)', font: '400 13px/1.5 var(--cv-font-sans)' } },
+        ? el('div', { class: 'ch-vide' },
             icon('hourglass-low', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
             el('div', { style: { marginTop: 6 } }, 'Aucune session pour ce jour.'),
-            UI.Button({ variant: 'primary', size: 'sm', icon: 'play', children: 'Démarrer un chrono', style: { marginTop: 12 }, onclick: opts.onOuvrirQuickAdd }),
+            cle(UI.Button({ variant: 'primary', size: 'sm', icon: 'play', children: 'Démarrer un chrono', style: { marginTop: 12 }, onclick: opts.onOuvrirQuickAdd }), 'sessions-vide:demarrer'),
           )
         : el('div', null,
             sessionsJ.map(s => {
               const proj = projets.find(p => p.id === s.projetId);
               const isActive = s.statut !== 'terminee';
               const row = el('div', {
-                style: {
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 16px', borderBottom: '1px solid var(--cv-border)',
-                  background: isActive ? 'var(--cv-accent-50)' : 'var(--cv-surface)',
-                  transition: 'background 120ms', cursor: 'pointer',
-                },
-                onmouseenter: e => { if (!isActive) e.currentTarget.style.background = 'var(--cv-surface-2)'; },
-                onmouseleave: e => { if (!isActive) e.currentTarget.style.background = 'var(--cv-surface)'; },
+                class: isActive ? 'ch-ligne est-actif ch-flex-c ch-g12' : 'ch-ligne ch-flex-c ch-g12',
+                style: { padding: '10px 16px', cursor: 'pointer' },
                 onclick: e => {
                   // Évite d'ouvrir l'édition quand on clique sur un bouton dans la ligne.
                   if (e.target.closest('button')) return;
@@ -378,11 +398,11 @@
                 },
               },
                 el('div', { style: { width: 4, alignSelf: 'stretch', borderRadius: 2, background: proj?.couleur || 'var(--cv-neutral-400)', flexShrink: 0 } }),
-                el('div', { style: { minWidth: 0, flex: 1 } },
+                el('div', { class: 'ch-souple' },
                   el('div', {
-                    style: { font: '500 13px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+                    class: 'ch-libelle ch-ellipse',
                   }, s.description || el('span', { style: { color: 'var(--cv-fg-subtle)', fontStyle: 'italic' } }, 'Sans description')),
-                  el('div', { style: { display: 'flex', gap: 10, marginTop: 2, font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
+                  el('div', { class: 'ch-legende ch-flex ch-g10', style: { marginTop: 2 } },
                     el('span', null, proj?.nom || 'Sans projet'),
                     el('span', null, '·'),
                     el('span', { style: { fontFamily: 'var(--cv-font-mono)' } }, `${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'}`),
@@ -391,30 +411,30 @@
                 el('div', {
                   style: { font: '500 15px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', minWidth: 56, textAlign: 'right' },
                 }, fmtDuree(dureeVivante(s))),
-                (isActive && s.statut === 'en_cours') ? el('div', { style: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 } },
+                (isActive && s.statut === 'en_cours') ? el('div', { class: 'ch-flex-c ch-g6', style: { flexShrink: 0 } },
                     UI.Badge({ variant: 'accent', dot: true, children: 'en cours' }),
-                    UI.IconButton({ icon: 'pause', label: 'Mettre en pause', size: 'sm', onclick: () => store.actions.pauserSession(s.id) }),
-                    UI.IconButton({ icon: 'stop', label: 'Arrêter', size: 'sm', onclick: () => store.actions.arreterSession(s.id) }),
+                    cle(UI.IconButton({ icon: 'pause', label: 'Mettre en pause', size: 'sm', onclick: () => store.actions.pauserSession(s.id) }), `session:${s.id}:pause`),
+                    cle(UI.IconButton({ icon: 'stop', label: 'Arrêter', size: 'sm', onclick: () => store.actions.arreterSession(s.id) }), `session:${s.id}:stop`),
                   )
-                : (isActive && s.statut === 'en_pause') ? el('div', { style: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 } },
+                : (isActive && s.statut === 'en_pause') ? el('div', { class: 'ch-flex-c ch-g6', style: { flexShrink: 0 } },
                     UI.Badge({ variant: 'warning', dot: true, children: 'pause' }),
-                    UI.IconButton({ icon: 'play', label: 'Reprendre', size: 'sm', onclick: () => store.actions.reprendreSession(s.id) }),
-                    UI.IconButton({ icon: 'stop', label: 'Arrêter', size: 'sm', onclick: () => store.actions.arreterSession(s.id) }),
+                    cle(UI.IconButton({ icon: 'play', label: 'Reprendre', size: 'sm', onclick: () => store.actions.reprendreSession(s.id) }), `session:${s.id}:reprendre`),
+                    cle(UI.IconButton({ icon: 'stop', label: 'Arrêter', size: 'sm', onclick: () => store.actions.arreterSession(s.id) }), `session:${s.id}:stop`),
                   )
-                : el('div', { style: { display: 'flex', gap: 2, flexShrink: 0 } },
-                    UI.IconButton({
+                : el('div', { class: 'ch-flex ch-g2', style: { flexShrink: 0 } },
+                    cle(UI.IconButton({
                       icon: 'play', label: 'Reprendre ce projet',
                       title: 'Redémarrer un chrono sur ce projet',
                       onclick: () => opts.onDemarrerSurProjet(s.projetId, s.description),
-                    }),
-                    UI.IconButton({
+                    }), `session:${s.id}:redemarrer`),
+                    cle(UI.IconButton({
                       icon: 'pencil-simple', label: 'Modifier', size: 'sm',
                       onclick: () => ouvrirEditionSession(s),
-                    }),
-                    UI.IconButton({
+                    }), `session:${s.id}:modifier`),
+                    cle(UI.IconButton({
                       icon: 'trash', label: 'Supprimer', size: 'sm',
                       onclick: () => store.actions.supprimerSession(s.id),
-                    }),
+                    }), `session:${s.id}:supprimer`),
                   ),
               );
               return row;
@@ -422,15 +442,12 @@
           );
 
       return el('section', {
-        style: {
-          background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
-          borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden',
-        },
+        class: 'ch-carte ch-carte--rogne',
       },
-        el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center' } },
-          el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Sessions du jour'),
+        el('header', { class: 'ch-carte-entete ch-flex-c' },
+          el('div', { class: 'ch-titre-carte' }, 'Sessions du jour'),
           el('div', { style: { marginLeft: 'auto' } },
-            UI.Button({ size: 'sm', icon: 'plus', children: 'Nouvelle', onclick: opts.onOuvrirQuickAdd })),
+            cle(UI.Button({ size: 'sm', icon: 'plus', children: 'Nouvelle', onclick: opts.onOuvrirQuickAdd }), 'sessions:nouvelle')),
         ),
         list,
       );
@@ -449,33 +466,27 @@
         .sort((a, b) => b.duree - a.duree);
 
       return el('section', {
-        style: { background: 'var(--cv-surface)', border: '1px solid var(--cv-border)', borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden' },
+        class: 'ch-carte ch-carte--rogne',
       },
-        el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)' } },
-          el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Répartition par projet'),
-          el('div', { style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } }, 'Clique pour relancer'),
+        el('header', { class: 'ch-carte-entete' },
+          el('div', { class: 'ch-titre-carte' }, 'Répartition par projet'),
+          el('div', { class: 'ch-legende', style: { marginTop: 2 } }, 'Clique pour relancer'),
         ),
         liste.length === 0
-          ? el('div', { style: { padding: '32px 16px', textAlign: 'center', color: 'var(--cv-fg-muted)', font: '400 13px/1.5 var(--cv-font-sans)' } },
+          ? el('div', { class: 'ch-vide' },
               'Rien à afficher — lance un chrono.')
           : el('div', { style: { padding: '8px 0' } },
               liste.map(({ id, duree, projet }) => {
                 const pct = total > 0 ? (duree / total) * 100 : 0;
                 return el('button', {
+                  dataset: { focusKey: `repartition:${id}` },
                   onclick: () => opts.onDemarrerSurProjet(id),
-                  style: {
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    width: '100%', padding: '10px 16px',
-                    background: 'transparent', border: 'none', cursor: 'pointer',
-                    textAlign: 'left', transition: 'background 120ms',
-                  },
-                  onmouseenter: e => e.currentTarget.style.background = 'var(--cv-surface-2)',
-                  onmouseleave: e => e.currentTarget.style.background = 'transparent',
+                  class: 'ch-ligne-bouton ch-flex-c ch-g12',
                 },
-                  el('div', { style: { minWidth: 0, flex: 1 } },
-                    el('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 } },
-                      el('span', { style: { width: 8, height: 8, borderRadius: 2, background: projet.couleur, flexShrink: 0 } }),
-                      el('span', { style: { font: '500 13px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, projet.nom),
+                  el('div', { class: 'ch-souple' },
+                    el('div', { class: 'ch-flex-c ch-g8', style: { marginBottom: 4 } },
+                      el('span', { class: 'ch-pastille', style: { background: projet.couleur, flexShrink: 0 } }),
+                      el('span', { class: 'ch-ellipse', style: { font: '500 13px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, projet.nom),
                       el('span', { style: { marginLeft: 'auto', font: '500 13px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' } }, fmtDuree(duree)),
                     ),
                     el('div', { style: { height: 6, background: 'var(--cv-neutral-100)', borderRadius: 3, overflow: 'hidden' } },
@@ -534,7 +545,7 @@
 
       modal = UI.Modal({
         title: isNew ? 'Ajouter un pointage' : 'Modifier le pointage', width: 420,
-        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } }, typeW, timeW),
+        body: el('div', { class: 'ch-pile ch-g12' }, typeW, timeW),
         footer,
       });
     }
@@ -546,61 +557,52 @@
       const presence = aArrivee ? UI.dureePresence(pointageJ, nowBoundary) : 0;
       const estParti = pointageJ.some(e => e.type === 'depart');
       return el('section', {
-        style: {
-          background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
-          borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden',
-        },
+        class: 'ch-carte ch-carte--rogne',
       },
-        el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center', gap: 12 } },
+        el('header', { class: 'ch-carte-entete ch-flex-c ch-g12' },
           el('div', { style: { minWidth: 0 } },
-            el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Pointages du jour'),
-            el('div', { style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } },
+            el('div', { class: 'ch-titre-carte' }, 'Pointages du jour'),
+            el('div', { class: 'ch-legende', style: { marginTop: 2 } },
               'Arrivée, pauses, départ — clique pour corriger une heure.'),
           ),
           aArrivee ? el('div', { style: { marginLeft: 'auto', textAlign: 'right' } },
-            el('div', { style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } },
+            el('div', { class: 'ch-surtitre ch-surtitre--xs' },
               'Présence totale'),
-            el('div', { style: { display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end', marginTop: 4 } },
-              (isToday && !estParti) ? el('span', { style: { width: 6, height: 6, borderRadius: '50%', background: 'var(--cv-success-500)', animation: 'cv-pulse 2s infinite' } }) : null,
+            el('div', { class: 'ch-flex-c', style: { gap: 5, justifyContent: 'flex-end', marginTop: 4 } },
+              (isToday && !estParti) ? el('span', { class: 'ch-point', style: { background: 'var(--cv-success-500)', animation: 'cv-pulse 2s infinite' } }) : null,
               el('span', { style: { font: '500 16px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, fmtDuree(presence)),
             ),
           ) : null,
           el('div', { style: { marginLeft: aArrivee ? 0 : 'auto' } },
-            UI.Button({
+            cle(UI.Button({
               size: 'sm', icon: 'plus', children: 'Ajouter',
               onclick: () => ouvrirEditionPointage(null, jourDebut),
-            }),
+            }), 'pointage:ajouter'),
           ),
         ),
         ordres.length === 0
           ? el('div', {
-              style: { padding: '24px 16px', textAlign: 'center', color: 'var(--cv-fg-muted)', font: '400 13px/1.5 var(--cv-font-sans)' },
+              class: 'ch-vide', style: { padding: '24px 16px' },
             },
               icon('clock', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
               el('div', { style: { marginTop: 6 } }, 'Aucun pointage pour ce jour.'),
               el('div', { style: { marginTop: 4, font: '400 12px/1.4 var(--cv-font-sans)' } },
                 'Utilise « Ajouter » pour reconstituer la journée.'),
             )
-          : el('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8, padding: 12 } },
+          : el('div', { class: 'ch-flex ch-g8', style: { flexWrap: 'wrap', padding: 12 } },
               ordres.map(p => {
                 const meta = POINTAGE_META[p.type] || POINTAGE_META.arrivee;
                 return el('button', {
+                  dataset: { focusKey: `pointage:${p.id ?? `${p.type}-${p.at}`}` },
                   onclick: () => ouvrirEditionPointage(p, jourDebut),
                   title: 'Modifier ou supprimer ce pointage',
-                  style: {
-                    display: 'inline-flex', alignItems: 'center', gap: 10,
-                    padding: '8px 12px', borderRadius: 8,
-                    background: 'var(--cv-neutral-50)', border: '1px solid var(--cv-border)',
-                    cursor: 'pointer', font: 'inherit', color: 'var(--cv-fg)', textAlign: 'left',
-                    transition: 'background 120ms, border-color 120ms',
-                  },
-                  onmouseenter: e => { e.currentTarget.style.background = 'var(--cv-surface-2)'; e.currentTarget.style.borderColor = 'var(--cv-border-strong)'; },
-                  onmouseleave: e => { e.currentTarget.style.background = 'var(--cv-neutral-50)'; e.currentTarget.style.borderColor = 'var(--cv-border)'; },
+                  class: 'ch-chip ch-chip--teinte',
+                  style: { display: 'inline-flex', alignItems: 'center', gap: 10, padding: '8px 12px' },
                 },
                   icon(meta.icon, { size: 16, style: { color: meta.color } }),
-                  el('div', { style: { display: 'flex', flexDirection: 'column', gap: 2 } },
+                  el('div', { class: 'ch-pile ch-g2' },
                     el('div', {
-                      style: { font: '500 10px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' },
+                      class: 'ch-surtitre ch-surtitre--xs',
                     }, meta.label),
                     el('div', { style: { font: '500 13px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' } }, fmtHeure(p.at)),
                   ),
@@ -611,7 +613,23 @@
     }
 
     /* ----------------- Render principal ----------------- */
+    // Défilement horizontal du graphique, mémorisé par jour affiché (clé = début du jour).
+    const scrollParJour = new Map();
+
     function render() {
+      // Avant de reconstruire : mémorise le défilement du graphique (pour le jour qu'il affiche)
+      // et l'élément focalisé. Un conteneur non affiché (scrollLeft forcé à 0) n'est pas mémorisé.
+      const ancienScroll = host.querySelector('[data-role="timeline-scroll"]');
+      // On ne mémorise qu'un conteneur déjà positionné : le tout premier rendu a lieu avant
+      // l'insertion dans le document (clientWidth = 0), et son scrollLeft de 0 écraserait
+      // sinon le centrage initial sur l'heure actuelle.
+      if (ancienScroll && ancienScroll.clientWidth > 0 && ancienScroll.dataset.positionne) {
+        scrollParJour.set(ancienScroll.dataset.jour, ancienScroll.scrollLeft);
+      }
+      const focusKey = host.contains(document.activeElement)
+        ? document.activeElement.closest('[data-focus-key]')?.dataset.focusKey
+        : null;
+
       const s = store.state;
       const dbase = new Date(); dbase.setHours(0, 0, 0, 0); dbase.setDate(dbase.getDate() + dateOffset);
       const jourDebut = dbase.getTime();
@@ -634,18 +652,18 @@
 
       host.replaceChildren(
         // Bandeau date + stats
-        el('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' } },
-          el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-            UI.IconButton({ icon: 'caret-left', label: 'Jour précédent', onclick: () => { dateOffset--; render(); } }),
+        el('div', { class: 'ch-flex', style: { alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' } },
+          el('div', { class: 'ch-flex-c ch-g8' },
+            cle(UI.IconButton({ icon: 'caret-left', label: 'Jour précédent', onclick: () => { dateOffset--; render(); } }), 'nav:precedent'),
             el('div', null,
-              el('div', { style: { font: '600 20px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)', letterSpacing: '-0.01em', textTransform: 'capitalize' } }, jourLabel),
-              el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'capitalize', marginTop: 2 } }, jourLabelDate),
+              el('div', { class: 'ch-titre-page', style: { textTransform: 'capitalize' } }, jourLabel),
+              el('div', { class: 'ch-meta', style: { textTransform: 'capitalize', marginTop: 2 } }, jourLabelDate),
             ),
-            UI.IconButton({ icon: 'caret-right', label: 'Jour suivant', disabled: dateOffset >= 0, onclick: () => { dateOffset++; render(); } }),
-            dateOffset !== 0 ? UI.Button({ size: 'sm', variant: 'ghost', children: "Aujourd'hui", onclick: () => { dateOffset = 0; render(); } }) : null,
+            cle(UI.IconButton({ icon: 'caret-right', label: 'Jour suivant', disabled: dateOffset >= 0, onclick: () => { dateOffset++; render(); } }), 'nav:suivant'),
+            dateOffset !== 0 ? cle(UI.Button({ size: 'sm', variant: 'ghost', children: "Aujourd'hui", onclick: () => { dateOffset = 0; render(); } }), 'nav:aujourdhui') : null,
           ),
           el('div', { style: { flex: 1 } }),
-          el('div', { style: { display: 'flex', gap: 28 } },
+          el('div', { class: 'ch-flex', style: { gap: 28 } },
             statBloc('Temps travaillé', fmtDuree(totalTravaille), `${sessionsJ.length} session${sessionsJ.length > 1 ? 's' : ''}`),
             statBloc('Amplitude',
               arrivee ? `${fmtHeure(arrivee.at)} → ${dernierDepart ? fmtHeure(dernierDepart.at) : '···'}` : '—',
@@ -655,14 +673,14 @@
         ),
 
         // Timeline chart
-        el('section', { style: { background: 'var(--cv-surface)', border: '1px solid var(--cv-border)', borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden' } },
-          el('header', { style: { padding: '12px 16px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center', gap: 12 } },
+        el('section', { class: 'ch-carte ch-carte--rogne' },
+          el('header', { class: 'ch-carte-entete ch-flex-c ch-g12' },
             el('div', null,
-              el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Journée en continu'),
-              el('div', { style: { font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2 } },
+              el('div', { class: 'ch-titre-carte' }, 'Journée en continu'),
+              el('div', { class: 'ch-legende', style: { marginTop: 2 } },
                 'Les chronos en parallèle s’empilent en voies · glisse pour faire défiler'),
             ),
-            el('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12, font: '400 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
+            el('div', { class: 'ch-flex-c ch-g12', style: { marginLeft: 'auto', font: '400 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
               legendeItem('var(--cv-success-500)', 'Présence'),
               legendeItem('var(--cv-warning-400)', 'Pause', true),
               legendeItem('var(--cv-fg)', 'Session'),
@@ -674,12 +692,34 @@
         // Bas : sessions + répartition
         el('div', { style: { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 } },
           sessionsListe(sessionsJ, s.projets),
-          el('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } },
+          el('div', { class: 'ch-pile ch-g20' },
             pointageSection(pointageJ, jourDebut, isToday),
             repartition(sessionsJ, s.projets),
           ),
         ),
       );
+
+      // Restaure le défilement du graphique.
+      const scroller = host.querySelector('[data-role="timeline-scroll"]');
+      if (scroller && scroller.clientWidth > 0) {
+        const memo = scrollParJour.get(String(jourDebut));
+        if (memo != null) {
+          scroller.scrollLeft = memo;
+        } else if (isToday && scroller.scrollWidth > scroller.clientWidth) {
+          // Premier affichage du jour courant : l'heure actuelle visible, vers les 2/3 de la largeur.
+          scroller.scrollLeft = Math.max(0, CHART_PAD_X + tsToPx(Date.now()) - scroller.clientWidth * 2 / 3);
+        }
+        scroller.dataset.positionne = '1';
+      } else if (scroller && !scroller.isConnected) {
+        // Pas encore dans le document (premier rendu) : on positionne dès qu'il est affiché.
+        requestAnimationFrame(() => { if (scroller.isConnected && !scroller.dataset.positionne) render(); });
+      }
+
+      // Restaure le focus clavier.
+      if (focusKey) {
+        const cible = [...host.querySelectorAll('[data-focus-key]')].find(n => n.dataset.focusKey === focusKey);
+        if (cible) cible.focus({ preventScroll: true });
+      }
     }
 
     render();

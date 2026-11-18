@@ -2,10 +2,40 @@
 (function () {
   const { el, icon, fmtDuree, dureeVivante } = window.UI;
 
+  /* Construit le texte CSV du rapport (pure, sans DOM), prêt pour Excel en français :
+     BOM UTF-8 (accents), séparateur « ; », virgule décimale, fins de ligne CRLF. */
+  function construireCSVRapport(sessions, projets) {
+    // Neutralise l'injection de formule : une cellule texte commençant par = + - @
+    // (ou tabulation / retour chariot) serait interprétée comme formule par le tableur.
+    const texte = v => {
+      const t = String(v ?? '');
+      return /^[=+\-@\t\r]/.test(t) ? "'" + t : t;
+    };
+    const cell = v => `"${String(v).replace(/"/g, '""')}"`;
+    const hhmm = ts => new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)']];
+    for (const s of (sessions || []).slice().sort((a, b) => a.debut - b.debut)) {
+      const p = (projets || []).find(pr => pr.id === s.projetId);
+      const heures = dureeVivante(s) / 3600_000;
+      rows.push([
+        new Date(s.debut).toLocaleDateString('fr-FR'),
+        texte(p?.nom),
+        texte(p?.client),
+        texte(s.description),
+        hhmm(s.debut),
+        s.fin ? hhmm(s.fin) : '',
+        heures.toFixed(2).replace('.', ','),
+      ]);
+    }
+    return '\uFEFF' + rows.map(r => r.map(cell).join(';')).join('\r\n');
+  }
+  window.UI.construireCSVRapport = construireCSVRapport;
+
   function createRapport(store) {
     let semaineOffset = 0;
 
-    const host = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 20 } });
+    const host = el('div', { class: 'ch-pile ch-g20' });
 
     function bornesSemaine() {
       const now = new Date();
@@ -21,9 +51,9 @@
 
     function statCard(label, valeur, sousTexte, { accent, mono = true, extra } = {}) {
       return el('div', {
-        style: { background: 'var(--cv-surface)', border: '1px solid var(--cv-border)', borderRadius: 12, padding: 16, boxShadow: 'var(--cv-shadow-sm)' },
+        class: 'ch-carte', style: { padding: 16 },
       },
-        el('div', { style: { font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' } }, label),
+        el('div', { class: 'ch-surtitre' }, label),
         el('div', {
           style: {
             marginTop: 8, font: `500 26px/1 ${mono ? 'var(--cv-font-mono)' : 'var(--cv-font-sans)'}`,
@@ -37,11 +67,7 @@
 
     function Th(content, align = 'left') {
       return el('th', {
-        style: {
-          padding: '10px 16px', textAlign: align,
-          font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)',
-          textTransform: 'uppercase', letterSpacing: '0.06em',
-        },
+        class: 'ch-surtitre', style: { padding: '10px 16px', textAlign: align },
       }, content);
     }
     function Td(content, opts = {}) {
@@ -69,15 +95,14 @@
       const axisY = el('div', { style: { height: H, position: 'relative', width: 34, flexShrink: 0 } });
       for (const h of paliers) {
         axisY.appendChild(el('div', {
+          class: 'ch-mono-xs',
           style: {
-            position: 'absolute', bottom: (h / maxH) * H, right: 0,
-            font: '500 10px/1 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)',
-            transform: 'translateY(50%)',
+            position: 'absolute', bottom: (h / maxH) * H, right: 0, transform: 'translateY(50%)',
           },
         }, `${h}h`));
       }
 
-      const bars = el('div', { style: { flex: 1, display: 'flex', gap: 8, alignItems: 'flex-end', height: H, position: 'relative' } });
+      const bars = el('div', { class: 'ch-flex ch-g8', style: { flex: 1, alignItems: 'flex-end', height: H, position: 'relative' } });
       for (const h of paliers) {
         bars.appendChild(el('div', {
           style: {
@@ -108,7 +133,7 @@
         }));
 
         bars.appendChild(el('div', {
-          style: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, position: 'relative', zIndex: 1 },
+          class: 'ch-pile ch-g6', style: { flex: 1, alignItems: 'center', position: 'relative', zIndex: 1 },
         },
           el('div', {
             style: {
@@ -119,13 +144,13 @@
           }, j.total > 0 ? fmtDuree(j.total, { compact: true }) : ''),
 
           el('div', {
+            class: 'ch-flex',
             style: {
-              width: '100%', maxWidth: 68, height: hauteurTotale,
-              display: 'flex', flexDirection: 'column-reverse',
+              width: '100%', maxWidth: 68, height: hauteurTotale, flexDirection: 'column-reverse',
               borderRadius: 4, overflow: 'hidden',
               background: isWeekend ? 'transparent' : 'var(--cv-neutral-100)',
-              boxShadow: isToday ? '0 0 0 2px var(--cv-accent-500)' : 'none',
-              position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+              boxShadow: isToday ? '0 0 0 2px var(--cv-accent-500)' : 'none', position: 'absolute',
+              bottom: 20, left: '50%', transform: 'translateX(-50%)',
             },
           }, segNodes),
 
@@ -139,7 +164,7 @@
         ));
       });
 
-      return el('div', { style: { display: 'flex', gap: 16 } }, axisY, bars);
+      return el('div', { class: 'ch-flex ch-g16' }, axisY, bars);
     }
 
     // Tableau récapitulatif de la distribution par jour : une ligne par jour,
@@ -159,7 +184,7 @@
       );
 
       return el('div', { style: { marginTop: 20, borderTop: '1px solid var(--cv-border)', overflowX: 'auto' } },
-        el('div', { style: { font: '600 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '16px 0 10px' } },
+        el('div', { class: 'ch-surtitre ch-surtitre--fort', style: { padding: '16px 0 10px' } },
           'Détail chiffré'),
         el('table', { style: { width: '100%', borderCollapse: 'collapse', minWidth: 480 } },
           el('thead', null,
@@ -169,8 +194,8 @@
                 style: { padding: '8px 12px', textAlign: 'right', font: '500 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' },
               },
                 el('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' } },
-                  el('span', { style: { width: 8, height: 8, borderRadius: 2, background: c.projet.couleur, flexShrink: 0 } }),
-                  el('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 } }, c.projet.nom),
+                  el('span', { class: 'ch-pastille', style: { background: c.projet.couleur, flexShrink: 0 } }),
+                  el('span', { class: 'ch-ellipse', style: { maxWidth: 120 } }, c.projet.nom),
                 ),
               )),
               Th('Total', 'right'),
@@ -204,25 +229,12 @@
     }
 
     function exportCSV(sessionsSem, projets, lundi) {
-      const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)']];
-      for (const s of sessionsSem.slice().sort((a, b) => a.debut - b.debut)) {
-        const p = projets.find(pr => pr.id === s.projetId);
-        const heures = dureeVivante(s) / 3600_000;
-        rows.push([
-          new Date(s.debut).toLocaleDateString('fr-FR'),
-          p?.nom || '',
-          p?.client || '',
-          s.description || '',
-          new Date(s.debut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-          s.fin ? new Date(s.fin).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '',
-          heures.toFixed(2),
-        ]);
-      }
-      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const csv = construireCSVRapport(sessionsSem, projets);
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `rapport-${lundi.toISOString().slice(0,10)}.csv`;
+      // Date locale (et non toISOString, qui passe en UTC : lundi 00:00 → dimanche).
+      a.href = url; a.download = `rapport-${UI.fmtDateISO(lundi)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -266,12 +278,12 @@
 
       host.replaceChildren(
         // Header
-        el('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' } },
-          el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+        el('div', { class: 'ch-flex ch-g16', style: { alignItems: 'flex-end', flexWrap: 'wrap' } },
+          el('div', { class: 'ch-flex-c ch-g8' },
             UI.IconButton({ icon: 'caret-left', label: 'Semaine précédente', onclick: () => { semaineOffset--; render(); } }),
             el('div', null,
-              el('div', { style: { font: '600 20px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, semLabel),
-              el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 2, textTransform: 'capitalize' } }, semDates),
+              el('div', { class: 'ch-titre-page' }, semLabel),
+              el('div', { class: 'ch-meta', style: { marginTop: 2, textTransform: 'capitalize' } }, semDates),
             ),
             UI.IconButton({ icon: 'caret-right', label: 'Semaine suivante', disabled: semaineOffset >= 0, onclick: () => { semaineOffset++; render(); } }),
             semaineOffset !== 0 ? UI.Button({ size: 'sm', variant: 'ghost', children: 'Cette semaine', onclick: () => { semaineOffset = 0; render(); } }) : null,
@@ -303,11 +315,11 @@
 
         // Graphique
         el('section', {
-          style: { background: 'var(--cv-surface)', border: '1px solid var(--cv-border)', borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', padding: 20 },
+          class: 'ch-carte', style: { padding: 20 },
         },
-          el('div', { style: { display: 'flex', alignItems: 'baseline', marginBottom: 16 } },
-            el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Distribution par jour'),
-            el('div', { style: { marginLeft: 'auto', font: '400 11px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } },
+          el('div', { class: 'ch-flex', style: { alignItems: 'baseline', marginBottom: 16 } },
+            el('div', { class: 'ch-titre-carte' }, 'Distribution par jour'),
+            el('div', { class: 'ch-legende', style: { marginLeft: 'auto' } },
               'Segments colorés = projets'),
           ),
           barresSemaine(parJour, projets, maxJour),
@@ -316,13 +328,13 @@
 
         // Table projets
         el('section', {
-          style: { background: 'var(--cv-surface)', border: '1px solid var(--cv-border)', borderRadius: 12, boxShadow: 'var(--cv-shadow-sm)', overflow: 'hidden' },
+          class: 'ch-carte ch-carte--rogne',
         },
           el('header', { style: { padding: '14px 20px', borderBottom: '1px solid var(--cv-border)' } },
-            el('div', { style: { font: '600 13px/1.3 var(--cv-font-sans)' } }, 'Par projet'),
+            el('div', { class: 'ch-titre-carte' }, 'Par projet'),
           ),
           projetsTri.length === 0
-            ? el('div', { style: { padding: '32px 16px', textAlign: 'center', color: 'var(--cv-fg-muted)', font: '400 13px/1.5 var(--cv-font-sans)' } },
+            ? el('div', { class: 'ch-vide' },
                 'Aucune session sur cette semaine.')
             : el('table', { style: { width: '100%', borderCollapse: 'collapse' } },
                 el('thead', null,
@@ -335,9 +347,9 @@
                     const sessionsCount = sessionsSem.filter(s => s.projetId === id).length;
                     const part = totalSemaine > 0 ? (duree / totalSemaine) * 100 : 0;
                     return el('tr', { style: { borderBottom: '1px solid var(--cv-border)' } },
-                      Td(el('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
-                        el('span', { style: { width: 8, height: 8, borderRadius: 2, background: projet.couleur } }),
-                        el('span', { style: { font: '500 13px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, projet.nom),
+                      Td(el('div', { class: 'ch-flex-c ch-g8' },
+                        el('span', { class: 'ch-pastille', style: { background: projet.couleur } }),
+                        el('span', { class: 'ch-libelle' }, projet.nom),
                       )),
                       Td(projet.client || '—', { muted: true }),
                       Td(String(sessionsCount), { align: 'right', mono: true }),

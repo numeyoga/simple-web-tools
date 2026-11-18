@@ -12,26 +12,15 @@ function Button(opts = {}) {
   } = opts;
 
   const base = {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
     height: size === 'sm' ? 28 : size === 'lg' ? 36 : 32,
     padding: size === 'sm' ? '0 10px' : size === 'lg' ? '0 14px' : '0 12px',
-    borderRadius: 8, border: '1px solid transparent',
-    fontFamily: 'var(--cv-font-sans)', fontSize: 13, fontWeight: 500, lineHeight: 1,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
-    transition: 'background-color 120ms, border-color 120ms, transform 80ms',
-    whiteSpace: 'nowrap', userSelect: 'none',
-  };
-  const variants = {
-    primary:     { background: 'var(--cv-accent-500)', color: '#fff', borderColor: 'var(--cv-accent-500)' },
-    secondary:   { background: 'var(--cv-surface)', color: 'var(--cv-fg)', borderColor: 'var(--cv-border-strong)' },
-    ghost:       { background: 'transparent', color: 'var(--cv-fg)', borderColor: 'transparent' },
-    destructive: { background: 'var(--cv-danger-500)', color: '#fff', borderColor: 'var(--cv-danger-500)' },
-    success:     { background: 'var(--cv-success-500)', color: '#fff', borderColor: 'var(--cv-success-500)' },
   };
   const btn = el('button', {
     type, disabled, title,
-    style: { ...base, ...variants[variant], ...(style || {}) },
+    class: `ch-btn ch-btn--${variant}`,
+    style: { ...base, ...(style || {}) },
     onclick: disabled ? null : onclick,
     onmousedown: e => { if (!disabled) e.currentTarget.style.transform = 'scale(0.97)'; },
     onmouseup:   e => { e.currentTarget.style.transform = 'none'; },
@@ -50,26 +39,16 @@ function Button(opts = {}) {
 function IconButton(opts = {}) {
   const { icon: iconName, label, onclick, variant = 'ghost', size = 'md', disabled, weight = '', title, style } = opts;
   const dim = size === 'sm' ? 26 : size === 'lg' ? 36 : 30;
-  const variants = {
-    ghost:     { background: 'transparent', color: 'var(--cv-fg-muted)' },
-    secondary: { background: 'var(--cv-surface)', color: 'var(--cv-fg)', border: '1px solid var(--cv-border-strong)' },
-    primary:   { background: 'var(--cv-accent-500)', color: '#fff' },
-    danger:    { background: 'var(--cv-danger-500)', color: '#fff' },
-  };
   return el('button', {
     'aria-label': label, disabled, title: title || label,
+    class: `ch-icon-btn ch-icon-btn--${variant}`,
     style: {
-      width: dim, height: dim, borderRadius: 8, border: 'none',
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: dim, height: dim,
       cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.4 : 1,
-      transition: 'background-color 120ms',
-      ...variants[variant],
       ...(style || {}),
     },
     onclick: disabled ? null : onclick,
-    onmouseenter: e => { if (!disabled && variant === 'ghost') e.currentTarget.style.background = 'var(--cv-surface-2)'; },
-    onmouseleave: e => { if (variant === 'ghost') e.currentTarget.style.background = 'transparent'; },
   }, icon(iconName, { weight, size: 16 }));
 }
 
@@ -84,13 +63,12 @@ function Input(opts = {}) {
     type, value: value ?? '', placeholder, name,
     autocomplete: 'off',
     oninput, onkeydown, onblur,
+    class: 'ch-champ ch-champ--anime',
     style: {
       width: '100%', boxSizing: 'border-box', height: 32,
       padding: iconName ? '0 10px 0 30px' : '0 10px',
-      border: `1px solid ${error ? 'var(--cv-danger-500)' : 'var(--cv-border-strong)'}`,
-      borderRadius: 8, background: 'var(--cv-surface)', color: 'var(--cv-fg)',
-      font: '400 13px/1 var(--cv-font-sans)', outline: 'none',
-      transition: 'border-color 120ms, box-shadow 120ms',
+      ...(error ? { border: '1px solid var(--cv-danger-500)' } : {}),
+      font: '400 13px/1 var(--cv-font-sans)',
     },
     onfocus: e => { e.target.style.borderColor = 'var(--cv-accent-500)'; e.target.style.boxShadow = 'var(--cv-shadow-focus)'; },
     onblurCapture: null,
@@ -99,16 +77,14 @@ function Input(opts = {}) {
   input.addEventListener('blur', e => { e.target.style.borderColor = 'var(--cv-border-strong)'; e.target.style.boxShadow = 'none'; });
   if (autoFocus) setTimeout(() => input.focus(), 0);
 
-  const wrapper = el('label', {
-    style: { display: 'flex', flexDirection: 'column', gap: 4, ...(style || {}) },
-  },
-    label ? el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, label) : null,
-    el('span', { style: { position: 'relative', display: 'flex', alignItems: 'center' } },
+  const wrapper = el('label', { class: 'ch-pile ch-g4', style },
+    label ? el('span', { class: 'ch-label' }, label) : null,
+    el('span', { class: 'ch-flex-c', style: { position: 'relative' } },
       iconName ? icon(iconName, { size: 14, style: { position: 'absolute', left: 10, color: 'var(--cv-fg-subtle)' } }) : null,
       input,
     ),
     error ? el('span', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-danger)' } }, error) : null,
-    (hint && !error) ? el('span', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)' } }, hint) : null,
+    (hint && !error) ? el('span', { class: 'ch-indice' }, hint) : null,
   );
   wrapper.input = input;
   return wrapper;
@@ -129,13 +105,10 @@ function Textarea(opts = {}) {
     placeholder, name, rows,
     maxlength: maxLength || null,
     oninput: e => { if (counter) updateCounter(); if (oninput) oninput(e); },
+    class: 'ch-champ ch-champ--anime',
     style: {
       width: '100%', boxSizing: 'border-box', resize: 'vertical', minHeight: 72,
-      padding: '8px 10px',
-      border: '1px solid var(--cv-border-strong)', borderRadius: 8,
-      background: 'var(--cv-surface)', color: 'var(--cv-fg)',
-      font: '400 13px/1.5 var(--cv-font-sans)', outline: 'none',
-      transition: 'border-color 120ms, box-shadow 120ms',
+      padding: '8px 10px', font: '400 13px/1.5 var(--cv-font-sans)',
     },
     onfocus: e => { e.target.style.borderColor = 'var(--cv-accent-500)'; e.target.style.boxShadow = 'var(--cv-shadow-focus)'; },
   });
@@ -145,13 +118,13 @@ function Textarea(opts = {}) {
   updateCounter();
   if (autoFocus) setTimeout(() => ta.focus(), 0);
 
-  const wrapper = el('label', { style: { display: 'flex', flexDirection: 'column', gap: 4, ...(style || {}) } },
-    (label || counter) ? el('span', { style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
-      label ? el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, label) : null,
+  const wrapper = el('label', { class: 'ch-pile ch-g4', style },
+    (label || counter) ? el('span', { class: 'ch-flex ch-g8', style: { alignItems: 'baseline' } },
+      label ? el('span', { class: 'ch-label' }, label) : null,
       counter,
     ) : null,
     ta,
-    hint ? el('span', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)' } }, hint) : null,
+    hint ? el('span', { class: 'ch-indice' }, hint) : null,
   );
   wrapper.input = ta;
   return wrapper;
@@ -164,21 +137,20 @@ function Select(opts = {}) {
   const select = el('select', {
     name,
     onchange: onchange ? e => onchange(e.target.value) : null,
+    class: 'ch-champ',
     style: {
       width: '100%', height: h, padding: '0 28px 0 10px',
-      border: '1px solid var(--cv-border-strong)', borderRadius: 8,
-      background: 'var(--cv-surface)', color: 'var(--cv-fg)',
       font: `400 ${size === 'sm' ? 12 : 13}px/1 var(--cv-font-sans)`,
       appearance: 'none', WebkitAppearance: 'none',
-      cursor: 'pointer', outline: 'none',
+      cursor: 'pointer',
     },
   },
     options.map(o => el('option', { value: o.value, selected: o.value === value }, o.label))
   );
 
-  const wrapper = el('label', { style: { display: 'flex', flexDirection: 'column', gap: 4, ...(style || {}) } },
-    label ? el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, label) : null,
-    el('span', { style: { position: 'relative', display: 'flex' } },
+  const wrapper = el('label', { class: 'ch-pile ch-g4', style },
+    label ? el('span', { class: 'ch-label' }, label) : null,
+    el('span', { class: 'ch-flex', style: { position: 'relative' } },
       select,
       icon('caret-down', { size: 12, style: { position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--cv-fg-subtle)', pointerEvents: 'none' } }),
     ),
@@ -204,12 +176,10 @@ function Autocomplete(opts = {}) {
   const input = el('input', {
     type: 'text', value, placeholder, name,
     autocomplete: 'off',
+    class: 'ch-champ ch-champ--anime',
     style: {
       width: '100%', boxSizing: 'border-box', height: 32, padding: '0 10px',
-      border: '1px solid var(--cv-border-strong)', borderRadius: 8,
-      background: 'var(--cv-surface)', color: 'var(--cv-fg)',
-      font: '400 13px/1 var(--cv-font-sans)', outline: 'none',
-      transition: 'border-color 120ms, box-shadow 120ms',
+      font: '400 13px/1 var(--cv-font-sans)',
     },
   });
 
@@ -307,14 +277,15 @@ function Autocomplete(opts = {}) {
   if (autoFocus) setTimeout(() => input.focus(), 0);
 
   const wrapper = el('label', {
-    style: { display: 'flex', flexDirection: 'column', gap: 4, position: 'relative', ...(style || {}) },
+    class: 'ch-pile ch-g4',
+    style: { position: 'relative', ...(style || {}) },
   },
-    label ? el('span', { style: { font: '500 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' } }, label) : null,
-    el('span', { style: { position: 'relative', display: 'flex', alignItems: 'center' } },
+    label ? el('span', { class: 'ch-label' }, label) : null,
+    el('span', { class: 'ch-flex-c', style: { position: 'relative' } },
       input,
       list,
     ),
-    hint ? el('span', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)' } }, hint) : null,
+    hint ? el('span', { class: 'ch-indice' }, hint) : null,
   );
   wrapper.input = input;
   return wrapper;
@@ -340,7 +311,7 @@ function Badge(opts = {}) {
       ...(style || {}),
     },
   },
-    dot ? el('span', { style: { width: 6, height: 6, borderRadius: '50%', background: v.dot } }) : null,
+    dot ? el('span', { class: 'ch-point', style: { background: v.dot } }) : null,
     children,
   );
 }
@@ -362,10 +333,9 @@ function Modal(opts = {}) {
 
   const root = el('div', {
     role: 'dialog', 'aria-modal': 'true', 'aria-label': title || '',
+    class: 'ch-flex-c',
     style: {
-      position: 'fixed', inset: 0, zIndex: 300,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--cv-overlay)',
+      position: 'fixed', inset: 0, zIndex: 300, justifyContent: 'center', background: 'var(--cv-overlay)',
       animation: 'cv-fade 180ms var(--cv-ease-standard)',
     },
     onclick: e => { if (e.target === e.currentTarget) close(); },
@@ -380,7 +350,7 @@ function Modal(opts = {}) {
       },
     },
       title ? el('div', {
-        style: { padding: '16px 20px', borderBottom: '1px solid var(--cv-border)', display: 'flex', alignItems: 'center' },
+        class: 'ch-flex-c', style: { padding: '16px 20px', borderBottom: '1px solid var(--cv-border)' },
       },
         el('div', { style: { font: '600 15px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, title),
         el('button', {
@@ -394,9 +364,9 @@ function Modal(opts = {}) {
       ) : null,
       el('div', { style: { padding: '16px 20px', font: '400 13px/1.5 var(--cv-font-sans)', color: 'var(--cv-fg)' } }, body),
       footer ? el('div', {
+        class: 'ch-flex ch-g8',
         style: {
-          padding: '12px 20px', borderTop: '1px solid var(--cv-border)',
-          background: 'var(--cv-neutral-50)', display: 'flex', gap: 8,
+          padding: '12px 20px', borderTop: '1px solid var(--cv-border)', background: 'var(--cv-neutral-50)',
           justifyContent: 'flex-end', borderBottomLeftRadius: 12, borderBottomRightRadius: 12,
         },
       }, footer) : null,
@@ -418,10 +388,9 @@ function Modal(opts = {}) {
 /* ------------------ Toast ------------------ */
 function ToastHost() {
   const host = el('div', {
+    class: 'ch-pile ch-g8',
     style: {
-      position: 'fixed', bottom: 20, right: 20,
-      display: 'flex', flexDirection: 'column', gap: 8, zIndex: 400,
-      pointerEvents: 'none',
+      position: 'fixed', bottom: 20, right: 20, zIndex: 400, pointerEvents: 'none',
     },
   });
   document.body.appendChild(host);
@@ -431,12 +400,11 @@ function ToastHost() {
     const colors = { success: '#4ade80', warning: '#facc15', danger: '#fb7185', info: '#fdba74' };
     const node = el('div', {
       role: 'status',
+      class: 'ch-flex ch-g10',
       style: {
-        padding: '10px 14px', background: '#09090b', color: '#fafafa',
-        borderRadius: 10, font: '400 13px/1.4 var(--cv-font-sans)',
-        boxShadow: 'var(--cv-shadow-xl)', display: 'flex', gap: 10, alignItems: 'flex-start',
-        minWidth: 280, maxWidth: 380,
-        animation: 'cv-slide-in 200ms var(--cv-ease-standard)',
+        padding: '10px 14px', background: '#09090b', color: '#fafafa', borderRadius: 10,
+        font: '400 13px/1.4 var(--cv-font-sans)', boxShadow: 'var(--cv-shadow-xl)', alignItems: 'flex-start',
+        minWidth: 280, maxWidth: 380, animation: 'cv-slide-in 200ms var(--cv-ease-standard)',
         pointerEvents: 'auto',
       },
     },

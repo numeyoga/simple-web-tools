@@ -1,64 +1,105 @@
-Example plain HTML site using GitLab Pages.
+# Chrono
 
-Learn more about GitLab Pages at https://pages.gitlab.io and the official
-documentation https://docs.gitlab.com/ce/user/project/pages/.
+Application de suivi du temps en JavaScript vanilla : pas de framework, pas de
+build, pas de dépendance à installer. Le dossier `public/` est servi tel quel.
 
----
+## Fonctionnalités
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+- **Chronos parallèles** : plusieurs sessions peuvent tourner en même temps,
+  avec pause et reprise individuelles ou globales.
+- **Pointage de présence** : arrivée, pause, départ, affichés dans le widget de
+  la barre latérale.
+- **Saisie manuelle** : création d'une session déjà terminée (rattrapage) et
+  édition d'une session existante (projet, description, début, fin).
+- **Todos** : liste de tâches avec filtre par projet et groupes par échéance.
+  Une todo peut lancer un chrono.
+- **Projets** : cartes avec totaux, couleur, client, archivage.
+- **Rapport hebdomadaire** : totaux par jour et par projet, export CSV
+  (séparateur `;`, virgule décimale, BOM UTF-8, lisible dans Excel en français).
+- **Espaces de sauvegarde** : plusieurs jeux de données indépendants, création,
+  renommage, suppression, bascule.
+- **Export et import JSON** d'un espace (l'import remplace les données de
+  l'espace courant après confirmation).
 
-- [GitLab CI](#gitlab-ci)
-- [GitLab User or Group Pages](#gitlab-user-or-group-pages)
-- [Did you fork this project?](#did-you-fork-this-project)
-- [Troubleshooting](#troubleshooting)
+## Données
 
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+Tout reste dans le navigateur, rien n'est envoyé à un serveur.
 
-## GitLab CI
+- Chaque espace possède sa propre base IndexedDB (`chrono__<id>`).
+- Si IndexedDB est indisponible ou ne s'ouvre pas, les données sont écrites en
+  repli dans `localStorage` (`chrono.fallback.<id>.v1`).
+- La liste des espaces et l'espace actif sont dans `localStorage`.
+- Changer d'espace ou importer un JSON recharge la page.
 
-This project's static Pages are built by [GitLab CI][ci], following the steps
-defined in [`.gitlab-ci.yml`](.gitlab-ci.yml):
+Vider les données du site dans le navigateur efface donc les données de Chrono :
+pensez à l'export JSON pour sauvegarder.
 
+## Architecture
+
+Scripts classiques (pas de modules ES), chargés dans cet ordre par
+`public/index.html`. Chaque fichier expose ses fonctions sur `window`.
+
+| Fichier | Rôle |
+| --- | --- |
+| `js/lib.js` | Aides DOM (`el`, `icon`, `mount`) et formatage (durées, heures, jours). |
+| `js/ui.js` | Primitives d'interface : Button, Input, Select, Badge, Kbd, Modal, Toast. |
+| `js/db.js` | Store applicatif, persistance IndexedDB avec repli localStorage, espaces de sauvegarde (`window.WORKSPACES`), export et import JSON. |
+| `js/PointageWidget.js` | Widget de la barre latérale : présence et chrono actif. |
+| `js/Timeline.js` | Vue Timeline : bandeau de date, stats, graphe horaire, sessions, modale d'édition de session. |
+| `js/Todos.js` | Vue Todos. |
+| `js/Projets.js` | Vue Projets. |
+| `js/Rapport.js` | Vue Rapport hebdomadaire et export CSV. |
+| `js/QuickAdd.js` | Modale « ajouter un chrono » (démarrage immédiat ou saisie manuelle). |
+| `js/Workspaces.js` | Modale de gestion des espaces, export et import JSON. |
+| `js/App.js` | Point d'entrée : barre latérale, navigation entre vues, raccourcis clavier. |
+
+Principe : un store unique (`createStore()` dans `db.js`) détient l'état
+(`projets`, `todos`, `sessions`, `pointage`) et expose des `actions`. Chaque
+action modifie l'état puis notifie les écouteurs (`store.onState`). Un
+minuteur d'une seconde notifie en plus `store.onTick`, utilisé pour les durées
+des chronos en cours. Chaque vue s'abonne et **re-rend entièrement** son
+contenu à chaque notification ; il n'y a ni diff ni état local persistant.
+Les écritures en base sont regroupées et différées de quelques dizaines de
+millisecondes.
+
+Les icônes [Phosphor](https://phosphoricons.com/) (version 2.1.1, licence MIT)
+sont servies depuis `public/assets/vendor/phosphor/` (graisses regular, fill et
+bold). Le thème visuel est `public/assets/covenant.css`.
+
+## Lancer en local
+
+```sh
+python3 -m http.server --directory public
 ```
-image: busybox
 
-pages:
-  stage: deploy
-  script:
-  - echo 'Nothing to do...'
-  artifacts:
-    paths:
-    - public
-    expire_in: 1 day
-  rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+Puis ouvrir <http://localhost:8000>.
+
+## Tests
+
+```sh
+node --test tests/
 ```
 
-The above example expects to put all your HTML files in the `public/` directory.
+Aucune dépendance à installer. `tests/helpers/load.mjs` charge les scripts de
+`public/js` dans un contexte `node:vm` avec un faux `window` (sans IndexedDB,
+le store utilise donc son repli localStorage).
 
-## GitLab User or Group Pages
+## Déploiement
 
-To use this project as your user/group website, you will need one additional
-step: just rename your project to `namespace.gitlab.io`, where `namespace` is
-your `username` or `groupname`. This can be done by navigating to your
-project's **Settings**.
+La CI GitLab (`.gitlab-ci.yml`) comporte deux jobs :
 
-Read more about [user/group Pages][userpages] and [project Pages][projpages].
+1. `test` lance `node --test tests/` (image `node:22-alpine`) sur toutes les
+   branches et les merge requests ;
+2. `pages` publie le dossier `public/` sur GitLab Pages, uniquement sur la
+   branche par défaut et seulement si `test` a réussi.
 
-## Did you fork this project?
+## Raccourcis clavier
 
-If you forked this project for your own use, please go to your project's
-**Settings** and remove the forking relationship, which won't be necessary
-unless you want to contribute back to the upstream project.
+Actifs hors champ de saisie et hors modale ouverte, sans Ctrl, Alt ni Meta.
 
-## Troubleshooting
-
-1. CSS is missing! That means that you have wrongly set up the CSS URL in your
-   HTML files. Have a look at the [index.html] for an example.
-
-[ci]: https://about.gitlab.com/gitlab-ci/
-[index.html]: https://gitlab.com/pages/plain-html/blob/master/public/index.html
-[userpages]: https://docs.gitlab.com/ce/user/project/pages/introduction.html#user-or-group-pages
-[projpages]: https://docs.gitlab.com/ce/user/project/pages/introduction.html#project-pages
+| Touche | Action |
+| --- | --- |
+| `Espace` | Si aucun chrono n'est actif : ouvre « nouveau chrono ». Sinon met tout en pause, ou reprend tout si tout est en pause. |
+| `N` | Nouveau chrono. |
+| `S` | Arrête tous les chronos actifs. |
+| `Échap` | Ferme la modale ouverte. |

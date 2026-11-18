@@ -2,39 +2,46 @@
 (function () {
   const { el, icon, startOfDay } = window.UI;
 
-  // Convertit une étiquette d'échéance ('today', 'tomorrow', 'fri', 'mon', ...) en timestamp absolu,
-  // ancré sur la date de création du todo (pour qu'un "today" créé hier devienne "overdue" aujourd'hui).
-  function resoudreEcheance(label, creeLe) {
-    if (!label) return null;
-    const base = startOfDay(new Date(creeLe || Date.now()));
-    const J = 86400000;
-    if (label === 'today')    return base;
-    if (label === 'tomorrow') return base + J;
-    // jour de la semaine : on cherche le prochain ≥ base (lundi=1 ... dimanche=0)
-    const dayMap = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 };
-    if (label in dayMap) {
-      const target = dayMap[label];
-      const baseDay = new Date(base).getDay();
-      let diff = (target - baseDay + 7) % 7;
-      if (diff === 0) diff = 0; // même jour ok
-      return base + diff * J;
-    }
-    if (label === 'week') return base + 6 * J;
-    return null;
+  // Une échéance est stockée sous forme de date locale 'AAAA-MM-JJ' (ou null).
+  // Les raccourcis de l'interface ('today', 'tomorrow', 'fri', 'mon', 'week'...) ne sont que des
+  // presets : ils sont convertis en date au moment du choix, par rapport à AUJOURD'HUI (`ref`).
+  // La conversion elle-même (echeanceRelativeVersDate) vit dans db.js, qui l'utilise aussi pour
+  // migrer les anciennes étiquettes relatives (ancrées, elles, sur creeLe).
+  function presetVersDate(preset, ref = Date.now()) {
+    return echeanceRelativeVersDate(preset, ref);
   }
 
-  // Catégorise un todo en fonction de la date d'échéance et d'aujourd'hui.
+  // 'AAAA-MM-JJ' -> timestamp de minuit local ; null si absent ou invalide.
+  function dateEcheanceVersTs(str) {
+    if (typeof str !== 'string') return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str);
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]);
+    // refuse les dates impossibles (2026-02-30 deviendrait le 2 mars)
+    if (d.getFullYear() !== +m[1] || d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[3]) return null;
+    return d.getTime();
+  }
+
+  // Catégorise un todo en fonction de la date d'échéance et d'aujourd'hui (`ref`).
   // Retourne : 'overdue' | 'today' | 'tomorrow' | 'week' | 'none' | 'done'.
-  function bucket(todo) {
+  // 'week' regroupe tout ce qui est au-delà de demain.
+  function bucket(todo, ref = Date.now()) {
     if (todo.fait) return 'done';
-    const due = resoudreEcheance(todo.echeance, todo.creeLe);
+    const due = dateEcheanceVersTs(todo.echeance);
     if (due == null) return 'none';
-    const today = startOfDay();
-    const J = 86400000;
-    if (due < today)            return 'overdue';
-    if (due < today + J)        return 'today';
-    if (due < today + 2 * J)    return 'tomorrow';
+    const today = startOfDay(new Date(ref));
+    const demain = new Date(today); demain.setDate(demain.getDate() + 1); // pas de +24 h : changements d'heure
+    const apresDemain = new Date(today); apresDemain.setDate(apresDemain.getDate() + 2);
+    if (due < today)                 return 'overdue';
+    if (due < demain.getTime())      return 'today';
+    if (due < apresDemain.getTime()) return 'tomorrow';
     return 'week';
+  }
+
+  // Date courte pour le badge : « ven. 21 nov. ».
+  function fmtEcheanceCourte(str) {
+    const ts = dateEcheanceVersTs(str);
+    return ts == null ? '' : new Date(ts).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
   function createTodos(store, opts) {
@@ -43,11 +50,11 @@
     let draftProjet = null;
     let lastProjetsRef = null;
 
-    const host = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 920 } });
+    const host = el('div', { class: 'ch-pile ch-g16', style: { maxWidth: 920 } });
     const headerSlot  = el('div', null);
     const formSlot    = el('div', null);
-    const filtresSlot = el('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } });
-    const listSlot    = el('div', { style: { display: 'flex', flexDirection: 'column', gap: 16 } });
+    const filtresSlot = el('div', { class: 'ch-flex ch-g6', style: { flexWrap: 'wrap' } });
+    const listSlot    = el('div', { class: 'ch-pile ch-g16' });
     host.append(headerSlot, formSlot, filtresSlot, listSlot);
 
     // Refs vers les inputs du form (préservées entre rendus de la liste)
@@ -67,8 +74,8 @@
       const open = todos.filter(t => !t.fait).length;
       const done = todos.filter(t => t.fait).length;
       headerSlot.replaceChildren(
-        el('div', { style: { font: '600 20px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)', letterSpacing: '-0.01em' } }, 'Todos'),
-        el('div', { style: { font: '400 12px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg-muted)', marginTop: 4 } },
+        el('div', { class: 'ch-titre-page' }, 'Todos'),
+        el('div', { class: 'ch-meta', style: { marginTop: 4 } },
           `${open} en cours · ${done} terminées`),
       );
     }
@@ -108,10 +115,9 @@
 
       formSlot.replaceChildren(
         el('div', {
+          class: 'ch-panneau ch-flex ch-g8',
           style: {
-            display: 'flex', gap: 8, alignItems: 'flex-end',
-            background: 'var(--cv-surface)', border: '1px solid var(--cv-border)',
-            borderRadius: 10, padding: 12, boxShadow: 'var(--cv-shadow-sm)',
+            alignItems: 'flex-end', padding: 12, boxShadow: 'var(--cv-shadow-sm)',
           },
         },
           inputW, selectPW, selectEW,
@@ -125,7 +131,8 @@
       const projVal = selectProjet?.value || draftProjet || 'none';
       const ech   = selectEcheance?.value || draftEcheance;
       if (!titre) return;
-      store.actions.ajouterTodo(titre, projVal === 'none' ? null : projVal, ech === 'none' ? null : ech);
+      // le preset ('today', 'fri'...) est converti en date absolue maintenant, pas stocké tel quel
+      store.actions.ajouterTodo(titre, projVal === 'none' ? null : projVal, presetVersDate(ech));
       inputTitre.value = '';
       inputTitre.focus();
     }
@@ -159,12 +166,14 @@
       );
     }
 
-    function echeanceBadge(b) {
+    function echeanceBadge(t) {
+      const b = bucket(t);
       const map = {
         overdue:  { label: 'en retard',   variant: 'danger' },
         today:    { label: "aujourd'hui", variant: 'accent' },
         tomorrow: { label: 'demain',      variant: 'neutral' },
-        week:     { label: 'cette semaine', variant: 'neutral' },
+        // au-delà de demain : la date courte est plus utile que « cette semaine »
+        week:     { label: fmtEcheanceCourte(t.echeance) || 'cette semaine', variant: 'neutral' },
       };
       const m = map[b];
       if (!m) return null;
@@ -187,27 +196,30 @@
           ...projets.map(p => ({ value: p.id, label: p.nom + (p.archive ? ' (archivé)' : '') })),
         ],
       });
-      const echW    = UI.Select({
-        label: 'Échéance', value: t.echeance || 'none',
-        options: [
-          { value: 'today',    label: "Aujourd'hui" },
-          { value: 'tomorrow', label: 'Demain' },
-          { value: 'fri',      label: 'Vendredi' },
-          { value: 'mon',      label: 'Lundi prochain' },
-          { value: 'week',     label: 'Cette semaine' },
-          { value: 'none',     label: 'Sans échéance' },
-        ],
+      // Échéance : date absolue modifiable + raccourcis qui remplissent le champ (relatifs à aujourd'hui).
+      const echW    = UI.Input({
+        label: 'Échéance', type: 'date',
+        value: dateEcheanceVersTs(t.echeance) != null ? t.echeance : '',
       });
+      const raccourcis = [
+        ['today', "Aujourd'hui"], ['tomorrow', 'Demain'], ['fri', 'Vendredi'], ['mon', 'Lundi'], ['none', 'Aucune'],
+      ];
+      const raccourcisRow = el('div', { class: 'ch-flex ch-g6', style: { flexWrap: 'wrap', marginTop: -4 } },
+        raccourcis.map(([preset, label]) => UI.Button({
+          variant: 'secondary', size: 'sm', children: label,
+          onclick: () => { echW.input.value = presetVersDate(preset) || ''; },
+        })),
+      );
       function enregistrer() {
         const titre = nomW.input.value.trim();
         if (!titre) return;
-        const ech = echW.input.value;
+        const ech = echW.input.value; // 'AAAA-MM-JJ' ou '' (champ vidé)
         const proj = projW.input.value;
         store.actions.majTodo(t.id, {
           titre,
           description: descW.input.value.trim().slice(0, 2000),
           projetId: proj === 'none' ? null : proj,
-          echeance: ech === 'none' ? null : ech,
+          echeance: dateEcheanceVersTs(ech) != null ? ech : null,
         });
         modal.close();
       }
@@ -219,7 +231,7 @@
       nomW.input.addEventListener('keydown', e => { if (e.key === 'Enter') enregistrer(); });
       modal = UI.Modal({
         title: 'Modifier la tâche', width: 460,
-        body: el('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } }, nomW, descW, projW, echW),
+        body: el('div', { class: 'ch-pile ch-g12' }, nomW, descW, projW, echW, raccourcisRow),
         footer: [
           UI.Button({ variant: 'destructive', icon: 'trash', children: 'Effacer', onclick: supprimer, style: { marginRight: 'auto' } }),
           UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
@@ -232,16 +244,11 @@
       const proj = store.state.projets.find(p => p.id === t.projetId);
       const hasDesc = !!(t.description && t.description.trim());
       const row = el('div', {
+        class: 'ch-ligne ch-flex ch-g12',
         style: {
-          display: 'flex', alignItems: 'flex-start', gap: 12,
-          padding: '11px 14px', minHeight: 44, boxSizing: 'border-box',
-          borderBottom: '1px solid var(--cv-border)',
-          background: 'var(--cv-surface)',
+          alignItems: 'flex-start', padding: '11px 14px', minHeight: 44, boxSizing: 'border-box',
           opacity: faded ? 0.6 : 1,
-          transition: 'background 120ms',
         },
-        onmouseenter: e => e.currentTarget.style.background = 'var(--cv-surface-2)',
-        onmouseleave: e => e.currentTarget.style.background = 'var(--cv-surface)',
       },
         el('button', {
           onclick: () => store.actions.toggleTodo(t.id),
@@ -256,16 +263,15 @@
           },
         }, t.fait ? icon('check', { weight: 'bold', size: 12, style: { color: '#fff' } }) : null),
 
-        el('div', { style: { minWidth: 0, flex: 1 } },
+        el('div', { class: 'ch-souple' },
           el('div', {
             title: 'Cliquer pour modifier',
             onclick: () => { if (!t.fait) ouvrirEditionTodo(t); },
+            class: 'ch-ellipse',
             style: {
               font: '400 13px/1.3 var(--cv-font-sans)',
               color: t.fait ? 'var(--cv-fg-subtle)' : 'var(--cv-fg)',
-              textDecoration: t.fait ? 'line-through' : 'none',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              cursor: t.fait ? 'default' : 'pointer',
+              textDecoration: t.fait ? 'line-through' : 'none', cursor: t.fait ? 'default' : 'pointer',
             },
           }, t.titre),
           hasDesc ? el('div', {
@@ -279,7 +285,7 @@
           }, t.description) : null,
         ),
 
-        el('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginTop: 1 } },
+        el('div', { class: 'ch-flex-c ch-g8', style: { flexShrink: 0, marginTop: 1 } },
           proj ? el('span', {
             style: { display: 'inline-flex', alignItems: 'center', gap: 6, font: '500 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-muted)' },
           },
@@ -289,9 +295,9 @@
             style: { font: '400 11px/1 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)', fontStyle: 'italic' },
           }, 'Sans projet'),
 
-          (t.echeance && !t.fait) ? echeanceBadge(bucket(t)) : null,
+          (t.echeance && !t.fait) ? echeanceBadge(t) : null,
 
-          el('div', { style: { display: 'flex', gap: 2 } },
+          el('div', { class: 'ch-flex ch-g2' },
             !t.fait ? UI.IconButton({
               icon: 'play', label: 'Démarrer un chrono sur cette tâche',
               onclick: () => opts.onDemarrerSurTodo(t.projetId, t.titre),
@@ -333,12 +339,12 @@
         const isDone = label === 'Terminé';
         sections.push(
           el('section', {
-            style: { background: 'var(--cv-surface)', border: '1px solid var(--cv-border)', borderRadius: 10, overflow: 'hidden' },
+            class: 'ch-panneau', style: { overflow: 'hidden' },
           },
             el('header', {
+              class: 'ch-flex-c ch-g8',
               style: {
                 padding: '10px 14px', borderBottom: '1px solid var(--cv-border)',
-                display: 'flex', alignItems: 'center', gap: 8,
                 background: isRetard ? 'var(--cv-danger-50)' : 'transparent',
               },
             },
@@ -391,5 +397,7 @@
     };
   }
 
+  // Fonctions pures exposées pour les tests.
+  window.UI.todos = { presetVersDate, dateEcheanceVersTs, bucket };
   window.createTodos = createTodos;
 })();
