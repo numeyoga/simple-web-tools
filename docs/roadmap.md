@@ -49,8 +49,6 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 ## Known issues inherited from the imported apps
 
-- `npm audit` reports high-severity advisories in development dependencies (Vite, Vitest).
-  They do not reach the deployed apps, but they should be cleared by an upgrade.
 - Locavern's main bundle exceeds Vite's chunk size warning; the notes editor is a candidate
   for a lazy import.
 - `apps/locavern/skills/system/run-workflow/` is an agent tooling skill left over from
