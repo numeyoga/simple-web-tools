@@ -1,50 +1,59 @@
 /** @import { AppPreferences, AssetMeta, HydratePayload, LocalTemplate, Note, Project, StoreEffect, Task, TrashItem, Whiteboard } from '../types.d.ts' */
 
-import { openDB } from 'idb';
+import {
+  acquireWriteLock as acquireAppWriteLock,
+  createStoresIfMissing,
+  databaseName,
+  inspectStorageStatus as inspectStatus,
+  onWriteLockReleased as onAppWriteLockReleased,
+  openDatabase,
+  waitForWriteLock as waitForAppWriteLock,
+} from '@simple-web-tools/storage';
 
-const DB_NAME = 'locavern-db';
-const DB_VERSION = 4;
-const LOCK_NAME = 'locavern-write-lock';
-const LOCK_CHANNEL = 'locavern-lock-channel';
+const APP_NAME = 'locavern';
+// Persisted names are frozen: existing users' data lives under them (see tests/unit/storage-idb.test.js).
+export const DB_NAME = databaseName(APP_NAME); // 'locavern-db'
 const LAST_BACKUP_META_KEY = 'lastBackupAt';
 
 /**
  * @typedef {AssetMeta & { readonly blob: Blob }} StoredAssetRecord
  */
 
+/** Object stores of the version 1 to 3 databases. */
+const BASE_STORES = ['meta', 'projects', 'tasks', 'notes', 'whiteboards', 'assets'].map((name) => ({
+  name,
+  keyPath: name === 'meta' ? 'key' : 'id',
+}));
+
+/** Every object store of the current schema (version 4). */
+const ALL_STORES = [
+  ...BASE_STORES,
+  { name: 'trash', keyPath: 'id' },
+  { name: 'templates', keyPath: 'id' },
+];
+
+/**
+ * Schema history. Locavern shipped a single idempotent `upgrade` that created every missing
+ * store whatever the version found on disk, so each step here is "create the stores that are
+ * missing": a new database and a database at version 1, 2 or 3 all end with the same eight
+ * stores, existing records untouched. Steps 0 to 2 only create the original stores. Step 3
+ * (version 3 to 4) creates all of them, so it is the one that guarantees the final shape for
+ * any older database, whatever exactly versions 1 to 3 contained. The version stays 4.
+ * @type {readonly import('@simple-web-tools/storage').Migration[]}
+ */
+export const LOCAVERN_MIGRATIONS = [
+  (db) => createStoresIfMissing(db, BASE_STORES),
+  (db) => createStoresIfMissing(db, BASE_STORES),
+  (db) => createStoresIfMissing(db, BASE_STORES),
+  (db) => createStoresIfMissing(db, ALL_STORES),
+];
+
 /**
  * Open or initialize the Locavern IndexedDB database.
  * @returns {Promise<import('idb').IDBPDatabase>}
  */
 export function openLocavernDb() {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('meta')) {
-        db.createObjectStore('meta', { keyPath: 'key' });
-      }
-      if (!db.objectStoreNames.contains('projects')) {
-        db.createObjectStore('projects', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('tasks')) {
-        db.createObjectStore('tasks', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('notes')) {
-        db.createObjectStore('notes', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('whiteboards')) {
-        db.createObjectStore('whiteboards', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('assets')) {
-        db.createObjectStore('assets', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('trash')) {
-        db.createObjectStore('trash', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('templates')) {
-        db.createObjectStore('templates', { keyPath: 'id' });
-      }
-    },
-  });
+  return openDatabase({ name: DB_NAME, migrations: LOCAVERN_MIGRATIONS });
 }
 
 /**
@@ -350,83 +359,22 @@ export async function applyStoreEffects(db, effects) {
 }
 
 /**
- * Notify other tabs via BroadcastChannel that the write lock was released.
- */
-function broadcastLockRelease() {
-  if (typeof BroadcastChannel === 'undefined') return;
-  try {
-    const ch = new BroadcastChannel(LOCK_CHANNEL);
-    ch.postMessage({ type: 'lock-released' });
-    ch.close();
-  } catch {
-    // Ignore broadcast errors.
-  }
-}
-
-/**
  * Acquire an exclusive Web Lock for editing across browser tabs.
  * If another tab holds the lock, resolves immediately with { acquired: false }.
  * @returns {Promise<{ acquired: boolean; release: () => void }>}
  */
 export function acquireWriteLock() {
-  if (typeof navigator === 'undefined' || !navigator.locks) {
-    return Promise.resolve({ acquired: true, release: () => {} });
-  }
-
-  return new Promise((resolve) => {
-    let settled = false;
-    navigator.locks
-      .request(LOCK_NAME, { ifAvailable: true }, (lock) => {
-        if (!lock) {
-          settled = true;
-          resolve({ acquired: false, release: () => {} });
-          return undefined;
-        }
-
-        return new Promise((releaseLock) => {
-          const release = () => {
-            releaseLock(undefined);
-            broadcastLockRelease();
-          };
-          settled = true;
-          resolve({ acquired: true, release });
-        });
-      })
-      .catch(() => {
-        if (!settled) {
-          resolve({ acquired: false, release: () => {} });
-        }
-      });
-  });
+  return acquireAppWriteLock(APP_NAME);
 }
 
 /**
  * Wait in the Web Locks queue until the exclusive write lock becomes available
- * (handles abrupt tab closes or crashes where beforeunload does not fire).\n * @param {(handle: { acquired: true; release: () => void }) => void} onAcquired
+ * (handles abrupt tab closes or crashes where beforeunload does not fire).
+ * @param {(handle: { acquired: true; release: () => void }) => void} onAcquired
  * @returns {() => void} Cancel function if the tab unloads before acquiring
  */
 export function waitForWriteLock(onAcquired) {
-  if (typeof navigator === 'undefined' || !navigator.locks) {
-    return () => {};
-  }
-
-  const controller = new AbortController();
-  navigator.locks
-    .request(LOCK_NAME, { signal: controller.signal }, (lock) => {
-      if (!lock) return undefined;
-      return new Promise((releaseLock) => {
-        const release = () => {
-          releaseLock(undefined);
-          broadcastLockRelease();
-        };
-        onAcquired({ acquired: true, release });
-      });
-    })
-    .catch(() => {
-      // Aborted or unavailable; ignore cleanly.
-    });
-
-  return () => controller.abort();
+  return waitForAppWriteLock(APP_NAME, onAcquired);
 }
 
 /**
@@ -435,16 +383,7 @@ export function waitForWriteLock(onAcquired) {
  * @returns {() => void}
  */
 export function onWriteLockReleased(onRelease) {
-  if (typeof BroadcastChannel === 'undefined') {
-    return () => {};
-  }
-  const ch = new BroadcastChannel(LOCK_CHANNEL);
-  ch.addEventListener('message', (event) => {
-    if (event.data?.type === 'lock-released') {
-      onRelease();
-    }
-  });
-  return () => ch.close();
+  return onAppWriteLockReleased(APP_NAME, onRelease);
 }
 
 /**
@@ -452,32 +391,6 @@ export function onWriteLockReleased(onRelease) {
  * @param {{ requestPersist?: boolean }} [opts]
  * @returns {Promise<{ supported: boolean; persisted: boolean; usageBytes: number | null; quotaBytes: number | null }>}
  */
-export async function inspectStorageStatus(opts = {}) {
-  if (typeof navigator === 'undefined' || !navigator.storage) {
-    return { supported: false, persisted: false, usageBytes: null, quotaBytes: null };
-  }
-  let persisted;
-  try {
-    persisted = await navigator.storage.persisted();
-    if (!persisted && opts.requestPersist && typeof navigator.storage.persist === 'function') {
-      persisted = await navigator.storage.persist();
-    }
-  } catch {
-    persisted = false;
-  }
-
-  let usageBytes = null;
-  let quotaBytes = null;
-  try {
-    if (typeof navigator.storage.estimate === 'function') {
-      const estimate = await navigator.storage.estimate();
-      usageBytes = typeof estimate.usage === 'number' ? estimate.usage : null;
-      quotaBytes = typeof estimate.quota === 'number' ? estimate.quota : null;
-    }
-  } catch {
-    usageBytes = null;
-    quotaBytes = null;
-  }
-
-  return { supported: true, persisted, usageBytes, quotaBytes };
+export function inspectStorageStatus(opts = {}) {
+  return inspectStatus(opts);
 }
