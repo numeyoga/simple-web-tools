@@ -6,7 +6,6 @@ playwright-report/
 test-results/
 apps/*/public/vendor/
 apps/*/public/assets/vendor/
-apps/locavern/skills/
 # Chrono predates the shared tooling; it joins Prettier when it is ported to ESM (docs/roadmap.md).
 apps/chrono/
 # Project skills, copied from the maintainer's personal skills (see CLAUDE.md).
