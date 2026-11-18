@@ -25,6 +25,12 @@ New code follows the reference architecture described in
 - ESLint, Prettier and `jsconfig` settings live in [`packages/config`](packages/config/README.md);
   an app extends them instead of copying them.
 
+## Translations
+
+An app keeps one catalog module per locale (`en`, `fr`) and builds its translator with
+[`packages/i18n`](packages/i18n/README.md). Add a one-line test that its `fr` catalog matches
+`en` (`compareCatalogs`), and never leave a hard-coded string in a view.
+
 ## Before opening a pull request
 
 ```bash

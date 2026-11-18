@@ -25,7 +25,7 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
       `covenant-design-system` skill (`.claude/skills/`) to English at the same time.
       **Do this after the interface comparison of step 4**: extracting Locavern's copy first
       would make Locavern's look the default, which the comparison exists to avoid.
-- [ ] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
+- [x] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
 - [x] `packages/storage`: IndexedDB opening and migrations, single-writer Web Lock, workspaces,
       JSON export and import, name prefixing.
 - [x] `packages/dates`: local calendar dates, DST-safe arithmetic.

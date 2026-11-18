@@ -1,0 +1,33 @@
+{
+  "name": "@simple-web-tools/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Message catalogs, plurals and Intl formatting for the Simple Web Tools apps",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/i18n"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./dom": "./src/dom.js"
+  },
+  "scripts": {
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@simple-web-tools/dates": "*"
+  },
+  "devDependencies": {
+    "@simple-web-tools/config": "*",
+    "@simple-web-tools/storage": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
