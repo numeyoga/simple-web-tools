@@ -22,6 +22,8 @@ New code follows the reference architecture described in
 - `src/core/`: pure domain logic, no DOM and no storage. Unit-tested with Vitest.
 - `src/adapters/`: IndexedDB, DOM views, files. Covered by Playwright tests.
 - Types are written in JSDoc and checked by `tsc --checkJs --strict`.
+- ESLint, Prettier and `jsconfig` settings live in [`packages/config`](packages/config/README.md);
+  an app extends them instead of copying them.
 
 ## Before opening a pull request
 

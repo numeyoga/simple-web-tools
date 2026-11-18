@@ -19,7 +19,7 @@ Convergence work between the apps, in order. Each step leaves `main` deployable.
 
 Extracted from Locavern, the reference app ([decision 0004](decisions/0004-reference-architecture.md)):
 
-- [ ] `packages/config`: ESLint, Prettier and `jsconfig` bases. Lint `scripts/` too.
+- [x] `packages/config`: ESLint, Prettier and `jsconfig` bases. Lint `scripts/` too.
 - [ ] `packages/covenant`: a single copy of the design system. Today Locavern and Chrono each
       carry their own version, and Chrono's loads Google Fonts from a CDN. Translate the
       `covenant-design-system` skill (`.claude/skills/`) to English at the same time.
