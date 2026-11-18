@@ -25,7 +25,7 @@ Locavern est une application web local-first de productivité personnelle (table
 
 ## Démarrage et scripts
 
-Prérequis : Node.js 24 (cf. `.nvmrc`) et npm.
+Prérequis : Node.js 24 (cf. `.nvmrc` à la racine du monorepo) et npm. Les commandes ci-dessous se lancent depuis `apps/locavern/`, ou depuis la racine avec `-w locavern`.
 
 ```bash
 npm ci
@@ -55,4 +55,4 @@ Scripts vérifiés :
 
 ## Licence
 
-Le dépôt est distribué sous [licence MIT](LICENSE).
+Le dépôt est distribué sous [licence MIT](../../LICENSE).

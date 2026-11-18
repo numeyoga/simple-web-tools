@@ -1,7 +1,7 @@
-dist/
 node_modules/
-public/vendor/
+dist/
 playwright-report/
 test-results/
-package-lock.json
-skills/
+.vite/
+coverage/
+_site/

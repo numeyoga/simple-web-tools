@@ -5,6 +5,11 @@
   "description": "Local-first personal productivity web application (projects, tasks, Kanban, rich-text notes, SVG whiteboard)",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "apps/locavern"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
