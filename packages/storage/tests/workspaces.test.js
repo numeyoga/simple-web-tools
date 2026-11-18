@@ -139,5 +139,14 @@ describe('slugifyWorkspaceLabel', () => {
     expect(slugifyWorkspaceLabel('Été 2026 / Clients!')).toBe('ete-2026-clients');
     expect(slugifyWorkspaceLabel('???')).toBe('workspace');
     expect(slugifyWorkspaceLabel('a'.repeat(60))).toHaveLength(40);
+    expect(slugifyWorkspaceLabel('alpha beta gamma delta epsilon zeta eta theta')).toBe(
+      'alpha-beta-gamma-delta-epsilon-zeta-eta',
+    );
+  });
+
+  it('stays linear on long runs of separators', () => {
+    const start = performance.now();
+    expect(slugifyWorkspaceLabel(`${'-'.repeat(100_000)}x${'-'.repeat(100_000)}!`)).toBe('x');
+    expect(performance.now() - start).toBeLessThan(500);
   });
 });

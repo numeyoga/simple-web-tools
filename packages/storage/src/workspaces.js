@@ -37,16 +37,24 @@ const MAX_LABEL_LENGTH = 80;
  * @returns {string}
  */
 export function slugifyWorkspaceLabel(label) {
-  return (
-    String(label)
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 40)
-      .replace(/-+$/g, '') || 'workspace'
-  );
+  // Split and join instead of trimming with `-+$`: anchored repetition on user input is
+  // quadratic on long runs of separators (polynomial ReDoS).
+  const words = String(label)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  let slug = '';
+  for (const word of words) {
+    const next = slug ? `${slug}-${word}` : word;
+    if (next.length > 40) {
+      if (!slug) slug = word.slice(0, 40);
+      break;
+    }
+    slug = next;
+  }
+  return slug || 'workspace';
 }
 
 /**
