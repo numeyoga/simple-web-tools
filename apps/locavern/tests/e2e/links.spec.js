@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Références locales internes tâches, notes & tableaux blancs (Todo 18)', () => {
   test('lie directement tâche, note et tableau blanc avec navigation et rétroliens, WCAG 2.2 AA', async ({
@@ -54,10 +54,7 @@ test.describe('Références locales internes tâches, notes & tableaux blancs (T
     await expect(page.locator('#task-links-list')).toContainText('Cahier des charges');
 
     // Audit axe-core sur le tiroir avec liens
-    const drawerAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(drawerAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page
       .locator('#task-links-list')

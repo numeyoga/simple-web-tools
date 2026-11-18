@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 /** @param {number} deltaDays */
 function formatIsoOffset(deltaDays) {
@@ -82,16 +82,10 @@ test.describe('Vue d’accueil Aujourd’hui', () => {
     await expect(page.locator('#topbar-title')).toHaveText('Aujourd’hui');
 
     // Axe-core clair & sombre + reflow 320 px
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const overflow320 = await page.evaluate(

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Statuts initiaux/terminaux, garde de liens et archivage complet', () => {
   test('identifie statuts initiaux/terminaux et empêche les nouveaux liens avec un statut terminal', async ({
@@ -169,16 +169,10 @@ test.describe('Statuts initiaux/terminaux, garde de liens et archivage complet',
     );
 
     // WCAG 2.2 AA en thème clair et sombre + reflow 320 px sur Archives
-    const archLightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(archLightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
-    const archDarkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(archDarkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const overflow320 = await page.evaluate(

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Durée paramétrable des notifications toast', () => {
   test('valide, persiste, ferme automatiquement les toasts info/succès et préserve les alertes', async ({
@@ -37,10 +37,7 @@ test.describe('Durée paramétrable des notifications toast', () => {
     await expect(durationError).toBeVisible();
     await expect(durationError).toContainText('1 et 60');
 
-    const errorLightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(errorLightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Vérifier aussi en thème sombre et à 320 px
     await page.locator('#modal-preferences [data-cv-close]').first().click();
@@ -60,10 +57,7 @@ test.describe('Durée paramétrable des notifications toast', () => {
     expect(overflow320).toBe(false);
     await page.setViewportSize({ width: 1280, height: 800 });
 
-    const darkPrefAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkPrefAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // 2. Configurer 1 seconde, vérifier la persistance au rechargement
     await durationInput.fill('1');

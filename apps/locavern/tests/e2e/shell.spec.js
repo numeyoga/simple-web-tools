@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
   test('zéro requête externe, thème clair/sombre et 0 violation WCAG 2.2 AA', async ({ page }) => {
@@ -24,19 +24,13 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
 
     // Vérifier thème clair avec axe-core
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    const lightResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Basculer en thème sombre
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-    const darkResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Vérifier reflow à 320 px (aucun débordement horizontal)
     await page.setViewportSize({ width: 320, height: 640 });
@@ -58,10 +52,7 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expect(page.locator('input[name="text-size"][value="auto"]')).toBeChecked();
 
     // Accessibilité de la modale Préférences en clair et sombre
-    const lightModalAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightModalAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Sélectionner la taille Grande (x1.25)
     await page.locator('input[name="text-size"][value="large"]').check();
@@ -109,10 +100,7 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
     await expect(page.locator('input[name="text-size"][value="large"]')).toBeChecked();
 
-    const darkModalAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkModalAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Revenir sur Automatique et tester l'échelle automatique 2560x1440 (x1.25)
     await page.locator('input[name="text-size"][value="auto"]').check();
@@ -180,10 +168,7 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     const cmdInput = page.locator('#cmd-menu .cv-cmd__input');
     await cmdInput.fill('Projet Palette');
     await expect(page.locator('#cmd-list [data-value^="open:project:"]')).toBeVisible();
-    const axeCmd = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeCmd.violations).toEqual([]);
+    await expectNoA11yViolations(page);
     await cmdInput.press('Enter');
     await expect(page.locator('#topbar-title')).toHaveText('Tâches');
 

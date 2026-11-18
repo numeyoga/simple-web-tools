@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', () => {
   test('cycle complet projets, tâches, vue liste, Kanban D&D + clavier et axe-core', async ({
@@ -44,10 +44,7 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     await expect(page.getByRole('heading', { name: 'Refonte web' })).toBeVisible();
 
     // Accessibilité WCAG 2.2 AA et reflow 320 px sur la vue Projets (boutons Tâches + Notes + Tableaux blancs + filtre Actifs/Archivés)
-    const projectsLightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(projectsLightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const projectsOverflow320 = await page.evaluate(
@@ -143,17 +140,11 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     await expect(doneCol.getByText('Tests E2E')).toBeVisible();
 
     // Accessibilité WCAG 2.2 AA en clair et sombre sur Kanban
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Reflow 320 px
     await page.setViewportSize({ width: 320, height: 640 });
@@ -165,10 +156,7 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     // Suppression de projet avec confirmation modale (et axe-core en thème sombre sur Projets)
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.locator('[data-nav-view="projects"]').click();
-    const projectsDarkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(projectsDarkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
     await page.getByRole('button', { name: 'Supprimer Refonte web' }).click();
     await page
       .locator('#modal-confirm')
@@ -219,10 +207,7 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     await expect(statusModal).toBeVisible();
 
     // Vérifier WCAG 2.2 AA sur la modale de configuration des statuts
-    const modalAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(modalAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Renommer "À faire" -> "À traiter", ajouter "En revue", monter "En revue" avant "Terminé", et supprimer "En cours"
     await statusModal.getByLabel('Libellé du statut 1').fill('À traiter');
@@ -259,17 +244,11 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     await expect(knownRow.locator('[data-status-badge="known"]')).toContainText('À traiter');
 
     // Vérifier WCAG 2.2 AA en thème clair et sombre + reflow 320 px sur la liste avec badges d'alerte
-    const listLightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(listLightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    const listDarkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(listDarkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const overflow320 = await page.evaluate(
@@ -472,9 +451,6 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
       page.locator('[data-kanban-task-id]', { hasText: 'Tâche semaine' }),
     ).toHaveAttribute('data-due-urgency', 'this_week');
 
-    const axeLight = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeLight.violations).toEqual([]);
+    await expectNoA11yViolations(page);
   });
 });

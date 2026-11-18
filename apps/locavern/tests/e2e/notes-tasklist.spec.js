@@ -1,4 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { test, expect } from '@playwright/test';
 
 test.describe('Notes — alignement des listes de contrôle Tiptap', () => {
@@ -109,18 +109,12 @@ test.describe('Notes — alignement des listes de contrôle Tiptap', () => {
     await items.nth(0).locator('input[type="checkbox"]').click();
     await expect(items.nth(0)).toHaveAttribute('data-checked', 'true');
 
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Vérifier avec grande taille de texte Covenant et à 320 px de large
     await page.evaluate(() => {

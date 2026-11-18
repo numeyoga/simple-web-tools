@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Modèles locaux réutilisables (checklists, trames de notes, canevas) & WCAG 2.2 AA', () => {
   test('cycle complet : modèles intégrés, création personnalisée, persistance IndexedDB, suppression et axe-core', async ({
@@ -128,17 +128,11 @@ test.describe('Modèles locaux réutilisables (checklists, trames de notes, cane
     await expect(page.locator('#note-tpl-select')).toContainText('Trame hebdo équipe');
 
     // Audit axe-core clair + sombre + reflow 320 px
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });
     const overflow320 = await page.evaluate(

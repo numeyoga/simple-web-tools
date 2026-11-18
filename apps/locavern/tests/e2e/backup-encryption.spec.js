@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', () => {
   test('exporte une archive chiffrée, refuse un mauvais mot de passe puis restaure avec le bon', async ({
@@ -32,10 +32,7 @@ test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', ()
     await page.locator('#btn-export-archive').click();
     await expect(page.locator('#export-encrypt-error')).toBeVisible();
 
-    const axeExportResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeExportResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Corriger et exporter l’archive chiffrée
     await page.locator('#input-export-password-confirm').fill('MotDePasse#2026');
@@ -62,10 +59,7 @@ test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', ()
       .setInputFiles(/** @type {string} */ (encryptedZipPath));
     await expect(page.locator('#import-decrypt-panel')).toBeVisible();
 
-    const axeUnlockResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(axeUnlockResults.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Mauvais mot de passe -> message d’erreur clair
     await page.locator('#input-import-password').fill('Mauvais');

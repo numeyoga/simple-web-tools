@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 /** @param {Date} d */
 function toIsoLocal(d) {
@@ -42,10 +42,7 @@ test.describe('Vue Calendrier mensuelle & hebdomadaire (Todos 5 & 15)', () => {
     await expect(day10Cell).toContainText('Livraison Jalons');
 
     // Accessibilité en thème clair (vue Mois)
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Glisser-déposer de day10Iso vers day12Iso
     const draggableTask = day10Cell.locator('.lc-cal-task').first();
@@ -90,10 +87,7 @@ test.describe('Vue Calendrier mensuelle & hebdomadaire (Todos 5 & 15)', () => {
 
     // Thème sombre + audit axe-core
     await page.locator('#theme-switch').click();
-    const darkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(darkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Persistance après rechargement
     await page.reload();
@@ -193,16 +187,10 @@ test.describe('Vue Calendrier mensuelle & hebdomadaire (Todos 5 & 15)', () => {
     await expect(slot21).toContainText('18h–7h');
 
     // Audit axe-core vue Semaine (thème clair puis thème sombre)
-    const weekLightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(weekLightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
-    const weekDarkAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(weekDarkAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Persistance après rechargement et vérification reflow 320 px
     await page.reload();

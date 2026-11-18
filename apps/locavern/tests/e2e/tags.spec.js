@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 test.describe('Étiquettes transversales tâches & notes (Todo 17)', () => {
   test('ajoute des étiquettes sur tâches et notes et filtre au-delà des projets, WCAG 2.2 AA', async ({
@@ -64,10 +64,7 @@ test.describe('Étiquettes transversales tâches & notes (Todo 17)', () => {
     await expect(page.locator('.lc-notes-list .lc-note-item')).toHaveCount(1);
 
     // Audit axe-core thème clair
-    const lightAxe = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-      .analyze();
-    expect(lightAxe.violations).toEqual([]);
+    await expectNoA11yViolations(page);
 
     // Persistance après rechargement
     await page.reload();
