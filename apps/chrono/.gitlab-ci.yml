@@ -1,0 +1,27 @@
+stages:
+  - test
+  - deploy
+
+test:
+  stage: test
+  image: node:22-alpine
+  script:
+    - node --test tests/*.test.mjs
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+pages:
+  stage: deploy
+  image: busybox
+  needs:
+    - test
+  script:
+    - echo "The site will be deployed to $CI_PAGES_URL"
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
