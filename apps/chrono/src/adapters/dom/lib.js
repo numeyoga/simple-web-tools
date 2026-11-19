@@ -82,7 +82,9 @@ function appendChildren(node, children) {
       appendChildren(node, c);
       continue;
     }
-    node.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+    // append() inserts a string as a Text node, never as HTML. CodeQL does not see the
+    // instanceof guard of the previous form and reported js/xss-through-dom here.
+    node.append(c instanceof Node ? c : String(c));
   }
 }
 
