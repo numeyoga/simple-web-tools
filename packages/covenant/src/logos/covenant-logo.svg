@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" fill="none">
+  <g transform="translate(2, 2)">
+    <path d="M 18 4 A 14 14 0 1 0 18 32" stroke="#09090b" stroke-width="3" stroke-linecap="round" fill="none"></path>
+    <path d="M 18 10 A 8 8 0 1 1 18 26" stroke="#09090b" stroke-width="3" stroke-linecap="round" fill="none"></path>
+    <circle cx="18" cy="18" r="2" fill="#ea580c"></circle>
+  </g>
+  <text x="46" y="27" font-family="&#39;IBM Plex Sans&#39;, sans-serif" font-size="20" font-weight="600" fill="#09090b" letter-spacing="-0.3">Covenant</text>
+</svg>
