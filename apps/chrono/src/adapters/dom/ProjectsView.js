@@ -22,8 +22,12 @@ const COLORS = [
   '#e11d48',
   '#475569',
 ];
+/** @param {string | null | undefined} c */
 const norm = (c) => (c || '').trim().toLowerCase();
 
+/** @typedef {import('../../types.js').Project} Project */
+
+/** @type {import('./types.js').ViewFactory} */
 export function createProjectsView(store, opts) {
   let showArchived = false;
 
@@ -37,13 +41,12 @@ export function createProjectsView(store, opts) {
 
   const host = el('div', { class: 'ch-pile ch-g16' });
 
+  /** @param {Project | null} [existing] */
   function openProjectModal(existing = null) {
     const isEdit = !!existing;
     const draft = existing
       ? { name: existing.name, client: existing.client || '', color: existing.color }
-      : { name: '', client: '', color: COLORS[0] };
-    let modal;
-    let inputName, inputClient;
+      : { name: '', client: '', color: COLORS[0] ?? '#2563eb' };
     const colorsRow = el('div', {
       style: {
         display: 'grid',
@@ -57,7 +60,7 @@ export function createProjectsView(store, opts) {
     const nativePicker = el('input', {
       type: 'color',
       value: COLORS.includes(norm(draft.color)) ? COLORS[0] : draft.color,
-      oninput: (e) => {
+      oninput: (/** @type {import('./types.js').TargetEvent} */ e) => {
         draft.color = e.target.value;
         paintColors();
       },
@@ -162,8 +165,8 @@ export function createProjectsView(store, opts) {
           ? `${knownClients.length} client${knownClients.length > 1 ? 's' : ''} déjà saisi${knownClients.length > 1 ? 's' : ''} — ou tape un nouveau nom`
           : null,
     });
-    inputName = nameW.input;
-    inputClient = clientW.input;
+    const inputName = nameW.input;
+    const inputClient = clientW.input;
 
     const body = el(
       'div',
@@ -186,12 +189,13 @@ export function createProjectsView(store, opts) {
         client: inputClient.value.trim(),
         color: draft.color,
       };
-      if (isEdit) store.actions.updateProject(existing.id, patch);
+      if (existing) store.actions.updateProject(existing.id, patch);
       else store.actions.addProject(patch.name, patch.client, patch.color);
       modal.close();
     }
 
     function originalDelete() {
+      if (!existing) return;
       const { sessions, todos } = store.state;
       const n = sessions.filter((s) => s.projectId === existing.id).length;
       const m = todos.filter((t) => t.projectId === existing.id).length;
@@ -212,7 +216,7 @@ export function createProjectsView(store, opts) {
     });
     const updateDisabled = () => {
       saveButton.disabled = !inputName.value.trim();
-      saveButton.style.opacity = saveButton.disabled ? 0.5 : 1;
+      saveButton.style.opacity = saveButton.disabled ? '0.5' : '1';
       saveButton.style.cursor = saveButton.disabled ? 'not-allowed' : 'pointer';
     };
     inputName.addEventListener('input', updateDisabled);
@@ -235,7 +239,7 @@ export function createProjectsView(store, opts) {
     footer.push(UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }));
     footer.push(saveButton);
 
-    modal = UI.Modal({
+    const modal = UI.Modal({
       title: isEdit ? 'Modifier le projet' : 'Nouveau projet',
       width: 480,
       body,
@@ -251,17 +255,19 @@ export function createProjectsView(store, opts) {
     const { projects, sessions, todos } = store.state;
     const listEl = projects.filter((p) => (showArchived ? p.archived : !p.archived));
 
+    /** @type {Record<string, { duration: number, count: number }>} */
     const totals = {};
     for (const s of sessions) {
-      if (!totals[s.projectId]) totals[s.projectId] = { duration: 0, count: 0 };
-      totals[s.projectId].duration += liveDuration(s);
-      totals[s.projectId].count += 1;
+      const total = (totals[s.projectId] ??= { duration: 0, count: 0 });
+      total.duration += liveDuration(s);
+      total.count += 1;
     }
+    /** @type {Record<string, { open: number, done: number }>} */
     const todosByProject = {};
     for (const t of todos) {
-      if (!todosByProject[t.projectId]) todosByProject[t.projectId] = { open: 0, done: 0 };
-      if (t.done) todosByProject[t.projectId].done += 1;
-      else todosByProject[t.projectId].open += 1;
+      const counts = (todosByProject[String(t.projectId)] ??= { open: 0, done: 0 });
+      if (t.done) counts.done += 1;
+      else counts.open += 1;
     }
 
     host.replaceChildren(
@@ -308,6 +314,7 @@ export function createProjectsView(store, opts) {
             variant: 'primary',
             icon: 'plus',
             children: 'Nouveau projet',
+            mutates: true,
             onclick: openCreationModal,
           }),
         ),
@@ -354,6 +361,11 @@ export function createProjectsView(store, opts) {
     );
   }
 
+  /**
+   * @param {Project} p
+   * @param {{ duration: number, count: number }} t
+   * @param {{ open: number, done: number }} td
+   */
   function projectCard(p, t, td) {
     return el(
       'article',
@@ -446,6 +458,7 @@ export function createProjectsView(store, opts) {
                 variant: 'primary',
                 icon: 'play',
                 children: 'Démarrer',
+                mutates: true,
                 onclick: () => opts.onStartOnProject(p.id),
                 style: { flex: 1 },
               }),
@@ -461,6 +474,7 @@ export function createProjectsView(store, opts) {
                 label: 'Archiver',
                 variant: 'secondary',
                 size: 'sm',
+                mutates: true,
                 onclick: () => store.actions.toggleProjectArchived(p.id),
               }),
             ]
@@ -470,6 +484,7 @@ export function createProjectsView(store, opts) {
                 variant: 'secondary',
                 icon: 'arrow-counter-clockwise',
                 children: 'Désarchiver',
+                mutates: true,
                 onclick: () => store.actions.toggleProjectArchived(p.id),
                 style: { flex: 1 },
               }),

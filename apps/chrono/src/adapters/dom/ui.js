@@ -1,11 +1,23 @@
 // Covenant primitives in vanilla JS: Button, IconButton, Input, Select, Badge, Kbd, Modal, Toast.
 // Every primitive returns an HTMLElement.
 
-import { el, icon } from './lib.js';
+import { appendChildren, el, icon } from './lib.js';
+
+/** @typedef {import('./types.js').ButtonOptions} ButtonOptions */
+/** @typedef {import('./types.js').IconButtonOptions} IconButtonOptions */
+/** @typedef {import('./types.js').InputOptions} InputOptions */
+/** @typedef {import('./types.js').TextareaOptions} TextareaOptions */
+/** @typedef {import('./types.js').SelectOptions} SelectOptions */
+/** @typedef {import('./types.js').AutocompleteOptions} AutocompleteOptions */
+/** @typedef {import('./types.js').BadgeOptions} BadgeOptions */
+/** @typedef {import('./types.js').ModalOptions} ModalOptions */
+/** @typedef {import('./types.js').ToastOptions} ToastOptions */
+/** @typedef {import('./types.js').Child} Child */
 
 export * from './lib.js';
 
 /* ------------------ Button ------------------ */
+/** @param {ButtonOptions} [opts] */
 function Button(opts = {}) {
   const {
     variant = 'secondary',
@@ -18,6 +30,7 @@ function Button(opts = {}) {
     type = 'button',
     style,
     title,
+    mutates,
   } = opts;
 
   const base = {
@@ -30,30 +43,31 @@ function Button(opts = {}) {
     type,
     disabled,
     title,
+    'data-mutates': mutates ? '' : null,
     class: `ch-btn ch-btn--${variant}`,
     style: { ...base, ...(style || {}) },
     onclick: disabled ? null : onclick,
-    onmousedown: (e) => {
-      if (!disabled) e.currentTarget.style.transform = 'scale(0.97)';
+    onmousedown: (/** @type {MouseEvent} */ e) => {
+      if (!disabled) /** @type {HTMLElement} */ (e.currentTarget).style.transform = 'scale(0.97)';
     },
-    onmouseup: (e) => {
-      e.currentTarget.style.transform = 'none';
+    onmouseup: (/** @type {MouseEvent} */ e) => {
+      /** @type {HTMLElement} */ (e.currentTarget).style.transform = 'none';
     },
-    onmouseleave: (e) => {
-      e.currentTarget.style.transform = 'none';
+    onmouseleave: (/** @type {MouseEvent} */ e) => {
+      /** @type {HTMLElement} */ (e.currentTarget).style.transform = 'none';
     },
   });
   if (iconName) btn.appendChild(icon(iconName, { size: 15 }));
   if (children != null) {
-    const text = typeof children === 'string' ? document.createTextNode(children) : children;
-    btn.appendChild(text);
+    appendChildren(btn, [children]);
   }
   if (iconRight) btn.appendChild(icon(iconRight, { size: 15 }));
   return btn;
 }
 
 /* ------------------ IconButton ------------------ */
-function IconButton(opts = {}) {
+/** @param {IconButtonOptions} opts */
+function IconButton(opts) {
   const {
     icon: iconName,
     label,
@@ -64,6 +78,7 @@ function IconButton(opts = {}) {
     weight = '',
     title,
     style,
+    mutates,
   } = opts;
   const dim = size === 'sm' ? 26 : size === 'lg' ? 36 : 30;
   return el(
@@ -72,6 +87,7 @@ function IconButton(opts = {}) {
       'aria-label': label,
       disabled,
       title: title || label,
+      'data-mutates': mutates ? '' : null,
       class: `ch-icon-btn ch-icon-btn--${variant}`,
       style: {
         width: dim,
@@ -87,6 +103,10 @@ function IconButton(opts = {}) {
 }
 
 /* ------------------ Input (label + input) ------------------ */
+/**
+ * @param {InputOptions} [opts]
+ * @returns {import('./types.js').Field}
+ */
 function Input(opts = {}) {
   const {
     label,
@@ -122,16 +142,17 @@ function Input(opts = {}) {
       ...(error ? { border: '1px solid var(--cv-danger-500)' } : {}),
       font: '400 13px/1 var(--cv-font-sans)',
     },
-    onfocus: (e) => {
-      e.target.style.borderColor = 'var(--cv-accent-500)';
-      e.target.style.boxShadow = 'var(--cv-shadow-focus)';
+    onfocus: (/** @type {FocusEvent} */ e) => {
+      const field = /** @type {HTMLElement} */ (e.target);
+      field.style.borderColor = 'var(--cv-accent-500)';
+      field.style.boxShadow = 'var(--cv-shadow-focus)';
     },
     onblurCapture: null,
   });
   // Restore the border on blur (focus / blur as 2 listeners)
-  input.addEventListener('blur', (e) => {
-    e.target.style.borderColor = 'var(--cv-border-strong)';
-    e.target.style.boxShadow = 'none';
+  input.addEventListener('blur', () => {
+    input.style.borderColor = 'var(--cv-border-strong)';
+    input.style.boxShadow = 'none';
   });
   if (autoFocus) setTimeout(() => input.focus(), 0);
 
@@ -159,11 +180,14 @@ function Input(opts = {}) {
       : null,
     hint && !error ? el('span', { class: 'ch-indice' }, hint) : null,
   );
-  wrapper.input = input;
-  return wrapper;
+  return Object.assign(wrapper, { input });
 }
 
 /* ------------------ Textarea (label + textarea + counter) ------------------ */
+/**
+ * @param {TextareaOptions} [opts]
+ * @returns {import('./types.js').Field<HTMLTextAreaElement>}
+ */
 function Textarea(opts = {}) {
   const {
     label,
@@ -193,7 +217,7 @@ function Textarea(opts = {}) {
     name,
     rows,
     maxlength: maxLength || null,
-    oninput: (e) => {
+    oninput: (/** @type {Event} */ e) => {
       if (counter) updateCounter();
       if (oninput) oninput(e);
     },
@@ -206,15 +230,16 @@ function Textarea(opts = {}) {
       padding: '8px 10px',
       font: '400 13px/1.5 var(--cv-font-sans)',
     },
-    onfocus: (e) => {
-      e.target.style.borderColor = 'var(--cv-accent-500)';
-      e.target.style.boxShadow = 'var(--cv-shadow-focus)';
+    onfocus: (/** @type {FocusEvent} */ e) => {
+      const field = /** @type {HTMLElement} */ (e.target);
+      field.style.borderColor = 'var(--cv-accent-500)';
+      field.style.boxShadow = 'var(--cv-shadow-focus)';
     },
   });
   ta.value = value ?? '';
-  ta.addEventListener('blur', (e) => {
-    e.target.style.borderColor = 'var(--cv-border-strong)';
-    e.target.style.boxShadow = 'none';
+  ta.addEventListener('blur', () => {
+    ta.style.borderColor = 'var(--cv-border-strong)';
+    ta.style.boxShadow = 'none';
   });
   function updateCounter() {
     if (counter) counter.textContent = `${ta.value.length} / ${maxLength}`;
@@ -236,19 +261,24 @@ function Textarea(opts = {}) {
     ta,
     hint ? el('span', { class: 'ch-indice' }, hint) : null,
   );
-  wrapper.input = ta;
-  return wrapper;
+  return Object.assign(wrapper, { input: ta });
 }
 
 /* ------------------ Select ------------------ */
-function Select(opts = {}) {
+/**
+ * @param {SelectOptions} opts
+ * @returns {import('./types.js').Field<HTMLSelectElement>}
+ */
+function Select(opts) {
   const { label, value, options, onchange, style, size = 'md', name } = opts;
   const h = size === 'sm' ? 28 : 32;
   const select = el(
     'select',
     {
       name,
-      onchange: onchange ? (e) => onchange(e.target.value) : null,
+      onchange: onchange
+        ? (/** @type {Event} */ e) => onchange(/** @type {HTMLSelectElement} */ (e.target).value)
+        : null,
       class: 'ch-champ',
       style: {
         width: '100%',
@@ -284,14 +314,17 @@ function Select(opts = {}) {
       }),
     ),
   );
-  wrapper.input = select;
-  return wrapper;
+  return Object.assign(wrapper, { input: select });
 }
 
 /* ------------------ Autocomplete (input + suggestions, free text accepted) ------------------ */
 /* Behaviour: free field, the user can type anything. The dropdown
    offers the existing values that match (contains, case-insensitive).
    Keyboard: up/down to browse, Enter to validate, Escape to close. */
+/**
+ * @param {AutocompleteOptions} [opts]
+ * @returns {import('./types.js').Field}
+ */
 function Autocomplete(opts = {}) {
   const {
     label,
@@ -306,6 +339,7 @@ function Autocomplete(opts = {}) {
     name,
   } = opts;
 
+  /** @type {string[]} */
   let suggestions = [];
   let highlighted = -1;
   let isOpen = false;
@@ -377,7 +411,7 @@ function Autocomplete(opts = {}) {
           'div',
           {
             role: 'option',
-            onmousedown: (e) => {
+            onmousedown: (/** @type {MouseEvent} */ e) => {
               e.preventDefault(); /* avoid blur before click */
             },
             onclick: () => {
@@ -404,7 +438,8 @@ function Autocomplete(opts = {}) {
 
   function paintHighlight() {
     Array.from(list.children).forEach((node, i) => {
-      node.style.background = i === highlighted ? 'var(--cv-surface-2)' : 'transparent';
+      /** @type {HTMLElement} */ (node).style.background =
+        i === highlighted ? 'var(--cv-surface-2)' : 'transparent';
     });
   }
 
@@ -418,6 +453,7 @@ function Autocomplete(opts = {}) {
     renderList();
   }
 
+  /** @param {string} v */
   function selectValue(v) {
     input.value = v;
     if (onchange) onchange(v);
@@ -456,7 +492,7 @@ function Autocomplete(opts = {}) {
       if (e.key === 'Enter' && highlighted >= 0) {
         /* Enter validates the highlighted suggestion; otherwise let it through to submit the form. */
         e.preventDefault();
-        selectValue(suggestions[highlighted]);
+        selectValue(suggestions[highlighted] ?? '');
         return;
       }
       if (e.key === 'Escape') {
@@ -480,13 +516,14 @@ function Autocomplete(opts = {}) {
     el('span', { class: 'ch-flex-c', style: { position: 'relative' } }, input, list),
     hint ? el('span', { class: 'ch-indice' }, hint) : null,
   );
-  wrapper.input = input;
-  return wrapper;
+  return Object.assign(wrapper, { input });
 }
 
 /* ------------------ Badge ------------------ */
+/** @param {BadgeOptions} [opts] */
 function Badge(opts = {}) {
   const { variant = 'neutral', dot, children, style } = opts;
+  /** @type {Record<string, { bg: string, fg: string, dot: string }>} */
   const variants = {
     neutral: {
       bg: 'var(--cv-neutral-100)',
@@ -506,7 +543,8 @@ function Badge(opts = {}) {
     danger: { bg: 'var(--cv-danger-100)', fg: 'var(--cv-danger-700)', dot: 'var(--cv-danger-500)' },
     accent: { bg: 'var(--cv-accent-100)', fg: 'var(--cv-accent-700)', dot: 'var(--cv-accent-500)' },
   };
-  const v = variants[variant];
+  const v =
+    variants[variant] ?? /** @type {{ bg: string, fg: string, dot: string }} */ (variants.neutral);
   return el(
     'span',
     {
@@ -528,6 +566,7 @@ function Badge(opts = {}) {
 }
 
 /* ------------------ Kbd ------------------ */
+/** @param {string} text */
 function Kbd(text) {
   return el(
     'span',
@@ -547,7 +586,11 @@ function Kbd(text) {
 }
 
 /* ------------------ Modal ------------------ */
-function Modal(opts = {}) {
+/**
+ * @param {ModalOptions} opts
+ * @returns {{ root: HTMLElement, close: () => void }}
+ */
+function Modal(opts) {
   const { title, body, footer, width = 460, onclose } = opts;
 
   const root = el(
@@ -565,7 +608,7 @@ function Modal(opts = {}) {
         background: 'var(--cv-overlay)',
         animation: 'cv-fade 180ms var(--cv-ease-standard)',
       },
-      onclick: (e) => {
+      onclick: (/** @type {MouseEvent} */ e) => {
         if (e.target === e.currentTarget) close();
       },
     },
@@ -651,6 +694,7 @@ function Modal(opts = {}) {
     root.remove();
     if (onclose) onclose();
   }
+  /** @param {KeyboardEvent} e */
   function onKey(e) {
     if (e.key === 'Escape') close();
   }
@@ -674,8 +718,11 @@ function ToastHost() {
   });
   document.body.appendChild(host);
 
+  /** @param {ToastOptions} toast */
   function push({ variant = 'info', title, body }) {
+    /** @type {Record<string, string>} */
     const icons = { success: 'check-circle', warning: 'warning', danger: 'x-circle', info: 'info' };
+    /** @type {Record<string, string>} */
     const colors = { success: '#4ade80', warning: '#facc15', danger: '#fb7185', info: '#fdba74' };
     const node = el(
       'div',
@@ -698,7 +745,7 @@ function ToastHost() {
       },
       icon(icons[variant] || 'info', {
         size: 16,
-        style: { color: colors[variant] || colors.info, marginTop: 1 },
+        style: { color: colors[variant] ?? '#fdba74', marginTop: 1 },
       }),
       el(
         'div',

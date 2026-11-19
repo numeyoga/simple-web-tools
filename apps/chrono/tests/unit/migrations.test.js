@@ -6,6 +6,7 @@ import {
   sessionV1ToV2,
   todoV1ToV2,
   v1ToV2,
+  planLegacyWorkspaces,
   workspaceV1ToV2,
 } from '../../src/core/migrations.js';
 
@@ -245,26 +246,95 @@ describe('workspaceV1ToV2', () => {
     [
       'a default workspace',
       { id: 'default', label: 'Espace principal', creeLe: 10 },
-      { workspace: { id: 'default', label: 'Espace principal', createdAt: 10 }, demo: true },
+      10,
+      'Espace principal',
     ],
     [
-      'created without demo data',
+      'the demo flag is ignored',
       { id: 'perso', label: 'Perso', creeLe: 20, seedOnInit: false },
-      { workspace: { id: 'perso', label: 'Perso', createdAt: 20 }, demo: false },
+      20,
+      'Perso',
     ],
-    [
-      'created with demo data',
-      { id: 'demo', label: 'Démo', creeLe: 30, seedOnInit: true },
-      { workspace: { id: 'demo', label: 'Démo', createdAt: 30 }, demo: true },
-    ],
-    [
-      'no creation time and a blank label',
-      { id: 'x', label: '  ' },
-      { workspace: { id: 'x', label: 'x', createdAt: 99 }, demo: true },
-    ],
-    ['no id', { label: 'x', creeLe: 1 }, null],
-    ['not a record', 'x', null],
-  ])('%s', (_name, entry, expected) => {
-    expect(workspaceV1ToV2(entry, 99)).toEqual(expected);
+    ['no creation time and a blank label', { id: 'x', label: '  ' }, 99, 'x'],
+  ])('%s', (_name, entry, createdAt, label) => {
+    expect(workspaceV1ToV2(entry, 99)).toEqual({ id: entry.id, label, createdAt });
+  });
+
+  test.each([
+    ['no id', { label: 'x', creeLe: 1 }],
+    ['not a record', 'x'],
+  ])('%s: null', (_name, entry) => {
+    expect(workspaceV1ToV2(entry, 99)).toBeNull();
+  });
+});
+
+describe('planLegacyWorkspaces', () => {
+  const entry = (/** @type {string} */ id, label = id) => ({ id, label, creeLe: 5 });
+  const long = 'a'.repeat(40);
+
+  test('keeps the valid ids and renames nothing', () => {
+    const plan = planLegacyWorkspaces([entry('default'), entry('perso-2')], 99);
+
+    expect(plan.workspaces.map((w) => w.id)).toEqual(['default', 'perso-2']);
+    expect(plan.renames).toEqual([]);
+  });
+
+  test('an id cut on a hyphen gets a valid id, and the rename is reported', () => {
+    // "Un très long nom ..." sliced at 40 characters, ending on a hyphen.
+    const cut = 'mon-super-projet-de-refonte-du-site-web-';
+    expect(cut).toHaveLength(40);
+
+    const plan = planLegacyWorkspaces([entry(cut, 'Mon super projet de refonte du site web')], 99);
+
+    expect(plan.workspaces).toEqual([
+      {
+        id: 'mon-super-projet-de-refonte-du-site-web',
+        label: 'Mon super projet de refonte du site web',
+        createdAt: 5,
+      },
+    ]);
+    expect(plan.renames).toEqual([{ from: cut, to: 'mon-super-projet-de-refonte-du-site-web' }]);
+  });
+
+  test('a duplicate suffix after a cut hyphen (`--2`) is repaired', () => {
+    const plan = planLegacyWorkspaces([entry('abc-'), entry('abc--2')], 99);
+
+    expect(plan.workspaces.map((w) => w.id)).toEqual(['abc', 'abc-2']);
+    expect(plan.renames).toEqual([
+      { from: 'abc-', to: 'abc' },
+      { from: 'abc--2', to: 'abc-2' },
+    ]);
+  });
+
+  test('an id of more than 40 characters is shortened', () => {
+    const plan = planLegacyWorkspaces([entry(`${long}-2`)], 99);
+
+    expect(plan.workspaces[0]?.id).toBe(long);
+    expect(plan.renames).toEqual([{ from: `${long}-2`, to: long }]);
+  });
+
+  test('the new id never collides with a valid id of the list, whatever the order', () => {
+    const plan = planLegacyWorkspaces([entry('abc-'), entry('abc')], 99);
+
+    expect(plan.workspaces.map((w) => w.id)).toEqual(['abc-2', 'abc']);
+    expect(plan.renames).toEqual([{ from: 'abc-', to: 'abc-2' }]);
+  });
+
+  test('a shortened id with a suffix stays within 40 characters', () => {
+    const plan = planLegacyWorkspaces([entry(`${long}-`), entry(long)], 99);
+
+    const ids = plan.workspaces.map((w) => w.id);
+    expect(ids.every((id) => id.length <= 40 && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id))).toBe(true);
+    expect(new Set(ids).size).toBe(2);
+  });
+
+  test('an id with nothing usable becomes "workspace"', () => {
+    expect(planLegacyWorkspaces([entry('--')], 99).workspaces[0]?.id).toBe('workspace');
+  });
+
+  test('a repeated valid id is listed once and entries without an id are skipped', () => {
+    const plan = planLegacyWorkspaces([entry('a'), entry('a'), { label: 'x' }, 'y'], 99);
+
+    expect(plan.workspaces.map((w) => w.id)).toEqual(['a']);
   });
 });

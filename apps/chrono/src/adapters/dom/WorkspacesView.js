@@ -9,16 +9,19 @@ const { el, icon } = UI;
 /* Small promisified confirmation modal (yes/no).
      Important: `modal.close()` triggers `onclose`. The answer is remembered
      before closing so that `onclose` does not resolve `false` in our place. */
-function askConfirm({ title, message, danger }) {
+/**
+ * @param {{ title: string, message: string, danger?: boolean }} options
+ * @returns {Promise<boolean>}
+ */
+function askConfirm({ title, message, danger = false }) {
   return new Promise((resolve) => {
     let settled = false;
-    const finish = (value) => {
+    const finish = (/** @type {boolean} */ value) => {
       if (settled) return;
       settled = true;
       resolve(value);
     };
-    let modal;
-    modal = UI.Modal({
+    const modal = UI.Modal({
       title: title,
       width: 420,
       body: el(
@@ -50,6 +53,15 @@ function askConfirm({ title, message, danger }) {
   });
 }
 
+/** @param {unknown} error */
+function errorText(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * @param {File} file
+ * @returns {Promise<string>}
+ */
 function readTextFile(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
@@ -59,6 +71,7 @@ function readTextFile(file) {
   });
 }
 
+/** @param {number} ts */
 function formatCreatedDate(ts) {
   if (!ts) return '—';
   return new Date(ts).toLocaleDateString('fr-FR', {
@@ -68,16 +81,34 @@ function formatCreatedDate(ts) {
   });
 }
 
-export function openWorkspaceManager({ store, toasts } = {}) {
-  let modal;
-
+/** @param {{ store: import('./types.js').Store, toasts?: import('./types.js').ToastHost }} options */
+export function openWorkspaceManager({ store, toasts }) {
   /* Local state of the inline edit of a label. */
+  /** @type {string | null} */
   let editingId = null;
   let pendingLabel = '';
+
+  /* A read-only tab cannot create, rename, remove or import: the buttons are disabled, and the
+     keyboard paths (Enter in a field) end here. */
+  function refuseWhenReadOnly() {
+    if (!store.state.readOnly) return false;
+    if (toasts) {
+      toasts.push({
+        variant: 'warning',
+        title: 'Lecture seule',
+        body: 'Chrono est ouvert dans un autre onglet. Cet onglet est en lecture seule.',
+      });
+    }
+    return true;
+  }
 
   /* Single container re-rendered in place to avoid closing/reopening the modal. */
   const body = el('div', { class: 'ch-pile ch-g14' });
 
+  /**
+   * @param {import('@simple-web-tools/storage').Workspace} ws
+   * @param {string} activeId
+   */
   function workspaceRow(ws, activeId) {
     const isActive = ws.id === activeId;
     const isEditing = ws.id === editingId;
@@ -87,10 +118,10 @@ export function openWorkspaceManager({ store, toasts } = {}) {
       ? el('input', {
           value: pendingLabel,
           autocomplete: 'off',
-          oninput: (e) => {
+          oninput: (/** @type {import('./types.js').TargetEvent} */ e) => {
             pendingLabel = e.target.value;
           },
-          onkeydown: (e) => {
+          onkeydown: (/** @type {import('./types.js').TargetKeyEvent} */ e) => {
             if (e.key === 'Enter') commitRename();
             if (e.key === 'Escape') {
               editingId = null;
@@ -109,7 +140,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
             font: '500 13px/1 var(--cv-font-sans)',
             outline: 'none',
           },
-          ref: (node) => {
+          ref: (/** @type {HTMLInputElement} */ node) => {
             setTimeout(() => {
               node.focus();
               node.select();
@@ -148,6 +179,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
         );
 
     function commitRename() {
+      if (refuseWhenReadOnly()) return;
       const label = pendingLabel.trim();
       if (label && label !== ws.label) WORKSPACES.rename(ws.id, label);
       editingId = null;
@@ -236,6 +268,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
               icon: 'pencil-simple',
               label: 'Renommer',
               variant: 'ghost',
+              mutates: true,
               onclick: () => {
                 editingId = ws.id;
                 pendingLabel = ws.label;
@@ -246,6 +279,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
               icon: 'trash',
               label: canDelete ? 'Supprimer' : 'Impossible : actif ou dernier',
               variant: 'ghost',
+              mutates: true,
               disabled: !canDelete,
               onclick: async () => {
                 const ok = await askConfirm({
@@ -253,7 +287,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
                   message: `Toutes les données de l’espace « ${ws.label} » seront effacées (projets, sessions, todos, pointage). Cette action est irréversible.`,
                   danger: true,
                 });
-                if (!ok) return;
+                if (!ok || refuseWhenReadOnly()) return;
                 await WORKSPACES.remove(ws.id);
                 if (toasts)
                   toasts.push({ variant: 'info', title: 'Espace supprimé', body: ws.label });
@@ -269,7 +303,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
     const input = el('input', {
       placeholder: 'Ex. Perso, Freelance, Test, Q4…',
       autocomplete: 'off',
-      onkeydown: (e) => {
+      onkeydown: (/** @type {import('./types.js').TargetKeyEvent} */ e) => {
         if (e.key === 'Enter') create();
       },
       style: {
@@ -286,7 +320,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
     });
     const checkbox = el('input', {
       type: 'checkbox',
-      onchange: (e) => {
+      onchange: (/** @type {import('./types.js').TargetEvent} */ e) => {
         withDemo = e.target.checked;
       },
       style: { accentColor: 'var(--cv-accent-500)' },
@@ -298,7 +332,15 @@ export function openWorkspaceManager({ store, toasts } = {}) {
         input.focus();
         return;
       }
-      const ws = WORKSPACES.create({ label, seedDemo: withDemo });
+      if (refuseWhenReadOnly()) return;
+      let ws;
+      try {
+        ws = await WORKSPACES.create({ label, seedDemo: withDemo });
+      } catch (err) {
+        if (toasts)
+          toasts.push({ variant: 'danger', title: 'Création impossible', body: errorText(err) });
+        return;
+      }
       const ok = await askConfirm({
         title: 'Basculer sur cet espace ?',
         message: `L’espace « ${ws.label} » a été créé. Veux-tu basculer dessus maintenant ?`,
@@ -337,7 +379,13 @@ export function openWorkspaceManager({ store, toasts } = {}) {
         'div',
         { class: 'ch-flex ch-g8' },
         input,
-        UI.Button({ variant: 'primary', icon: 'plus', children: 'Créer', onclick: create }),
+        UI.Button({
+          variant: 'primary',
+          icon: 'plus',
+          children: 'Créer',
+          mutates: true,
+          onclick: create,
+        }),
       ),
       el(
         'label',
@@ -356,7 +404,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
       type: 'file',
       accept: '.json,application/json',
       style: { display: 'none' },
-      onchange: async (e) => {
+      onchange: async (/** @type {import('./types.js').TargetEvent} */ e) => {
         const file = e.target.files?.[0];
         e.target.value = '';
         if (!file) return;
@@ -370,7 +418,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
             message: `Toutes les données actuelles de l’espace « ${ws.label} » seront remplacées par le contenu du fichier. Continuer ?`,
             danger: true,
           });
-          if (!ok) return;
+          if (!ok || refuseWhenReadOnly()) return;
           await WORKSPACES.importJson(ws.id, txt);
           if (toasts)
             toasts.push({ variant: 'success', title: 'Import terminé', body: 'Rechargement…' });
@@ -423,7 +471,11 @@ export function openWorkspaceManager({ store, toasts } = {}) {
               if (toasts) toasts.push({ variant: 'success', title: 'Export téléchargé' });
             } catch (err) {
               if (toasts)
-                toasts.push({ variant: 'danger', title: 'Export impossible', body: err.message });
+                toasts.push({
+                  variant: 'danger',
+                  title: 'Export impossible',
+                  body: errorText(err),
+                });
             }
           },
         }),
@@ -432,6 +484,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
           size: 'sm',
           icon: 'upload-simple',
           children: 'Importer JSON',
+          mutates: true,
           onclick: () => fileInput.click(),
         }),
         fileInput,
@@ -456,7 +509,7 @@ export function openWorkspaceManager({ store, toasts } = {}) {
 
   render();
 
-  modal = UI.Modal({
+  const modal = UI.Modal({
     title: 'Espaces de sauvegarde',
     width: 560,
     body,

@@ -1,14 +1,17 @@
 // Workspace API (list, create, rename, remove, switch), JSON import and download.
 // The list and the active id are in localStorage, managed by the registry (workspace-list.js).
+// The import, the creation with demo data and the removal write to IndexedDB: only the tab that
+// holds the write lock may call them (the views disable them in a read-only tab).
 
 import { formatLocalDate } from '../core/dates.js';
 import { readExport } from './backup.js';
+import { seed } from '../core/seed.js';
+import { skipFallbackOf } from './fallback.js';
 import { closeDatabase, idbDeleteDatabase, openWorkspaceDatabase } from './idb.js';
-import { channelName, fallbackKey, legacyFallbackKey } from './names.js';
+import { channelName } from './names.js';
 import {
   STORE_NAMES,
   getRegistry,
-  setDemoEnabled,
   wsActive,
   wsActiveId,
   wsLoadList,
@@ -16,8 +19,24 @@ import {
 } from './workspace-list.js';
 
 /**
- * Replaces the data of workspace `id` with a validated import. Without IndexedDB (or when it
- * does not open), writes the localStorage fallback instead.
+ * Tells the other tabs of workspace `id` that its database changed (they re-read it).
+ * @param {string} id
+ */
+function announceChange(id) {
+  if (typeof BroadcastChannel === 'undefined') return;
+  try {
+    const c = new BroadcastChannel(channelName(id));
+    c.postMessage('update');
+    c.close();
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Replaces the data of workspace `id` with a validated import. Only the writer tab calls it.
+ * Rejects with a `StorageError` when the database cannot be opened: nothing is written anywhere
+ * else.
  * @param {string} id
  * @param {string | unknown} payload an export file (JSON text or parsed): version 2 envelope,
  *   or the version 1 file of the former site
@@ -30,42 +49,39 @@ async function importJsonIntoWorkspace(id, payload) {
   if (id === wsActiveId()) await closeDatabase();
 
   // Target the right database directly: open it, overwrite every store.
-  /** @type {import('@simple-web-tools/storage').Database | null} */
-  let db = null;
-  if ('indexedDB' in window) {
-    try {
-      db = await openWorkspaceDatabase(id);
-    } catch (e) {
-      console.warn(
-        '[db] import: IndexedDB unavailable, using the localStorage fallback',
-        /** @type {Error} */ (e)?.message || e,
-      );
+  const db = await openWorkspaceDatabase(id);
+  try {
+    const tx = db.transaction([...STORE_NAMES], 'readwrite');
+    /** @type {Promise<unknown>[]} */
+    const writes = [];
+    for (const name of STORE_NAMES) {
+      const store = tx.objectStore(name);
+      writes.push(store.clear());
+      for (const record of imported[name]) writes.push(store.put(record));
     }
+    await Promise.all([...writes, tx.done]);
+  } finally {
+    db.close();
   }
-  if (!db) {
-    // Same format as saveFallback.
-    localStorage.setItem(fallbackKey(id), JSON.stringify(imported));
-    return;
-  }
-  const tx = db.transaction([...STORE_NAMES, 'meta'], 'readwrite');
-  /** @type {Promise<unknown>[]} */
-  const writes = [tx.objectStore('meta').clear()];
-  for (const name of STORE_NAMES) {
-    const store = tx.objectStore(name);
-    writes.push(store.clear());
-    for (const record of imported[name]) writes.push(store.put(record));
-  }
-  await Promise.all([...writes, tx.done]);
-  db.close();
-  // Tell the other tabs of this workspace (they re-read the database).
-  if (typeof BroadcastChannel !== 'undefined') {
-    try {
-      const c = new BroadcastChannel(channelName(id));
-      c.postMessage('update');
-      c.close();
-    } catch {
-      /* ignore */
+  announceChange(id);
+}
+
+/**
+ * Loads the demo data into the (empty) database of a workspace.
+ * @param {string} id
+ * @returns {Promise<void>}
+ */
+async function seedWorkspace(id) {
+  const demo = seed(Date.now());
+  const db = await openWorkspaceDatabase(id);
+  try {
+    const tx = db.transaction([...STORE_NAMES], 'readwrite');
+    for (const name of STORE_NAMES) {
+      for (const record of demo[name]) tx.objectStore(name).put(record);
     }
+    await tx.done;
+  } finally {
+    db.close();
   }
 }
 
@@ -81,10 +97,14 @@ export const WORKSPACES = {
     location.reload();
   },
 
-  /** @param {{ label?: string, seedDemo?: boolean }} [options] */
-  create({ label, seedDemo = false } = {}) {
+  /**
+   * Adds a workspace; with `seedDemo` its database starts with the demo data (the user asked
+   * for it in the creation form). Only the writer tab calls it.
+   * @param {{ label?: string, seedDemo?: boolean }} [options]
+   */
+  async create({ label, seedDemo = false } = {}) {
     const ws = getRegistry().create(label?.trim() || 'espace');
-    setDemoEnabled(ws.id, seedDemo);
+    if (seedDemo) await seedWorkspace(ws.id);
     return ws;
   },
 
@@ -104,14 +124,10 @@ export const WORKSPACES = {
     const registry = getRegistry();
     if (registry.list().length <= 1) throw new Error('on ne peut pas supprimer le dernier espace');
     const remaining = registry.remove(id);
-    setDemoEnabled(id, true);
     await idbDeleteDatabase(id);
-    try {
-      localStorage.removeItem(fallbackKey(id));
-      localStorage.removeItem(legacyFallbackKey(id));
-    } catch {
-      /* ignore */
-    }
+    // The old localStorage fallback keys are never deleted: remember not to import them again
+    // if the id is reused.
+    skipFallbackOf(id);
     return remaining;
   },
 

@@ -4,11 +4,23 @@ import * as UI from './ui.js';
 
 const { el, formatDuration } = UI;
 
+/** @typedef {import('../../core/report.js').ReportDay} ReportDay */
+/** @typedef {import('../../core/report.js').WeekReport} WeekReport */
+/** @typedef {import('../../types.js').Session} Session */
+/** @typedef {import('../../types.js').Project} Project */
+
+/** @type {import('./types.js').ViewFactory} */
 export function createReportView(store) {
   let weekOffset = 0;
 
   const host = el('div', { class: 'ch-pile ch-g20' });
 
+  /**
+   * @param {string} label
+   * @param {string} value
+   * @param {string | null} subtext
+   * @param {{ accent?: boolean, mono?: boolean, extra?: import('./types.js').Child }} [options]
+   */
   function statCard(label, value, subtext, { accent, mono = true, extra } = {}) {
     return el(
       'div',
@@ -46,6 +58,10 @@ export function createReportView(store) {
     );
   }
 
+  /**
+   * @param {import('./types.js').Child} content
+   * @param {string} [align]
+   */
   function Th(content, align = 'left') {
     return el(
       'th',
@@ -56,8 +72,13 @@ export function createReportView(store) {
       content,
     );
   }
+  /**
+   * @param {import('./types.js').Child} content
+   * @param {{ align?: string, muted?: boolean, mono?: boolean, strong?: boolean, colSpan?: number, style?: import('./types.js').Style }} [opts]
+   */
   function Td(content, opts = {}) {
     const { align = 'left', muted, mono, strong, colSpan, style } = opts;
+    /** @type {Record<string, unknown>} */
     const attrs = {
       style: {
         padding: '12px 16px',
@@ -71,6 +92,11 @@ export function createReportView(store) {
     return el('td', attrs, content);
   }
 
+  /**
+   * @param {ReportDay[]} byDay
+   * @param {Project[]} projects
+   * @param {number} maxDay
+   */
   function weekBars(byDay, projects, maxDay) {
     const H = 180;
     const dayNames = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
@@ -126,8 +152,10 @@ export function createReportView(store) {
       const isWeekend = i >= 5;
       const totalHeight = (j.total / (maxH * 3600_000)) * H;
       const segs = Object.entries(j.byProject)
-        .map(([pid, d]) => ({ project: projects.find((p) => p.id === pid), duration: d }))
-        .filter((x) => x.project)
+        .flatMap(([pid, d]) => {
+          const project = projects.find((p) => p.id === pid);
+          return project ? [{ project, duration: d }] : [];
+        })
         .sort((a, b) => b.duration - a.duration);
 
       const segNodes = segs.map((seg, si) =>
@@ -211,6 +239,11 @@ export function createReportView(store) {
   // Summary table of the distribution per day: one row per day,
   // one column per project with time this week, plus a Total column.
   // Lets the figures be read without hovering over each segment of the chart.
+  /**
+   * @param {ReportDay[]} byDay
+   * @param {WeekReport['sortedProjects']} sortedProjects
+   * @param {number} weekTotal
+   */
   function dayTable(byDay, sortedProjects, weekTotal) {
     const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
     const today = new Date();
@@ -219,7 +252,7 @@ export function createReportView(store) {
 
     if (cols.length === 0) return el('div', { style: { display: 'none' } });
 
-    const cellTxt = (ms) => (ms > 0 ? formatDuration(ms) : '·');
+    const cellTxt = (/** @type {number} */ ms) => (ms > 0 ? formatDuration(ms) : '·');
 
     const projectTotals = cols.map((c) =>
       byDay.reduce((acc, j) => acc + (j.byProject[c.id] || 0), 0),
@@ -315,6 +348,11 @@ export function createReportView(store) {
     );
   }
 
+  /**
+   * @param {Session[]} weekSessions
+   * @param {Project[]} projects
+   * @param {Date} monday
+   */
   function exportCSV(weekSessions, projects, monday) {
     const csv = buildCsv(weekSessions, projects, Date.now());
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

@@ -30,11 +30,25 @@ Tout reste dans le navigateur, rien n'est envoyé à un serveur.
 
 - Chaque espace possède sa propre base IndexedDB (`chrono__<id>`), en schéma version 2
   (voir ci-dessous).
-- Si IndexedDB est indisponible ou ne s'ouvre pas, les données sont écrites en repli dans
-  `localStorage` (`chrono-fallback-<id>-v2`).
+- Chrono n'écrit plus dans `localStorage` à la place d'IndexedDB. Si IndexedDB est indisponible
+  ou ne s'ouvre pas (navigation privée, stockage bloqué, ancien onglet Chrono qui garde la base
+  ouverte), un écran d'erreur remplace l'application et rien n'est lu ni écrit ailleurs. Les
+  sauvegardes de repli des anciennes versions (`chrono-fallback-<id>-v2`, ou
+  `chrono.fallback.<id>.v1`) sont importées **une seule fois** dans IndexedDB quand la base de
+  l'espace est vide ; l'import est noté dans le store `meta` (`fallbackImported`) et les clés
+  `localStorage` ne sont jamais supprimées.
+- **Un seul onglet écrit** (décision 0004) : il détient le verrou Web Lock `chrono-write-lock`
+  (un verrou pour toute l'application, pas un par espace : l'import, la création et la
+  suppression d'un espace écrivent dans d'autres bases que l'espace actif). Les autres onglets
+  sont en **lecture seule** : une bannière l'indique, les commandes qui modifient des données
+  sont désactivées (ou refusent avec un message), les raccourcis clavier ne font rien, et les
+  durées continuent de défiler. Un onglet en lecture seule relit la base quand l'onglet qui écrit
+  annonce un changement (`chrono-sync-<id>`) et devient l'onglet d'écriture quand l'autre se ferme.
+- **Données de démonstration** : jamais chargées automatiquement. Dans un espace vide, la
+  Timeline propose un bouton « Charger des données de démonstration » ; la création d'un espace
+  peut aussi les inclure, sur demande.
 - La liste des espaces et l'espace actif sont dans `localStorage` (`chrono-workspaces` et
   `chrono-workspace-active`, gérés par le registre de `@simple-web-tools/storage`).
-  `chrono-workspaces-no-demo` liste les espaces créés sans données de démonstration.
 - Changer d'espace ou importer un JSON recharge la page.
 
 Vider les données du site dans le navigateur efface donc les données de Chrono :
@@ -81,9 +95,9 @@ est conservé tel quel, sur la même clé.
 | Pointage `id`, `at`                       | Inchangés                                   |
 | Liste des espaces `chrono.workspaces`     | `chrono-workspaces` (registre du paquet)    |
 | Espace `creeLe`                           | `createdAt`                                 |
-| Espace `seedOnInit: false`                | Id ajouté à `chrono-workspaces-no-demo`     |
+| Espace `seedOnInit`                       | Ignoré (démo jamais automatique)            |
 | Espace actif `chrono.workspace.active`    | `chrono-workspace-active`                   |
-| Repli `chrono.fallback.<id>.v1`           | `chrono-fallback-<id>-v2`                   |
+| Repli `chrono.fallback.<id>.v1`           | Importé une fois dans IndexedDB, conservé   |
 | Export JSON `version: 1` (sans enveloppe) | Enveloppe `chrono-workspace` version 2      |
 | Export `exporteLe`, `workspace`           | `exportedAt` ; `workspace` n'est plus écrit |
 
@@ -102,8 +116,18 @@ Notes :
 - **Espaces** : au premier démarrage sans `chrono-workspaces`, la liste `chrono.workspaces` et
   l'espace actif sont repris avec les mêmes identifiants (les noms de base restent donc
   `chrono__<id>`). Les anciennes clés ne sont jamais supprimées.
-- **Repli localStorage** : une sauvegarde `chrono.fallback.<id>.v1` est lue et convertie tant
-  qu'aucune sauvegarde `chrono-fallback-<id>-v2` n'existe ; elle n'est pas modifiée.
+- **Identifiants refusés par le registre** : la version 1 fabriquait l'id par
+  `slugify(label).slice(0, 40)` puis ajoutait `-2`, `-3`… pour un doublon. Un id pouvait donc
+  finir par un tiret (coupure à 40 caractères), contenir `--` (`…-` puis `-2`) ou dépasser 40
+  caractères, ce que le registre refuse. Chaque espace de ce genre reçoit un id valide et unique
+  (`planLegacyWorkspaces`), l'association ancien id / nouvel id est notée dans
+  `chrono-legacy-workspaces`, et le contenu de sa base `chrono__<ancien id>` (ouverte avec l'API
+  brute, sans validation du nom) est copié une fois, converti par `v1ToV2`, dans
+  `chrono__<nouvel id>` par l'onglet d'écriture. L'ancienne base n'est jamais modifiée ni
+  supprimée, et une base de destination qui contient déjà des données n'est pas écrasée.
+- **Repli localStorage** : voir la section Données. Une sauvegarde `chrono.fallback.<id>.v1` est
+  convertie par `v1ToV2` au moment de l'import (sous son ancien id pour un espace dont l'id a été
+  corrigé) ; elle n'est pas modifiée.
 - **Export et import** : les nouveaux exports sont une enveloppe
   `{ app: 'chrono', format: 'chrono-workspace', version: 2, exportedAt, data }`. L'import accepte
   aussi, pour toujours, les fichiers de la version 1 du site GitLab (un objet nu, sans `app`) :
@@ -127,7 +151,8 @@ src/
   adapters/           tout ce qui touche au navigateur
     store.js          createStore()
     idb.js            IndexedDB : migrations et accès, sur @simple-web-tools/storage
-    fallback.js       repli localStorage
+    fallback.js       import unique de l'ancien repli localStorage vers IndexedDB
+    legacy-databases.js copie des bases dont l'id de la version 1 est refusé par le registre
     names.js          noms de stockage propres à Chrono (préfixés, décision 0005)
     workspace-list.js registre des espaces, reprise de l'ancienne liste
     workspaces.js     API des espaces (WORKSPACES), import JSON, téléchargement
@@ -166,10 +191,13 @@ rien, elle renvoie l'objet reçu tel quel.
 `createStore()` (`store.js`) détient l'état (`projects`, `todos`, `sessions`, `attendance`) et expose
 des `actions`. Chaque action appelle une règle de `core` avec l'heure courante et un identifiant
 neuf, adopte les données renvoyées puis notifie les écouteurs (`store.onState`). Un minuteur d'une
-seconde notifie en plus `store.onTick`, utilisé pour les durées des chronos en cours. Les écritures
-en base sont regroupées et différées de quelques dizaines de millisecondes ; le store possède aussi
-le `BroadcastChannel` du workspace (`chrono-sync-<id>`) (plusieurs onglets peuvent écrire, chacun relit tout quand un
-autre a écrit).
+seconde notifie en plus `store.onTick`, utilisé pour les durées des chronos en cours, y compris
+dans un onglet en lecture seule. Les écritures en base sont regroupées et différées de quelques
+dizaines de millisecondes. Le store prend le verrou d'écriture au démarrage (`state.readOnly` est
+vrai sans lui), annonce ses écritures sur le `BroadcastChannel` de l'espace (`chrono-sync-<id>`) ;
+un onglet en lecture seule refuse les actions (`store.onRefused`), relit la base à chaque annonce
+et prend le verrou quand l'autre onglet se ferme. Les données de démonstration ne sont chargées
+que par `actions.loadDemoData()`, dans un espace vide.
 
 Les vues (`adapters/dom/`) s'abonnent au store et **re-rendent entièrement** leur contenu à chaque
 notification ; il n'y a ni diff ni état local persistant. `lib.js` et `ui.js` fournissent les
@@ -197,9 +225,9 @@ npm run preview -w chrono    # sert dist sur http://127.0.0.1:4174
 
 ```sh
 npm test -w chrono                   # Vitest (tests/unit)
-npm run typecheck -w chrono          # tsc strict sur src/core et tests/unit
+npm run typecheck -w chrono          # tsc strict sur src (vues comprises) et tests/unit
 npm run lint -w chrono && npm run format:check -w chrono
-npm run test:e2e -w chrono           # Playwright (tests/e2e), contre `vite preview`
+npm run test:e2e -w chrono           # construit l'application, puis Playwright (tests/e2e) contre `vite preview`
 npm run verify                       # depuis la racine : typecheck, lint, format, tests, build
 ```
 
@@ -214,11 +242,12 @@ npm run verify                       # depuis la racine : typecheck, lint, forma
   `TZ=Pacific/Auckland`.
 - **Bout en bout (Playwright)** : parcours en boîte noire à travers l'interface (démarrage,
   chrono, saisie manuelle, todos, projets, rapport et CSV, espaces, export et import JSON,
-  persistance, reprise des données de la version 1). Toute requête qui n'est pas pour `127.0.0.1` est bloquée : Google Fonts n'est donc
+  persistance, reprise des données de la version 1, deux onglets dans le même contexte :
+  lecture seule, relecture, reprise du verrou ; IndexedDB indisponible ou bloqué ; import du
+  repli). Toute requête qui n'est pas pour `127.0.0.1` est bloquée : Google Fonts n'est donc
   jamais atteint. Pas encore d'assertions axe : l'interface actuelle ne les passe pas, elles
   arriveront avec le portage sur Covenant.
-- Le typecheck ne couvre pour l'instant que `src/core`, `src/types.d.ts` et `tests/unit` ; les
-  adapters le rejoindront au prochain pas.
+- Le typecheck couvre tout `src` (vues comprises), `src/types.d.ts` et `tests/unit`.
 
 ## Déploiement
 

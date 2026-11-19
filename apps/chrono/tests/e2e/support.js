@@ -4,17 +4,14 @@ import { expect } from '@playwright/test';
 /** Wednesday 2026-11-18, 10:00 (local time of the browser). */
 export const FROZEN_NOW = new Date(2026, 10, 18, 10, 0, 0);
 
-// Keys of the registry of workspaces, and of the list of the workspaces without demo data.
-const WORKSPACES_KEY = 'chrono-workspaces';
-const NO_DEMO_KEY = 'chrono-workspaces-no-demo';
-
 /**
  * Opens the app with the network blocked: any request that is not for the local preview server
  * is aborted, so the Google Fonts stylesheet never leaves the machine.
  *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
- * @param {boolean} [options.demo] keep the demo data of a first start (default: empty workspace)
+ * @param {boolean} [options.demo] load the demo data with the button of the empty Timeline
+ *   (default: empty workspace)
  * @param {boolean} [options.clock] freeze the browser clock at FROZEN_NOW; it then only moves
  *   with `page.clock` (default: real time)
  * @returns {Promise<{ errors: string[], blockedHosts: string[] }>} console errors and blocked URLs
@@ -41,27 +38,22 @@ export async function openApp(page, { demo = false, clock = false } = {}) {
     errors.push(`console.error: ${m.text()}`);
   });
 
-  if (!demo) {
-    // First start of the default workspace without the demo data. Only when nothing is stored
-    // yet, so that a reload keeps what the test did.
-    await page.addInitScript(
-      ([key, noDemoKey]) => {
-        if (!localStorage.getItem(key)) {
-          localStorage.setItem(
-            key,
-            JSON.stringify([{ id: 'default', label: 'Espace principal', createdAt: 1 }]),
-          );
-          localStorage.setItem(noDemoKey, JSON.stringify(['default']));
-        }
-      },
-      [WORKSPACES_KEY, NO_DEMO_KEY],
-    );
-  }
   if (clock) await page.clock.install({ time: FROZEN_NOW });
 
   await page.goto('/');
   await expect(page.getByRole('navigation', { name: 'Navigation' })).toBeVisible();
+  if (demo) await loadDemoData(page);
   return { errors, blockedHosts };
+}
+
+/**
+ * Loads the demo data with the button of the empty Timeline.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function loadDemoData(page) {
+  const button = page.getByRole('button', { name: 'Charger des données de démonstration' });
+  await button.click();
+  await expect(button).toHaveCount(0);
 }
 
 /**

@@ -14,6 +14,11 @@ import {
 } from '../../core/presence.js';
 import { uid } from '../ids.js';
 
+/** @typedef {import('./types.js').Child} Child */
+/** @typedef {import('./types.js').Props} Props */
+/** @typedef {import('../../types.js').Session} Session */
+/** @typedef {import('../../types.js').AttendanceEvent} AttendanceEvent */
+
 // Properties that would parse a string as HTML: el() refuses them.
 const HTML_PROPS = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
 
@@ -25,6 +30,13 @@ const HTML_PROPS = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
         items.map(i => el('li', null, i.label))
      )
 */
+/**
+ * @template {keyof HTMLElementTagNameMap} K
+ * @param {K} tag
+ * @param {Props} [props] attributes, properties, `style`, `dataset` and `on...` handlers
+ * @param {...Child} children
+ * @returns {HTMLElementTagNameMap[K]}
+ */
 export function el(tag, props, ...children) {
   const node = document.createElement(tag);
   if (props) {
@@ -35,27 +47,35 @@ export function el(tag, props, ...children) {
         throw new Error(`el(): '${k}' would parse HTML; build children instead`);
       }
       if (k === 'style' && typeof v === 'object') {
-        for (const sk in v) {
-          const sv = v[sk];
+        const style = /** @type {Record<string, unknown>} */ (v);
+        for (const sk in style) {
+          const sv = style[sk];
           if (sv == null || sv === false) continue;
-          node.style[sk] = typeof sv === 'number' && !UNITLESS.has(sk) ? sv + 'px' : sv;
+          // A CSS property assigned by name: the style object has no index signature.
+          /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (node.style))[sk] =
+            typeof sv === 'number' && !UNITLESS.has(sk) ? sv + 'px' : sv;
         }
       } else if (k === 'class' || k === 'className') {
-        node.className = v;
+        node.className = String(v);
       } else if (k === 'dataset') {
         Object.assign(node.dataset, v);
       } else if (k === 'ref' && typeof v === 'function') {
         v(node);
       } else if (k.startsWith('on') && typeof v === 'function') {
-        node.addEventListener(k.slice(2).toLowerCase(), v);
-      } else if (k in node && typeof node[k] !== 'object' && k !== 'list') {
+        node.addEventListener(k.slice(2).toLowerCase(), /** @type {EventListener} */ (v));
+      } else if (
+        k in node &&
+        typeof (/** @type {Record<string, unknown>} */ (/** @type {unknown} */ (node))[k]) !==
+          'object' &&
+        k !== 'list'
+      ) {
         try {
-          node[k] = v;
+          /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (node))[k] = v;
         } catch {
-          node.setAttribute(k, v);
+          node.setAttribute(k, String(v));
         }
       } else {
-        node.setAttribute(k, v);
+        node.setAttribute(k, String(v));
       }
     }
   }
@@ -75,7 +95,11 @@ const UNITLESS = new Set([
   'zoom',
 ]);
 
-function appendChildren(node, children) {
+/**
+ * @param {Element} node
+ * @param {Child[]} children
+ */
+export function appendChildren(node, children) {
   for (const c of children) {
     if (c == null || c === false || c === true) continue;
     if (Array.isArray(c)) {
@@ -89,11 +113,19 @@ function appendChildren(node, children) {
 }
 
 /* Replaces the content of a node with a new node (used by the views). */
+/**
+ * @param {Element} host
+ * @param {Node} node
+ */
 export function mount(host, node) {
   host.replaceChildren(node);
 }
 
 /* Phosphor icon: shortcut. */
+/**
+ * @param {string} name
+ * @param {{ weight?: string, size?: number, style?: import('./types.js').Style }} [opts]
+ */
 export function icon(name, opts = {}) {
   const weight = opts.weight ? '-' + opts.weight : '';
   return el('i', {
@@ -108,32 +140,64 @@ export function icon(name, opts = {}) {
 
 export { formatDuration };
 
+/** @param {number} ts */
 export function formatTime(ts) {
   return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
+/** @param {Date | number} [d] */
 export function startOfDay(d = new Date()) {
   return coreStartOfDay(d);
 }
 
 /* Live duration of a session: adds the time since lastStart when it is running. */
+/** @param {Session | null | undefined} session */
 export function liveDuration(session) {
   return coreLiveDuration(session, Date.now());
 }
 
 /* Presence ranges of a day from its attendance events. */
+/**
+ * @param {Pick<AttendanceEvent, 'type' | 'at'>[] | null | undefined} events
+ * @param {number} [now]
+ */
 export function presenceRanges(events, now = Date.now()) {
   return corePresenceRanges(events, now);
 }
 
 /* Presence duration of a day. */
+/**
+ * @param {Pick<AttendanceEvent, 'type' | 'at'>[] | null | undefined} events
+ * @param {number} [now]
+ */
 export function presenceDuration(events, now = Date.now()) {
   return corePresenceDuration(events, now);
 }
 
 /* Local date in YYYY-MM-DD format. */
+/** @param {Date | number} [d] */
 export function formatLocalDate(d = new Date()) {
   return coreFormatLocalDate(d);
 }
 
 export { uid };
+
+/**
+ * A timestamp as the value of a `datetime-local` field (local time, minutes).
+ * @param {number} ts
+ */
+export function timestampToLocal(ts) {
+  const d = new Date(ts);
+  const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * The timestamp of the value of a `datetime-local` field; null when it is empty or invalid.
+ * @param {string} v
+ * @returns {number | null}
+ */
+export function localToTimestamp(v) {
+  const t = new Date(v).getTime();
+  return isNaN(t) ? null : t;
+}

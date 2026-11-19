@@ -1,7 +1,7 @@
 // The registry of workspaces over localStorage, and the one-time import of the version 1 keys
 // (`chrono.workspaces`, `chrono.workspace.active`).
 import { afterEach, describe, expect, test } from 'vitest';
-import { isDemoEnabled, getRegistry, wsActiveId } from '../../src/adapters/workspace-list.js';
+import { getRegistry, wsActiveId } from '../../src/adapters/workspace-list.js';
 import { installBrowser, uninstallBrowser } from './support/browser.js';
 
 const LEGACY_LIST = 'chrono.workspaces';
@@ -36,7 +36,6 @@ describe('migration of the version 1 workspace list', () => {
     expect(nav.localStorage.keys().sort()).toEqual([
       'chrono-workspace-active',
       'chrono-workspaces',
-      'chrono-workspaces-no-demo',
       LEGACY_ACTIVE,
       LEGACY_LIST,
     ]);
@@ -54,17 +53,6 @@ describe('migration of the version 1 workspace list', () => {
 
     expect(nav.localStorage.getItem(LEGACY_LIST)).toBe(rawList);
     expect(nav.localStorage.getItem(LEGACY_ACTIVE)).toBe('demo');
-  });
-
-  test('keeps the "without demo data" flag of the workspaces created that way', () => {
-    const nav = installBrowser({ now: NOW });
-    nav.localStorage.setItem(LEGACY_LIST, JSON.stringify(legacyList));
-
-    getRegistry();
-
-    expect(isDemoEnabled('default')).toBe(true);
-    expect(isDemoEnabled('perso')).toBe(false); // seedOnInit: false
-    expect(isDemoEnabled('demo')).toBe(true);
   });
 
   test('runs once: afterwards the new keys win', () => {

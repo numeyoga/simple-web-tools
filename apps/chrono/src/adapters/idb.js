@@ -81,12 +81,32 @@ function convertToV2(db, tx) {
 /** @type {readonly Migration[]} */
 export const migrations = [(db) => createStoresIfMissing(db, V1_STORES), convertToV2];
 
-/** @type {Promise<Database | null> | null} */
-let dbPromise = null;
+/**
+ * The database cannot be used: the page shows an error screen and writes nothing anywhere.
+ * `blocked`: an older tab keeps a connection that prevents the upgrade of the database.
+ * `unavailable`: IndexedDB is missing, refuses to open or does not answer.
+ */
+export class StorageError extends Error {
+  /**
+   * @param {'unavailable' | 'blocked'} code
+   * @param {unknown} [cause]
+   */
+  constructor(code, cause) {
+    super(code === 'blocked' ? 'IndexedDB blocked by another tab' : 'IndexedDB unavailable', {
+      cause,
+    });
+    this.name = 'StorageError';
+    this.code = code;
+  }
+}
+
+/** How long an open may take before it counts as unavailable. */
+const OPEN_TIMEOUT_MS = 8000;
 
 /**
- * Open the database of a workspace, with the migrations. Rejects when IndexedDB is missing,
- * when the open is blocked by another connection, or after `timeoutMs` (0: no timeout).
+ * Open the database of a workspace, with the migrations. Rejects with a `StorageError` when
+ * IndexedDB is missing or fails, when the open is blocked by another connection, or after
+ * `timeoutMs` (0: no timeout).
  * @param {string} name
  * @param {number} timeoutMs
  * @returns {Promise<Database>}
@@ -94,7 +114,7 @@ let dbPromise = null;
 function openGuarded(name, timeoutMs) {
   return new Promise((resolve, reject) => {
     if (!('indexedDB' in window)) {
-      reject(new Error('no-idb'));
+      reject(new StorageError('unavailable'));
       return;
     }
     let settled = false;
@@ -108,10 +128,7 @@ function openGuarded(name, timeoutMs) {
       outcome(/** @type {never} */ (value));
     };
     if (timeoutMs > 0) {
-      timeout = setTimeout(() => {
-        console.warn('[db] indexedDB.open timed out, falling back to localStorage');
-        settle(reject, new Error('idb-timeout'));
-      }, timeoutMs);
+      timeout = setTimeout(() => settle(reject, new StorageError('unavailable')), timeoutMs);
     }
     /** @type {Promise<Database>} */
     let opening;
@@ -119,7 +136,7 @@ function openGuarded(name, timeoutMs) {
       opening = openDatabase({
         name,
         migrations,
-        onBlocked: () => settle(reject, new Error('idb-blocked')),
+        onBlocked: () => settle(reject, new StorageError('blocked')),
         // Another tab upgrades or deletes this database: the package closed our connection.
         onVersionChange: () => {
           dbPromise = null;
@@ -127,7 +144,7 @@ function openGuarded(name, timeoutMs) {
         },
       });
     } catch (error) {
-      settle(reject, error);
+      settle(reject, new StorageError('unavailable', error));
       return;
     }
     opening.then(
@@ -136,22 +153,27 @@ function openGuarded(name, timeoutMs) {
           db.close(); // the caller gave up (timeout, blocked): do not leak it
         else settle(resolve, db);
       },
-      (error) => settle(reject, error),
+      (error) => settle(reject, new StorageError('unavailable', error)),
     );
   });
 }
 
+/** @type {Promise<Database> | null} */
+let dbPromise = null;
+
 /**
- * Opens (once) the active workspace's database; null when IndexedDB is unusable.
- * @returns {Promise<Database | null>}
+ * Opens (once) the active workspace's database. Rejects with a `StorageError`; a failed open
+ * is not remembered.
+ * @returns {Promise<Database>}
  */
 export function openDB() {
   if (dbPromise) return dbPromise;
-  dbPromise = openGuarded(databaseNameFor(wsActiveId()), 1500).catch((e) => {
-    console.warn('[db] openDB fallback:', e?.message || e);
-    return null;
+  const opening = openGuarded(databaseNameFor(wsActiveId()), OPEN_TIMEOUT_MS);
+  dbPromise = opening;
+  opening.catch(() => {
+    if (dbPromise === opening) dbPromise = null;
   });
-  return dbPromise;
+  return opening;
 }
 
 /**
@@ -166,13 +188,12 @@ export async function closeDatabase() {
 }
 
 /**
- * All the records of a store; null when IndexedDB is unavailable.
+ * All the records of a store of the active workspace.
  * @param {CollectionName} store
- * @returns {Promise<any[] | null>}
+ * @returns {Promise<ChronoData[CollectionName]>}
  */
 export async function idbAll(store) {
   const db = await openDB();
-  if (!db) return null;
   return db.getAll(store);
 }
 
@@ -188,7 +209,6 @@ export async function idbAll(store) {
  */
 export async function idbSync(store, items, seen) {
   const db = await openDB();
-  if (!db) return false;
   const ids = new Set(items.map((it) => it.id));
   const toWrite = items.filter((it) => seen.get(it.id) !== it);
   const toDelete = [...seen.keys()].filter((id) => !ids.has(id));
@@ -209,7 +229,6 @@ export async function idbSync(store, items, seen) {
  */
 export async function idbBulkPut(store, items) {
   const db = await openDB();
-  if (!db) return false;
   const tx = db.transaction(store, 'readwrite');
   await Promise.all([...items.map((it) => tx.store.put(it)), tx.done]);
   return true;
@@ -225,11 +244,11 @@ export function idbDeleteDatabase(id) {
 }
 
 /**
- * Opens a workspace's database directly (import), migrating it if needed. Rejects on error
- * or when blocked. The caller closes it.
+ * Opens a workspace's database directly (import), migrating it if needed. Rejects with a
+ * `StorageError`. The caller closes it.
  * @param {string} id
  * @returns {Promise<Database>}
  */
 export function openWorkspaceDatabase(id) {
-  return openGuarded(databaseNameFor(id), 0);
+  return openGuarded(databaseNameFor(id), OPEN_TIMEOUT_MS);
 }

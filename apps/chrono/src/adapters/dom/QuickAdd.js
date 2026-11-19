@@ -7,18 +7,12 @@
 //                is NOT made active because it already has an end.
 import * as UI from './ui.js';
 
-const { el, icon, formatDuration } = UI;
+const { el, icon, formatDuration, localToTimestamp, timestampToLocal } = UI;
 
-function timestampToLocal(ts) {
-  const d = new Date(ts);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-function localToTimestamp(v) {
-  const t = new Date(v).getTime();
-  return isNaN(t) ? null : t;
-}
-
+/**
+ * @param {import('./types.js').Store} store
+ * @param {import('./types.js').QuickAddOptions} [options]
+ */
 export function openQuickAddModal(
   store,
   {
@@ -36,10 +30,8 @@ export function openQuickAddModal(
     store.state.projects.find((p) => !p.archived)?.id ||
     store.state.projects[0]?.id ||
     '';
+  /** @type {'live' | 'manual'} */
   let mode = modePrefill === 'manual' ? 'manual' : 'live';
-  let modal;
-  let inputDesc;
-  let startW, endW, displayedDuration, errorBox;
 
   /* --- segmented control mode --- */
   const segWrap = el('div', {
@@ -53,6 +45,11 @@ export function openQuickAddModal(
       alignSelf: 'flex-start',
     },
   });
+  /**
+   * @param {'live' | 'manual'} value
+   * @param {string} iconName
+   * @param {string} label
+   */
   function segBtn(value, iconName, label) {
     const btn = el(
       'button',
@@ -153,11 +150,11 @@ export function openQuickAddModal(
   renderListView();
 
   /* --- description --- */
-  inputDesc = el('input', {
+  const inputDesc = el('input', {
     value: descriptionPrefill || '',
     placeholder: 'Ex. maquette homepage v3',
     autocomplete: 'off',
-    onkeydown: (e) => {
+    onkeydown: (/** @type {import('./types.js').TargetKeyEvent} */ e) => {
       if (e.key === 'Enter' && mode === 'live') submit();
     },
     style: {
@@ -171,11 +168,11 @@ export function openQuickAddModal(
       outline: 'none',
       transition: 'border-color 120ms',
     },
-    onfocus: (e) => {
+    onfocus: (/** @type {import('./types.js').TargetEvent} */ e) => {
       e.target.style.borderColor = 'var(--cv-accent-500)';
       e.target.style.boxShadow = 'var(--cv-shadow-focus)';
     },
-    onblur: (e) => {
+    onblur: (/** @type {import('./types.js').TargetEvent} */ e) => {
       e.target.style.borderColor = 'var(--cv-border-strong)';
       e.target.style.boxShadow = 'none';
     },
@@ -189,20 +186,24 @@ export function openQuickAddModal(
   const defaultEnd = endPrefill != null ? endPrefill : now.getTime();
   const defaultStart = startPrefill != null ? startPrefill : defaultEnd - 60 * 60_000;
 
-  startW = UI.Input({
+  const startW = UI.Input({
     label: 'Début',
     type: 'datetime-local',
     value: timestampToLocal(defaultStart),
   });
-  endW = UI.Input({ label: 'Fin', type: 'datetime-local', value: timestampToLocal(defaultEnd) });
-  displayedDuration = el(
+  const endW = UI.Input({
+    label: 'Fin',
+    type: 'datetime-local',
+    value: timestampToLocal(defaultEnd),
+  });
+  const displayedDuration = el(
     'div',
     {
       style: { font: '500 16px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' },
     },
     '—',
   );
-  errorBox = el('div', {
+  const errorBox = el('div', {
     style: {
       display: 'none',
       padding: '6px 10px',
@@ -243,6 +244,7 @@ export function openQuickAddModal(
   });
   recomputeDuration();
 
+  /** @param {string} msg */
   function showError(msg) {
     errorBox.textContent = msg;
     errorBox.style.display = 'block';
@@ -394,7 +396,7 @@ export function openQuickAddModal(
     submitBtn,
   ];
 
-  modal = UI.Modal({ title: 'Ajouter un chrono', width: 540, body, footer });
+  const modal = UI.Modal({ title: 'Ajouter un chrono', width: 540, body, footer });
   renderMode();
   setTimeout(() => inputDesc.focus(), 50);
 }

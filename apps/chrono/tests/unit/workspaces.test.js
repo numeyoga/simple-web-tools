@@ -1,20 +1,14 @@
-// Workspace API: JSON import (localStorage fallback and IndexedDB), the demo flag and the
-// storage names. The payloads of the import tests are the files of the former site (version 1,
+// Workspace API: JSON import, creation (with optional demo data), removal and the storage
+// names. The payloads of the import tests are the files of the former site (version 1,
 // French fields): they are what users still have.
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createStore } from '../../src/adapters/store.js';
 import { WORKSPACES } from '../../src/adapters/workspaces.js';
-import {
-  databaseNameFor,
-  isDemoEnabled,
-  wsLoadList,
-  wsSetActiveId,
-} from '../../src/adapters/workspace-list.js';
+import { databaseNameFor, wsLoadList, wsSetActiveId } from '../../src/adapters/workspace-list.js';
 import { channelName, fallbackKey, legacyFallbackKey } from '../../src/adapters/names.js';
 import { installBrowser, uninstallBrowser } from './support/browser.js';
 import { readStore } from './support/idb.js';
 
-const KEY = fallbackKey('default');
 const NOW = new Date(2026, 10, 18, 10, 0).getTime();
 const yesterday = new Date(2026, 10, 17, 9, 0).getTime();
 /** A finished session, version 1. */
@@ -31,9 +25,9 @@ const S = {
 
 afterEach(uninstallBrowser);
 
-describe('import without IndexedDB', () => {
-  test('writes the version 2 fallback to localStorage, and the store reads it back', async () => {
-    const nav = installBrowser({ indexedDB: false });
+describe('import', () => {
+  test('writes the version 2 records into IndexedDB, from a version 1 file', async () => {
+    installBrowser();
 
     await WORKSPACES.importJson('default', {
       data: {
@@ -45,18 +39,20 @@ describe('import without IndexedDB', () => {
       },
     });
 
-    const saved = JSON.parse(nav.localStorage.getItem(KEY) ?? 'null');
-    expect(Object.keys(saved).sort()).toEqual(['attendance', 'projects', 'sessions', 'todos']);
-    expect(saved.projects).toEqual([{ id: 'p1', name: 'A' }]);
-    expect(saved.sessions[0]).toMatchObject({ id: 's1', status: 'done', start: 1, end: 2 });
-    expect(saved.attendance).toEqual([{ id: 'pt1', type: 'arrival', at: 5 }]);
-    const store = createStore();
-    await store.init({ seedIfEmpty: false });
-    expect(store.state.attendance).toHaveLength(1);
+    expect(await readStore('chrono__default', 'projects')).toEqual([{ id: 'p1', name: 'A' }]);
+    expect((await readStore('chrono__default', 'sessions'))[0]).toMatchObject({
+      id: 's1',
+      status: 'done',
+      start: 1,
+      end: 2,
+    });
+    expect(await readStore('chrono__default', 'attendance')).toEqual([
+      { id: 'pt1', type: 'arrival', at: 5 },
+    ]);
   });
 
   test('everything invalid => error, nothing written', async () => {
-    const nav = installBrowser({ indexedDB: false });
+    installBrowser();
 
     await expect(
       WORKSPACES.importJson('default', {
@@ -65,19 +61,19 @@ describe('import without IndexedDB', () => {
       }),
     ).rejects.toThrow(/aucune donnée valide/);
 
-    expect(nav.localStorage.getItem(KEY)).toBeNull();
+    expect(indexedDB.databases ? await indexedDB.databases() : []).toEqual([]);
   });
 
   test('an empty but well-formed file => accepted', async () => {
-    const nav = installBrowser({ indexedDB: false });
+    installBrowser();
 
     await WORKSPACES.importJson('default', { projets: [], sessions: [] });
 
-    expect(JSON.parse(nav.localStorage.getItem(KEY) ?? 'null').projects).toHaveLength(0);
+    expect(await readStore('chrono__default', 'projects')).toEqual([]);
   });
 
   test('the imported todos (old format) are migrated', async () => {
-    const nav = installBrowser({ indexedDB: false, now: NOW });
+    installBrowser({ now: NOW });
     const t = (/** @type {string} */ id, /** @type {string} */ echeance) => ({
       id,
       titre: id,
@@ -91,55 +87,81 @@ describe('import without IndexedDB', () => {
       data: { todos: [t('a', 'today'), t('b', 'nimporte'), t('c', '2026-11-30')] },
     });
 
-    const saved = JSON.parse(nav.localStorage.getItem(KEY) ?? 'null');
-    expect(saved.todos.map((/** @type {{ dueDate: string | null }} */ x) => x.dueDate)).toEqual([
-      '2026-11-17',
-      null,
-      '2026-11-30',
+    const saved = await readStore('chrono__default', 'todos');
+    expect(
+      saved
+        .map((/** @type {{ id: string, dueDate: string | null }} */ x) => [x.id, x.dueDate])
+        .sort(),
+    ).toEqual([
+      ['a', '2026-11-17'],
+      ['b', null],
+      ['c', '2026-11-30'],
     ]);
   });
-});
 
-describe('import with IndexedDB', () => {
   test("replaces the content of the workspace's database", async () => {
     installBrowser();
-    const store = createStore();
-    await store.init({ seedIfEmpty: false });
-    store.actions.addProject('Old');
-    await store.flush();
+    const writer = createStore();
+    await writer.init();
+    writer.actions.addProject('Old');
+    await writer.flush();
+    const reader = createStore(); // a second tab, read-only
+    await reader.init();
 
     await WORKSPACES.importJson('default', { data: { projets: [{ id: 'p1', nom: 'New' }] } });
 
     expect((await readStore('chrono__default', 'projects')).map((p) => p.name)).toEqual(['New']);
     // The import notifies the other tabs: they re-read the database.
-    await vi.waitFor(() => expect(store.state.projects.map((p) => p.name)).toEqual(['New']));
+    await vi.waitFor(() => expect(reader.state.projects.map((p) => p.name)).toEqual(['New']));
+  });
+
+  test('without IndexedDB it fails and writes nothing to localStorage', async () => {
+    const nav = installBrowser({ indexedDB: false });
+    const before = nav.localStorage.keys().sort();
+
+    await expect(WORKSPACES.importJson('default', { data: { projets: [] } })).rejects.toMatchObject(
+      {
+        code: 'unavailable',
+      },
+    );
+
+    // Only the default list of the workspace registry appears: no data key is written.
+    expect(nav.localStorage.keys().filter((key) => !before.includes(key))).toEqual([
+      'chrono-workspaces',
+    ]);
   });
 });
 
-describe('workspaces and the demo data flag', () => {
-  test('a created workspace has no demo data unless asked, and removal forgets the flag', async () => {
-    const nav = installBrowser({ indexedDB: false });
+describe('workspaces', () => {
+  test('a created workspace starts empty unless demo data is asked for', async () => {
+    installBrowser();
 
-    const plain = WORKSPACES.create({ label: 'Perso' });
-    const withDemo = WORKSPACES.create({ label: 'Démo', seedDemo: true });
+    const plain = await WORKSPACES.create({ label: 'Perso' });
+    await WORKSPACES.create({ label: 'Démo', seedDemo: true });
 
     expect(plain.id).toBe('perso');
-    expect(isDemoEnabled(plain.id)).toBe(false);
-    expect(isDemoEnabled(withDemo.id)).toBe(true);
-    expect(isDemoEnabled('default')).toBe(true);
+    // Its database is created when the workspace is opened for the first time, and is empty.
+    const databases = (await indexedDB.databases()).map((d) => d.name);
+    expect(databases).toContain('chrono__demo');
+    expect(databases).not.toContain('chrono__perso');
+    expect((await readStore('chrono__demo', 'projects')).length).toBeGreaterThan(0);
+  });
 
+  test('removing a workspace deletes its database but never the old localStorage keys', async () => {
+    const nav = installBrowser();
+    await WORKSPACES.create({ label: 'Perso' });
     nav.localStorage.setItem(fallbackKey('perso'), '{}');
     nav.localStorage.setItem(legacyFallbackKey('perso'), '{}');
+
     await WORKSPACES.remove('perso');
 
-    expect(isDemoEnabled('perso')).toBe(true);
-    expect(nav.localStorage.getItem(fallbackKey('perso'))).toBeNull();
-    expect(nav.localStorage.getItem(legacyFallbackKey('perso'))).toBeNull();
-    expect(WORKSPACES.getList().map((w) => w.id)).toEqual(['default', 'demo']);
+    expect(nav.localStorage.getItem(fallbackKey('perso'))).toBe('{}');
+    expect(nav.localStorage.getItem(legacyFallbackKey('perso'))).toBe('{}');
+    expect(WORKSPACES.getList().map((w) => w.id)).toEqual(['default']);
   });
 
   test('rename keeps the label when the new one is blank; the last workspace stays', async () => {
-    installBrowser({ indexedDB: false });
+    installBrowser();
 
     expect(WORKSPACES.rename('default', '   ').label).toBe('Espace principal');
     expect(WORKSPACES.rename('default', ' Travail ').label).toBe('Travail');
@@ -155,7 +177,7 @@ describe('storage names prefixed by the app (decision 0005)', () => {
   });
 
   test('so do the list of workspaces and the active one', () => {
-    const nav = installBrowser({ indexedDB: false });
+    const nav = installBrowser();
 
     wsLoadList();
     wsSetActiveId('default');

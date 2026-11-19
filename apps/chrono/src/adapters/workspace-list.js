@@ -1,17 +1,16 @@
 // Workspaces: the list and the active id live in localStorage, managed by the registry of
 // @simple-web-tools/storage (keys `chrono-workspaces` and `chrono-workspace-active`).
 //
-// Each workspace has its own IndexedDB (`chrono__<id>`) and its own localStorage fallback.
-// Switching workspace reloads the page: the store is rebuilt. Every storage name starts with
-// the app name (decision 0005).
+// Each workspace has its own IndexedDB (`chrono__<id>`). Switching workspace reloads the page:
+// the store is rebuilt. Every storage name starts with the app name (decision 0005).
 
 import { createWorkspaceRegistry, workspaceDatabaseName } from '@simple-web-tools/storage';
-import { workspaceV1ToV2 } from '../core/migrations.js';
+import { planLegacyWorkspaces } from '../core/migrations.js';
 import {
   APP,
   LEGACY_ACTIVE_KEY,
   LEGACY_WORKSPACES_KEY,
-  noDemoKey,
+  legacyWorkspacesKey,
   workspaceListKey,
 } from './names.js';
 
@@ -21,41 +20,40 @@ import {
 export const STORE_NAMES = /** @type {const} */ (['projects', 'todos', 'sessions', 'attendance']);
 
 /**
- * Ids of the workspaces that must not get the demo data on their first start.
- * @returns {string[]}
+ * A workspace of the version 1 list whose id the registry refuses, and the database that holds
+ * its data.
+ * @typedef {object} LegacyWorkspace
+ * @property {string} from version 1 id: the database is `chrono__<from>`
+ * @property {string} to id in the registry
+ * @property {boolean} copied whether the content of the old database is in `chrono__<to>`
  */
-function readNoDemoIds() {
+
+/**
+ * The repaired workspaces recorded by the migration of the version 1 list.
+ * @returns {LegacyWorkspace[]}
+ */
+export function readLegacyWorkspaces() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(noDemoKey()) || '[]');
-    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
+    const parsed = JSON.parse(localStorage.getItem(legacyWorkspacesKey()) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (e) => e && typeof e.from === 'string' && typeof e.to === 'string' && e.from !== e.to,
+    );
   } catch {
     return [];
   }
 }
 
-/**
- * @param {string} id
- * @param {boolean} demo
- */
-export function setDemoEnabled(id, demo) {
-  const ids = readNoDemoIds().filter((other) => other !== id);
-  if (!demo) ids.push(id);
-  localStorage.setItem(noDemoKey(), JSON.stringify(ids));
-}
-
-/**
- * Does a fresh workspace start with the demo data? Yes, unless it was created without.
- * @param {string} id
- * @returns {boolean}
- */
-export function isDemoEnabled(id) {
-  return !readNoDemoIds().includes(id);
+/** @param {LegacyWorkspace[]} entries */
+export function writeLegacyWorkspaces(entries) {
+  localStorage.setItem(legacyWorkspacesKey(), JSON.stringify(entries));
 }
 
 /**
  * Once: when the registry has no list yet and the version 1 keys exist, import the version 1
- * list (same ids, so the database names still match) and the active id. The version 1 keys
- * are left untouched.
+ * list and the active id. A workspace whose version 1 id the registry refuses gets a valid
+ * id; it is recorded (see `readLegacyWorkspaces`) so that its database is copied. The version 1
+ * keys are left untouched.
  * @param {ReturnType<typeof createWorkspaceRegistry>} registry
  */
 function migrateLegacyRegistry(registry) {
@@ -67,19 +65,14 @@ function migrateLegacyRegistry(registry) {
     return;
   }
   if (!Array.isArray(legacy)) return;
-  const now = Date.now();
-  const converted = legacy.map((entry) => workspaceV1ToV2(entry, now)).filter((e) => e !== null);
-  const activeId = localStorage.getItem(LEGACY_ACTIVE_KEY);
-  const imported = registry.importWorkspaces(
-    converted.map((entry) => entry.workspace),
-    activeId,
-  );
+  const plan = planLegacyWorkspaces(legacy, Date.now());
+  const legacyActive = localStorage.getItem(LEGACY_ACTIVE_KEY);
+  const renamedActive = plan.renames.find((r) => r.from === legacyActive);
+  const imported = registry.importWorkspaces(plan.workspaces, renamedActive?.to ?? legacyActive);
   if (!imported) return;
   const kept = new Set(registry.list().map((w) => w.id));
-  const noDemo = new Set(readNoDemoIds());
-  for (const { workspace, demo } of converted)
-    if (!demo && kept.has(workspace.id)) noDemo.add(workspace.id);
-  if (noDemo.size) localStorage.setItem(noDemoKey(), JSON.stringify([...noDemo]));
+  const pending = plan.renames.filter((r) => kept.has(r.to));
+  if (pending.length) writeLegacyWorkspaces(pending.map((r) => ({ ...r, copied: false })));
 }
 
 /**

@@ -18,7 +18,8 @@ describe('updateSession', () => {
     let d = updateSession(base(), { id: 's1', patch: { end: h(18), duration: 2 * H } });
     expect(session(d, 's1').duration).toBe(2 * H);
 
-    d = updateSession(d, { id: 's1', patch: { start: h(18), end: h(18) } });
+    // 9h-10h holds less than the 1 h of pause already counted.
+    d = updateSession(d, { id: 's1', patch: { end: h(9, 30) } });
     expect(session(d, 's1').duration).toBe(0);
   });
 
