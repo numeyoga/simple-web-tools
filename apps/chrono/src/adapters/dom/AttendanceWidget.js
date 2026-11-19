@@ -5,8 +5,14 @@ import * as UI from './ui.js';
 
 const { el, icon, formatDuration, formatTime, liveDuration } = UI;
 
+/** @typedef {import('../../types.js').AttendanceEvent} AttendanceEvent */
+/** @typedef {import('../../types.js').Session} Session */
+/** @typedef {import('../../types.js').AttendanceType} AttendanceType */
+
+/** @param {AttendanceEvent[]} events */
 function totalPauses(events) {
   let total = 0;
+  /** @type {number | null} */
   let pauseStart = null;
   for (const e of events) {
     if (e.type === 'break_start') pauseStart = e.at;
@@ -19,6 +25,10 @@ function totalPauses(events) {
   return total;
 }
 
+/**
+ * @param {import('./types.js').Store} store
+ * @param {{ onOpenQuickAdd: () => void }} opts
+ */
 export function createAttendanceWidget(store, opts) {
   const host = el('div', { class: 'ch-pile ch-g12' });
 
@@ -37,7 +47,16 @@ export function createAttendanceWidget(store, opts) {
     const currentBreakDuration =
       lastBreakStartEvent && status === 'on_break' ? Date.now() - lastBreakStartEvent.at : 0;
 
-    const meta = {
+    /**
+     * @type {Record<
+     *   import('../../types.js').AttendanceState['status'],
+     *   {
+     *     label: string, color: string, dot: string, cta: string | null, ctaVariant: string,
+     *     action: import('../../types.js').AttendanceType | null,
+     *   }
+     * >}
+     */
+    const metas = {
       not_arrived: {
         label: 'Pas encore arrivé',
         color: 'var(--cv-fg-muted)',
@@ -70,7 +89,8 @@ export function createAttendanceWidget(store, opts) {
         cta: null,
         ctaVariant: 'secondary',
       },
-    }[status];
+    };
+    const meta = metas[status];
 
     // ----- presence block -----
     const presenceBlock = el(
@@ -166,7 +186,9 @@ export function createAttendanceWidget(store, opts) {
               size: 'sm',
               icon: status === 'not_arrived' ? 'sign-in' : status === 'present' ? 'pause' : 'play',
               children: meta.cta,
-              onclick: () => store.actions.recordAttendance(meta.action),
+              mutates: true,
+              onclick: () =>
+                store.actions.recordAttendance(/** @type {AttendanceType} */ (meta.action)),
               style: { flex: 1 },
             })
           : null,
@@ -177,6 +199,7 @@ export function createAttendanceWidget(store, opts) {
               icon: 'sign-out',
               children: 'Partir',
               title: 'Clôturer la journée',
+              mutates: true,
               onclick: () => {
                 // On a break: close the break first to keep a clean history.
                 // The timer suspended by the break is resumed, then stopped right after by 'departure'.
@@ -199,6 +222,7 @@ export function createAttendanceWidget(store, opts) {
     );
 
     // ----- active timers (parallel) -----
+    /** @param {Session} active */
     function chronoCard(active) {
       const project = s.projects.find((p) => p.id === active.projectId);
       const isRunning = active.status === 'running';
@@ -274,6 +298,7 @@ export function createAttendanceWidget(store, opts) {
             ? el(
                 'button',
                 {
+                  'data-mutates': '',
                   onclick: () => store.actions.pauseSession(active.id),
                   class: 'ch-btn-sombre',
                   title: 'Mettre en pause',
@@ -283,6 +308,7 @@ export function createAttendanceWidget(store, opts) {
             : el(
                 'button',
                 {
+                  'data-mutates': '',
                   onclick: () => store.actions.resumeSession(active.id),
                   class: 'ch-btn-sombre ch-btn-sombre--accent',
                   title: 'Reprendre',
@@ -292,6 +318,7 @@ export function createAttendanceWidget(store, opts) {
           el(
             'button',
             {
+              'data-mutates': '',
               onclick: () => store.actions.stopSession(active.id),
               class: 'ch-btn-sombre',
               title: 'Arrêter & enregistrer',
@@ -332,6 +359,7 @@ export function createAttendanceWidget(store, opts) {
           size: 'sm',
           icon: 'play',
           children: 'Démarrer un chrono',
+          mutates: true,
           onclick: opts.onOpenQuickAdd,
           disabled: status === 'left',
           style: { alignSelf: 'stretch' },
@@ -376,6 +404,7 @@ export function createAttendanceWidget(store, opts) {
                     size: 'sm',
                     icon: 'pause',
                     children: 'Tout mettre en pause',
+                    mutates: true,
                     onclick: () => store.actions.pauseAll(),
                     style: { flex: 1 },
                   })
@@ -384,6 +413,7 @@ export function createAttendanceWidget(store, opts) {
                     size: 'sm',
                     icon: 'play',
                     children: 'Tout reprendre',
+                    mutates: true,
                     onclick: () => store.actions.resumeAll(),
                     style: { flex: 1 },
                   }),
@@ -392,6 +422,7 @@ export function createAttendanceWidget(store, opts) {
                 size: 'sm',
                 icon: 'stop',
                 title: 'Tout arrêter & enregistrer',
+                mutates: true,
                 onclick: () => store.actions.stopAll(),
               }),
             )
@@ -408,6 +439,7 @@ export function createAttendanceWidget(store, opts) {
           size: 'sm',
           icon: 'plus',
           children: 'Démarrer un autre chrono',
+          mutates: true,
           onclick: opts.onOpenQuickAdd,
           disabled: status === 'left',
           style: { alignSelf: 'stretch' },

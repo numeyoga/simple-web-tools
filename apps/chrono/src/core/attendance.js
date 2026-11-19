@@ -1,6 +1,6 @@
 // Attendance (clock-in): state machine of the day and the events that drive the timers.
 
-import { startOfDay } from './dates.js';
+import { dayBounds } from './dates.js';
 import { truncateToPresence } from './sessions.js';
 
 /** @typedef {import('../types.js').ChronoData} ChronoData */
@@ -16,8 +16,8 @@ import { truncateToPresence } from './sessions.js';
  * @returns {AttendanceState}
  */
 export function attendanceState(attendance, now) {
-  const today = startOfDay(now);
-  const events = attendance.filter((p) => p.at >= today).sort((a, b) => a.at - b.at);
+  const { start, end } = dayBounds(now);
+  const events = attendance.filter((p) => p.at >= start && p.at < end).sort((a, b) => a.at - b.at);
   const last = events[events.length - 1];
   if (!last) return { status: 'not_arrived', events };
   if (last.type === 'arrival' || last.type === 'break_end') {
@@ -84,9 +84,9 @@ export function recordAttendance(data, { type }, now, newId) {
   }
 
   if (type === 'break_end') {
-    const today = startOfDay(now);
+    const { start, end } = dayBounds(now);
     const lastBreakStart = data.attendance
-      .filter((p) => p.type === 'break_start' && p.at >= today)
+      .filter((p) => p.type === 'break_start' && p.at >= start && p.at < end)
       .sort((a, b) => a.at - b.at)
       .slice(-1)[0];
     const ids = lastBreakStart?.suspendedSessionIds ?? [];

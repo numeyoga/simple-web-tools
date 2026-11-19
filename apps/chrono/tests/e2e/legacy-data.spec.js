@@ -101,7 +101,7 @@ test('a version 1 database and workspace list are migrated and their data shows 
   page,
 }) => {
   await seedVersion1(page);
-  const { errors } = await openApp(page, { demo: true, clock: true });
+  const { errors } = await openApp(page, { clock: true });
   const main = page.getByRole('main');
 
   // Timeline: the session and the time worked.

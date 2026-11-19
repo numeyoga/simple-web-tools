@@ -1,7 +1,9 @@
 // "Timeline" view: date banner, stats, hourly chart, sessions, distribution.
+import { dayBounds } from '../../core/dates.js';
 import * as UI from './ui.js';
 
-const { el, icon, formatDuration, formatTime, liveDuration } = UI;
+const { el, icon, formatDuration, formatTime, liveDuration, localToTimestamp, timestampToLocal } =
+  UI;
 
 const START_HOUR = 7;
 const END_HOUR = 20;
@@ -13,28 +15,46 @@ const ATTENDANCE_TYPES = [
   { value: 'break_end', label: 'Fin de pause', icon: 'play', color: 'var(--cv-warning-700)' },
   { value: 'departure', label: 'Départ', icon: 'sign-out', color: 'var(--cv-fg-muted)' },
 ];
+/** @type {Record<string, (typeof ATTENDANCE_TYPES)[number]>} */
 const ATTENDANCE_META = Object.fromEntries(ATTENDANCE_TYPES.map((p) => [p.value, p]));
 
 // Horizontal scale of the chart (px from the left edge of the content).
 const CHART_PAD_X = 16;
-const hourToPx = (h) => (h - START_HOUR) * PX_PER_HOUR;
-const tsToPx = (ts) => {
+/** @typedef {import('../../types.js').Session} Session */
+/** @typedef {import('../../types.js').Project} Project */
+/** @typedef {import('../../types.js').AttendanceEvent} AttendanceEvent */
+
+const hourToPx = (/** @type {number} */ h) => (h - START_HOUR) * PX_PER_HOUR;
+const tsToPx = (/** @type {number} */ ts) => {
   const d = new Date(ts);
   const h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   return hourToPx(h);
 };
 
 // Sets a stable focus key (dataset.focusKey) on an element that is already built.
+/**
+ * @template {HTMLElement} T
+ * @param {T} node
+ * @param {string} key
+ * @returns {T}
+ */
 const withFocusKey = (node, key) => {
   node.dataset.focusKey = key;
   return node;
 };
 
+/** @type {import('./types.js').ViewFactory} */
 export function createTimelineView(store, opts) {
   let dateOffset = 0;
 
   const host = el('div', { class: 'ch-pile ch-g20' });
 
+  /**
+   * @param {string} label
+   * @param {string} value
+   * @param {string | null} subtext
+   * @param {{ accent?: boolean, mono?: boolean }} [options]
+   */
   function statBlock(label, value, subtext, { accent, mono = true } = {}) {
     return el(
       'div',
@@ -68,6 +88,11 @@ export function createTimelineView(store, opts) {
     );
   }
 
+  /**
+   * @param {string} color
+   * @param {string} label
+   * @param {boolean} [stripe]
+   */
   function legendItem(color, label, stripe) {
     return el(
       'span',
@@ -87,19 +112,9 @@ export function createTimelineView(store, opts) {
     );
   }
 
+  /** @param {Session} s */
   function openSessionEditor(s) {
     const projects = store.state.projects;
-    let modal;
-
-    function timestampToLocal(ts) {
-      const d = new Date(ts);
-      const pad = (n) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    }
-    function localToTimestamp(v) {
-      const t = new Date(v).getTime();
-      return isNaN(t) ? null : t;
-    }
 
     const projectW = UI.Select({
       label: 'Projet',
@@ -121,7 +136,11 @@ export function createTimelineView(store, opts) {
     });
     const endW =
       s.status === 'done'
-        ? UI.Input({ label: 'Fin', value: timestampToLocal(s.end), type: 'datetime-local' })
+        ? UI.Input({
+            label: 'Fin',
+            value: timestampToLocal(/** @type {number} */ (s.end)),
+            type: 'datetime-local',
+          })
         : null;
 
     const displayedDuration = el(
@@ -137,6 +156,7 @@ export function createTimelineView(store, opts) {
       s.status === 'done' && s.start != null && s.end != null
         ? Math.max(0, s.end - s.start - (s.duration || 0))
         : 0;
+    /** @param {number} ms */
     function pauseLabel(ms) {
       const min = Math.max(1, Math.round(ms / 60000));
       const h = Math.floor(min / 60);
@@ -156,7 +176,7 @@ export function createTimelineView(store, opts) {
     function recomputeDuration() {
       if (s.status !== 'done') return;
       const d = localToTimestamp(startW.input.value);
-      const f = localToTimestamp(endW.input.value);
+      const f = endW ? localToTimestamp(endW.input.value) : null;
       if (d != null && f != null && f >= d)
         displayedDuration.textContent = formatDuration(Math.max(0, f - d - originalPauses));
     }
@@ -164,16 +184,22 @@ export function createTimelineView(store, opts) {
     if (endW) endW.input.addEventListener('input', recomputeDuration);
 
     function save() {
+      /** @type {Partial<Session>} */
       const patch = {
         projectId: projectW.input.value,
         description: descW.input.value.trim(),
       };
+      // Only a time that was edited goes in the patch: a stored session whose start and end
+      // are equal stays editable (description, project) without being refused.
       const start = localToTimestamp(startW.input.value);
-      if (start != null) patch.start = start;
+      if (start != null && startW.input.value !== timestampToLocal(s.start)) patch.start = start;
       if (endW) {
         const end = localToTimestamp(endW.input.value);
-        if (end != null) patch.end = end;
-        if (patch.start != null && patch.end != null && patch.end < patch.start) {
+        if (end != null && endW.input.value !== timestampToLocal(/** @type {number} */ (s.end)))
+          patch.end = end;
+        const newStart = patch.start ?? s.start;
+        const newEnd = patch.end ?? s.end ?? newStart;
+        if ((patch.start != null || patch.end != null) && newEnd <= newStart) {
           alert('La fin doit être après le début.');
           return;
         }
@@ -187,7 +213,7 @@ export function createTimelineView(store, opts) {
       modal.close();
     }
 
-    modal = UI.Modal({
+    const modal = UI.Modal({
       title: 'Modifier la session',
       width: 480,
       body: el(
@@ -255,13 +281,23 @@ export function createTimelineView(store, opts) {
   }
 
   /* ----------------- TimelineChart ----------------- */
+  /**
+   * @param {number} dayStart
+   * @param {Session[]} daySessions
+   * @param {AttendanceEvent[]} dayAttendance
+   * @param {Project[]} projects
+   * @param {boolean} isToday
+   */
   function timelineChart(dayStart, daySessions, dayAttendance, projects, isToday) {
     const totalHours = END_HOUR - START_HOUR;
+    const dayEnd = dayBounds(dayStart).end; // the next midnight: the day lasts 23, 24 or 25 h
     const widthPx = totalHours * PX_PER_HOUR;
-    const msToPx = (ms) => (ms / 3600_000) * PX_PER_HOUR;
+    const msToPx = (/** @type {number} */ ms) => (ms / 3600_000) * PX_PER_HOUR;
 
     // presence segments
+    /** @type {{ start: number, end: number, ongoing?: boolean }[]} */
     const presenceSegs = [];
+    /** @type {number | null} */
     let presentSince = null;
     for (const e of dayAttendance) {
       if ((e.type === 'arrival' || e.type === 'break_end') && presentSince == null)
@@ -274,7 +310,7 @@ export function createTimelineView(store, opts) {
     if (presentSince != null)
       presenceSegs.push({
         start: presentSince,
-        end: isToday ? Date.now() : dayStart + 86400000,
+        end: isToday ? Date.now() : dayEnd,
         ongoing: true,
       });
 
@@ -291,7 +327,7 @@ export function createTimelineView(store, opts) {
     if (breakStartedAt != null)
       pauseSegs.push({
         start: breakStartedAt,
-        end: isToday ? Date.now() : dayStart + 86400000,
+        end: isToday ? Date.now() : dayEnd,
         ongoing: true,
       });
 
@@ -388,10 +424,20 @@ export function createTimelineView(store, opts) {
     const LANE_GAP = 4;
 
     // Visual extent of each session: [start, start + displayed duration].
+    /** @typedef {{ s: Session, durationMs: number, start: number, end: number, col: number, cols: number, colSpan: number }} Placed */
+    /** @type {Placed[]} */
     const placed = daySessions
       .map((s) => {
         const durationMs = liveDuration(s);
-        return { s, durationMs, start: s.start, end: s.start + Math.max(durationMs, 60_000) };
+        return {
+          s,
+          durationMs,
+          start: s.start,
+          end: s.start + Math.max(durationMs, 60_000),
+          col: 0,
+          cols: 1,
+          colSpan: 1,
+        };
       })
       .sort((a, b) => a.start - b.start);
 
@@ -401,7 +447,9 @@ export function createTimelineView(store, opts) {
     // area (so it is centred, equal margins at the top and bottom), while
     // really parallel timers share the height, without ever
     // changing the total height of the band, which stays constant.
+    /** @type {{ items: Placed[], maxEnd: number }[]} */
     const clusters = [];
+    /** @type {{ items: Placed[], maxEnd: number } | null} */
     let cur = null;
     for (const item of placed) {
       if (cur && item.start < cur.maxEnd - 1000) {
@@ -412,10 +460,13 @@ export function createTimelineView(store, opts) {
         clusters.push(cur);
       }
     }
-    const overlaps = (a, b) => a.start < b.end - 1000 && b.start < a.end - 1000;
+    const overlaps = (/** @type {Placed} */ a, /** @type {Placed} */ b) =>
+      a.start < b.end - 1000 && b.start < a.end - 1000;
     for (const cl of clusters) {
+      /** @type {number[]} */
       const colEnds = [];
       for (const item of cl.items) {
+        /** @type {number} */
         let col = colEnds.findIndex((end) => item.start >= end - 1000);
         if (col === -1) {
           col = colEnds.length;
@@ -455,7 +506,7 @@ export function createTimelineView(store, opts) {
       const top = SESSION_ZONE_TOP + item.col * (laneH + LANE_GAP);
       const block = el('div', {
         dataset: { focusKey: `session-block:${s.id}` },
-        title: `${project?.name || 'Sans projet'} · ${formatTime(s.start)} → ${s.status === 'done' ? formatTime(s.end) : 'en cours'} · ${formatDuration(durationMs)}`,
+        title: `${project?.name || 'Sans projet'} · ${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'} · ${formatDuration(durationMs)}`,
         onclick: () => openSessionEditor(s),
         style: {
           position: 'absolute',
@@ -592,6 +643,10 @@ export function createTimelineView(store, opts) {
   }
 
   /* ----------------- Sessions list ----------------- */
+  /**
+   * @param {Session[]} daySessions
+   * @param {Project[]} projects
+   */
   function sessionsList(daySessions, projects) {
     const list =
       daySessions.length === 0
@@ -607,10 +662,26 @@ export function createTimelineView(store, opts) {
                 icon: 'play',
                 children: 'Démarrer un chrono',
                 style: { marginTop: 12 },
+                mutates: true,
                 onclick: opts.onOpenQuickAdd,
               }),
               'sessions-empty:start',
             ),
+            // A brand new workspace: the demo data is offered, never loaded on its own.
+            store.isEmpty()
+              ? withFocusKey(
+                  UI.Button({
+                    variant: 'secondary',
+                    size: 'sm',
+                    icon: 'flask',
+                    children: 'Charger des données de démonstration',
+                    style: { marginTop: 8 },
+                    mutates: true,
+                    onclick: () => store.actions.loadDemoData(),
+                  }),
+                  'sessions-empty:demo',
+                )
+              : null,
           )
         : el(
             'div',
@@ -625,7 +696,7 @@ export function createTimelineView(store, opts) {
                     ? 'ch-ligne est-actif ch-flex-c ch-g12'
                     : 'ch-ligne ch-flex-c ch-g12',
                   style: { padding: '10px 16px', cursor: 'pointer' },
-                  onclick: (e) => {
+                  onclick: (/** @type {import('./types.js').TargetMouseEvent} */ e) => {
                     // Avoids opening the editor when a button in the row is clicked.
                     if (e.target.closest('button')) return;
                     openSessionEditor(s);
@@ -663,7 +734,7 @@ export function createTimelineView(store, opts) {
                     el(
                       'span',
                       { style: { fontFamily: 'var(--cv-font-mono)' } },
-                      `${formatTime(s.start)} → ${s.status === 'done' ? formatTime(s.end) : 'en cours'}`,
+                      `${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'}`,
                     ),
                   ),
                 ),
@@ -689,6 +760,7 @@ export function createTimelineView(store, opts) {
                           icon: 'pause',
                           label: 'Mettre en pause',
                           size: 'sm',
+                          mutates: true,
                           onclick: () => store.actions.pauseSession(s.id),
                         }),
                         `session:${s.id}:pause`,
@@ -698,6 +770,7 @@ export function createTimelineView(store, opts) {
                           icon: 'stop',
                           label: 'Arrêter',
                           size: 'sm',
+                          mutates: true,
                           onclick: () => store.actions.stopSession(s.id),
                         }),
                         `session:${s.id}:stop`,
@@ -713,6 +786,7 @@ export function createTimelineView(store, opts) {
                             icon: 'play',
                             label: 'Reprendre',
                             size: 'sm',
+                            mutates: true,
                             onclick: () => store.actions.resumeSession(s.id),
                           }),
                           `session:${s.id}:reprendre`,
@@ -722,6 +796,7 @@ export function createTimelineView(store, opts) {
                             icon: 'stop',
                             label: 'Arrêter',
                             size: 'sm',
+                            mutates: true,
                             onclick: () => store.actions.stopSession(s.id),
                           }),
                           `session:${s.id}:stop`,
@@ -735,6 +810,7 @@ export function createTimelineView(store, opts) {
                             icon: 'play',
                             label: 'Reprendre ce projet',
                             title: 'Redémarrer un chrono sur ce projet',
+                            mutates: true,
                             onclick: () => opts.onStartOnProject(s.projectId, s.description),
                           }),
                           `session:${s.id}:redemarrer`,
@@ -753,6 +829,7 @@ export function createTimelineView(store, opts) {
                             icon: 'trash',
                             label: 'Supprimer',
                             size: 'sm',
+                            mutates: true,
                             onclick: () => store.actions.deleteSession(s.id),
                           }),
                           `session:${s.id}:supprimer`,
@@ -780,6 +857,7 @@ export function createTimelineView(store, opts) {
               size: 'sm',
               icon: 'plus',
               children: 'Nouvelle',
+              mutates: true,
               onclick: opts.onOpenQuickAdd,
             }),
             'sessions:new',
@@ -791,15 +869,22 @@ export function createTimelineView(store, opts) {
   }
 
   /* ----------------- Distribution ----------------- */
+  /**
+   * @param {Session[]} daySessions
+   * @param {Project[]} projects
+   */
   function distribution(daySessions, projects) {
     const total = daySessions.reduce((s, x) => s + liveDuration(x), 0);
+    /** @type {Record<string, number>} */
     const byProject = {};
     for (const s of daySessions) {
       byProject[s.projectId] = (byProject[s.projectId] || 0) + liveDuration(s);
     }
     const listEl = Object.entries(byProject)
-      .map(([id, d]) => ({ id, duration: d, project: projects.find((p) => p.id === id) }))
-      .filter((x) => x.project)
+      .flatMap(([id, d]) => {
+        const project = projects.find((p) => p.id === id);
+        return project ? [{ id, duration: d, project }] : [];
+      })
       .sort((a, b) => b.duration - a.duration);
 
     return el(
@@ -824,6 +909,7 @@ export function createTimelineView(store, opts) {
                 'button',
                 {
                   dataset: { focusKey: `distribution:${id}` },
+                  'data-mutates': '',
                   onclick: () => opts.onStartOnProject(id),
                   class: 'ch-ligne-bouton ch-flex-c ch-g12',
                 },
@@ -887,19 +973,12 @@ export function createTimelineView(store, opts) {
 
   /* ----------------- Attendance (editing) ----------------- */
 
-  function timestampToLocal(ts) {
-    const d = new Date(ts);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-  function localToTimestamp(v) {
-    const t = new Date(v).getTime();
-    return isNaN(t) ? null : t;
-  }
-
+  /**
+   * @param {AttendanceEvent | null} p
+   * @param {number} dayStart
+   */
   function openAttendanceEditor(p, dayStart) {
     const isNew = !p;
-    let modal;
     const tsInitial = p?.at ?? dayStart + 9 * 3600_000;
 
     const typeW = UI.Select({
@@ -917,8 +996,8 @@ export function createTimelineView(store, opts) {
     function save() {
       const t = localToTimestamp(timeW.input.value);
       if (t == null) return;
-      const type = typeW.input.value;
-      if (isNew) store.actions.addAttendance(type, t);
+      const type = /** @type {import('../../types.js').AttendanceType} */ (typeW.input.value);
+      if (!p) store.actions.addAttendance(type, t);
       else store.actions.updateAttendance(p.id, { type, at: t });
       modal.close();
     }
@@ -952,7 +1031,7 @@ export function createTimelineView(store, opts) {
       }),
     );
 
-    modal = UI.Modal({
+    const modal = UI.Modal({
       title: isNew ? 'Ajouter un pointage' : 'Modifier le pointage',
       width: 420,
       body: el('div', { class: 'ch-pile ch-g12' }, typeW, timeW),
@@ -960,10 +1039,15 @@ export function createTimelineView(store, opts) {
     });
   }
 
+  /**
+   * @param {AttendanceEvent[]} dayAttendance
+   * @param {number} dayStart
+   * @param {boolean} isToday
+   */
   function attendanceSection(dayAttendance, dayStart, isToday) {
     const orders = dayAttendance.slice().sort((a, b) => a.at - b.at);
     const hasArrival = dayAttendance.some((e) => e.type === 'arrival');
-    const nowBoundary = isToday ? Date.now() : dayStart + 86400000;
+    const nowBoundary = isToday ? Date.now() : dayBounds(dayStart).end;
     const presence = hasArrival ? UI.presenceDuration(dayAttendance, nowBoundary) : 0;
     const hasLeft = dayAttendance.some((e) => e.type === 'departure');
     return el(
@@ -1023,6 +1107,7 @@ export function createTimelineView(store, opts) {
               size: 'sm',
               icon: 'plus',
               children: 'Ajouter',
+              mutates: true,
               onclick: () => openAttendanceEditor(null, dayStart),
             }),
             'attendance:add',
@@ -1048,7 +1133,8 @@ export function createTimelineView(store, opts) {
             'div',
             { class: 'ch-flex ch-g8', style: { flexWrap: 'wrap', padding: 12 } },
             orders.map((p) => {
-              const meta = ATTENDANCE_META[p.type] || ATTENDANCE_META.arrival;
+              const meta = ATTENDANCE_META[p.type] ?? ATTENDANCE_TYPES[0];
+              if (!meta) return null;
               return el(
                 'button',
                 {
@@ -1093,23 +1179,27 @@ export function createTimelineView(store, opts) {
   function render() {
     // Before rebuilding: remember the scroll of the chart (for the day it shows)
     // and the focused element. A container that is not displayed (scrollLeft forced to 0) is not remembered.
-    const previousScroll = host.querySelector('[data-role="timeline-scroll"]');
+    const previousScroll = /** @type {HTMLElement | null} */ (
+      host.querySelector('[data-role="timeline-scroll"]')
+    );
     // Only a container that is already positioned is remembered: the very first render happens before
     // insertion in the document (clientWidth = 0), and its scrollLeft of 0 would otherwise overwrite
     // the initial centring on the current time.
     if (previousScroll && previousScroll.clientWidth > 0 && previousScroll.dataset.positioned) {
-      scrollByDay.set(previousScroll.dataset.day, previousScroll.scrollLeft);
+      scrollByDay.set(previousScroll.dataset.day ?? '', previousScroll.scrollLeft);
     }
-    const focusKey = host.contains(document.activeElement)
-      ? document.activeElement.closest('[data-focus-key]')?.dataset.focusKey
-      : null;
+    const active = document.activeElement;
+    const focusKey =
+      active && host.contains(active)
+        ? /** @type {HTMLElement | null} */ (active.closest('[data-focus-key]'))?.dataset.focusKey
+        : null;
 
     const s = store.state;
     const baseDate = new Date();
     baseDate.setHours(0, 0, 0, 0);
     baseDate.setDate(baseDate.getDate() + dateOffset);
     const dayStart = baseDate.getTime();
-    const dayEnd = dayStart + 86400000;
+    const dayEnd = dayBounds(dayStart).end;
     const isToday = dateOffset === 0;
 
     const daySessions = s.sessions
@@ -1265,7 +1355,9 @@ export function createTimelineView(store, opts) {
     );
 
     // Restores the scroll of the chart.
-    const scroller = host.querySelector('[data-role="timeline-scroll"]');
+    const scroller = /** @type {HTMLElement | null} */ (
+      host.querySelector('[data-role="timeline-scroll"]')
+    );
     if (scroller && scroller.clientWidth > 0) {
       const remembered = scrollByDay.get(String(dayStart));
       if (remembered != null) {
@@ -1287,9 +1379,9 @@ export function createTimelineView(store, opts) {
 
     // Restores the keyboard focus.
     if (focusKey) {
-      const targetId = [...host.querySelectorAll('[data-focus-key]')].find(
-        (n) => n.dataset.focusKey === focusKey,
-      );
+      const targetId = [
+        .../** @type {NodeListOf<HTMLElement>} */ (host.querySelectorAll('[data-focus-key]')),
+      ].find((n) => n.dataset.focusKey === focusKey);
       if (targetId) targetId.focus({ preventScroll: true });
     }
   }

@@ -1,4 +1,5 @@
 // Main shell: sidebar (logo, attendance widget, nav, shortcuts) + main area that swaps the views.
+import { StorageError } from '../idb.js';
 import { createStore } from '../store.js';
 import { WORKSPACES } from '../workspaces.js';
 import { createAttendanceWidget } from './AttendanceWidget.js';
@@ -12,6 +13,7 @@ import { openWorkspaceManager } from './WorkspacesView.js';
 
 const { el, icon } = UI;
 
+/** @type {{ id: string, icon: string, label: string, factory: import('./types.js').ViewFactory }[]} */
 const SECTIONS = [
   { id: 'timeline', icon: 'timer', label: 'Timeline', factory: createTimelineView },
   { id: 'todos', icon: 'list-checks', label: 'Todos', factory: createTodosView },
@@ -19,13 +21,16 @@ const SECTIONS = [
   { id: 'report', icon: 'chart-bar', label: 'Rapport', factory: createReportView },
 ];
 
+/** @param {HTMLElement} rootEl */
 export function start(rootEl) {
   const store = createStore();
   const toasts = UI.ToastHost();
 
   let currentSection = 'timeline';
+  /** @type {import('./types.js').View | null} */
   let currentView = null;
-  let navButtons = {};
+  /** @type {Record<string, HTMLElement>} */
+  const navButtons = {};
 
   /* ---------------- shell ---------------- */
 
@@ -127,6 +132,7 @@ export function start(rootEl) {
   function paintNav() {
     for (const s of SECTIONS) {
       const btn = navButtons[s.id];
+      if (!btn) continue;
       const isOn = currentSection === s.id;
       btn.classList.toggle('est-actif', isOn);
     }
@@ -264,14 +270,85 @@ export function start(rootEl) {
 
   paintNav();
 
+  /* ---------------- read-only tab (another tab holds the write lock) ---------------- */
+  /** @type {HTMLElement | null} */
+  let readOnlyBanner = null;
+
+  function buildReadOnlyBanner() {
+    return el(
+      'div',
+      {
+        role: 'status',
+        'data-testid': 'read-only-banner',
+        class: 'ch-flex-c ch-g12',
+        style: {
+          padding: '10px 14px',
+          background: 'var(--cv-warning-50)',
+          border: '1px solid var(--cv-warning-500)',
+          borderRadius: 8,
+          color: 'var(--cv-warning-700)',
+          font: '500 13px/1.4 var(--cv-font-sans)',
+        },
+      },
+      icon('warning', { weight: 'fill', size: 16 }),
+      el(
+        'span',
+        { class: 'ch-souple' },
+        'Chrono est ouvert dans un autre onglet. Cet onglet est en lecture seule.',
+      ),
+      UI.Button({
+        size: 'sm',
+        children: 'Reprendre l’édition',
+        onclick: async () => {
+          if (!(await store.retryWriteLock())) {
+            toasts.push({
+              variant: 'warning',
+              title: 'Un autre onglet écrit encore',
+              body: 'Ferme-le puis réessaie.',
+            });
+          }
+        },
+      }),
+    );
+  }
+
+  // Shows or hides the banner, and disables the controls that change data.
+  function paintReadOnly() {
+    const readOnly = store.state.readOnly;
+    document.body.toggleAttribute('data-read-only', readOnly);
+    if (readOnly && !readOnlyBanner) readOnlyBanner = buildReadOnlyBanner();
+    if (readOnly && readOnlyBanner && readOnlyBanner.parentElement !== main) {
+      main.prepend(readOnlyBanner);
+    }
+    if (!readOnly && readOnlyBanner) {
+      readOnlyBanner.remove();
+      readOnlyBanner = null;
+    }
+    // A control that is disabled for another reason is left alone: only the ones disabled here
+    // carry the marker, and only those are enabled again.
+    for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (
+      document.querySelectorAll('button[data-mutates]')
+    )) {
+      if (readOnly && !control.disabled) {
+        control.disabled = true;
+        control.dataset.readOnlyDisabled = '';
+      } else if (!readOnly && 'readOnlyDisabled' in control.dataset) {
+        control.disabled = false;
+        delete control.dataset.readOnlyDisabled;
+      }
+    }
+  }
+
   /* ---------------- views ---------------- */
+  /** @param {string} sectionId */
   function goto(sectionId) {
     if (sectionId === currentSection && currentView) return;
     if (currentView && currentView.destroy) currentView.destroy();
     currentSection = sectionId;
     paintNav();
 
-    const def = SECTIONS.find((s) => s.id === sectionId);
+    const def = SECTIONS.find((s) => s.id === sectionId) ?? SECTIONS[0];
+    if (!def) return;
     const factory = def.factory;
     currentView = factory(store, {
       onOpenQuickAdd: () => openQuickAdd(),
@@ -281,6 +358,7 @@ export function start(rootEl) {
         openQuickAdd({ projectPrefill: projectId, descriptionPrefill: description }),
     });
     main.replaceChildren(currentView.el);
+    paintReadOnly();
   }
 
   function mountInitial() {
@@ -288,6 +366,7 @@ export function start(rootEl) {
   }
 
   /* ---------------- QuickAdd ---------------- */
+  /** @param {import('./types.js').QuickAddOptions} [opts] */
   function openQuickAdd(opts = {}) {
     openQuickAddModal(store, {
       ...opts,
@@ -305,8 +384,9 @@ export function start(rootEl) {
   // combinations with Alt/Ctrl/Meta (browser or OS shortcuts),
   // auto-repeat of a held key, and, for Space,
   // buttons/links/role="button", which the key activates natively.
+  /** @param {KeyboardEvent} e */
   function shouldIgnoreShortcut(e) {
-    const t = e.target;
+    const t = /** @type {HTMLElement | null} */ (e.target);
     if (t && t.isContentEditable) return true;
     if (t && t.matches && t.matches('input, textarea, select')) return true;
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) return true;
@@ -318,6 +398,8 @@ export function start(rootEl) {
   }
 
   window.addEventListener('keydown', (e) => {
+    // Every shortcut starts, changes or stops a timer: none of them works in a read-only tab.
+    if (store.state.readOnly) return;
     if (shouldIgnoreShortcut(e)) return;
     if (e.key === ' ' || e.code === 'Space') {
       e.preventDefault();
@@ -350,6 +432,55 @@ export function start(rootEl) {
     }
   });
 
+  /* ---------------- storage that cannot be used ---------------- */
+  // The app is replaced by a message: nothing is read or written until the cause is fixed.
+  const STORAGE_ERRORS = {
+    blocked: {
+      title: 'Chrono est bloqué par un autre onglet',
+      body: 'Une autre fenêtre ou un autre onglet garde ouverte une ancienne version de Chrono et empêche la mise à jour de la base de données. Ferme tous les autres onglets Chrono, puis recharge cette page.',
+    },
+    unavailable: {
+      title: 'Chrono ne peut pas utiliser le stockage du navigateur',
+      body: 'Chrono enregistre tes données dans IndexedDB, qui est indisponible ici (navigation privée, stockage bloqué ou navigateur trop ancien). Rien n’a été lu ni écrit. Autorise le stockage pour ce site ou ouvre Chrono dans une fenêtre de navigation normale, puis recharge la page.',
+    },
+  };
+
+  /** @param {'blocked' | 'unavailable'} code */
+  function showStorageError(code) {
+    const message = STORAGE_ERRORS[code];
+    rootEl.replaceChildren(
+      el(
+        'main',
+        {
+          role: 'alert',
+          'data-testid': 'storage-error',
+          'data-code': code,
+          class: 'ch-pile ch-g12',
+          style: {
+            maxWidth: 560,
+            margin: '15vh auto 0',
+            padding: '0 24px',
+            background: 'var(--cv-bg)',
+            color: 'var(--cv-fg)',
+          },
+        },
+        icon('warning', { weight: 'fill', size: 28, style: { color: 'var(--cv-warning-600)' } }),
+        el('h1', { style: { font: '600 20px/1.3 var(--cv-font-sans)', margin: 0 } }, message.title),
+        el('p', { style: { font: '400 14px/1.5 var(--cv-font-sans)', margin: 0 } }, message.body),
+        el(
+          'div',
+          null,
+          UI.Button({
+            variant: 'primary',
+            icon: 'arrow-clockwise',
+            children: 'Recharger la page',
+            onclick: () => location.reload(),
+          }),
+        ),
+      ),
+    );
+  }
+
   /* ---------------- initial load ---------------- */
   // Shows a loader during the initial load
   const loader = el(
@@ -359,6 +490,31 @@ export function start(rootEl) {
   );
   main.appendChild(loader);
 
+  store.onRefused(() => {
+    toasts.push({
+      variant: 'warning',
+      title: 'Lecture seule',
+      body: 'Chrono est ouvert dans un autre onglet. Cet onglet est en lecture seule.',
+    });
+  });
+  // The banner and the disabled controls follow the role of the tab, and the controls that a
+  // view builds again on every refresh are disabled as they appear.
+  let wasReadOnly = false;
+  store.onState((state) => {
+    paintReadOnly();
+    if (wasReadOnly && !state.readOnly) {
+      toasts.push({
+        variant: 'success',
+        title: 'Édition rétablie',
+        body: 'Cet onglet peut de nouveau modifier les données.',
+      });
+    }
+    wasReadOnly = state.readOnly;
+  });
+  new MutationObserver(() => {
+    if (store.state.readOnly) paintReadOnly();
+  }).observe(document.body, { childList: true, subtree: true });
+
   store
     .init()
     .then(() => {
@@ -366,6 +522,7 @@ export function start(rootEl) {
     })
     .catch((err) => {
       console.error('[App] init failed', err);
-      loader.textContent = 'Erreur de chargement : ' + err.message;
+      if (err instanceof StorageError) showStorageError(err.code);
+      else loader.textContent = 'Erreur de chargement : ' + err.message;
     });
 }

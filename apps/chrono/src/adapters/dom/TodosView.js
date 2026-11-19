@@ -13,10 +13,15 @@ const { el, icon } = UI;
 // presets: they are converted to a date when chosen, relative to TODAY (`ref`).
 // The logic (conversion, buckets) lives in src/core/due-dates.js; these wrappers
 // supply the current time.
-const presetToDate = (preset, ref = Date.now()) => presetToDateAt(preset, ref);
-const bucket = (todo, ref = Date.now()) => bucketAt(todo, ref);
+/** @typedef {import('../../types.js').Todo} Todo */
+
+const presetToDate = (/** @type {string} */ preset, ref = Date.now()) =>
+  presetToDateAt(preset, ref);
+const bucket = (/** @type {Pick<Todo, 'done' | 'dueDate'>} */ todo, ref = Date.now()) =>
+  bucketAt(todo, ref);
 
 // Short date for the badge: "ven. 21 nov.".
+/** @param {unknown} str */
 function formatShortDueDate(str) {
   const ts = dueDateToTimestamp(str);
   return ts == null
@@ -28,10 +33,13 @@ function formatShortDueDate(str) {
       });
 }
 
+/** @type {import('./types.js').ViewFactory} */
 export function createTodosView(store, opts) {
   let projectFilter = 'all';
   let draftDueDate = 'today';
+  /** @type {string | null} */
   let draftProject = null;
+  /** @type {import('../../types.js').Project[] | null} */
   let lastProjectsRef = null;
 
   const host = el('div', { class: 'ch-pile ch-g16', style: { maxWidth: 920 } });
@@ -42,14 +50,20 @@ export function createTodosView(store, opts) {
   host.append(headerSlot, formSlot, filtersSlot, listSlot);
 
   // Refs to the form inputs (kept between renders of the list)
-  let inputTitle, selectProject, selectDueDate;
+  /** @type {HTMLInputElement | undefined} */
+  let inputTitle;
+  /** @type {HTMLSelectElement | undefined} */
+  let selectProject;
+  /** @type {HTMLSelectElement | undefined} */
+  let selectDueDate;
 
   // draftProject can be 'none' (no project): in that case it is not rewritten.
   function ensureDraftProject() {
     if (draftProject === 'none') return;
     const projects = store.state.projects;
-    if (!projects.find((p) => p.id === draftProject) && projects.length > 0) {
-      draftProject = (projects.find((p) => !p.archived) || projects[0]).id;
+    const fallback = projects.find((p) => !p.archived) ?? projects[0];
+    if (!projects.find((p) => p.id === draftProject) && fallback) {
+      draftProject = fallback.id;
     }
   }
 
@@ -124,6 +138,7 @@ export function createTodosView(store, opts) {
           variant: 'primary',
           icon: 'arrow-right',
           children: 'Ajouter',
+          mutates: true,
           onclick: submit,
         }),
       ),
@@ -137,10 +152,18 @@ export function createTodosView(store, opts) {
     if (!title) return;
     // the preset ('today', 'fri'...) is converted to an absolute date now, not stored as is
     store.actions.addTodo(title, projectValue === 'none' ? null : projectValue, presetToDate(due));
-    inputTitle.value = '';
-    inputTitle.focus();
+    if (inputTitle) {
+      inputTitle.value = '';
+      inputTitle.focus();
+    }
   }
 
+  /**
+   * @param {string} label
+   * @param {boolean} isOn
+   * @param {() => void} onclick
+   * @param {string} [color]
+   */
   function chip(label, isOn, onclick, color) {
     return el(
       'button',
@@ -198,8 +221,10 @@ export function createTodosView(store, opts) {
     );
   }
 
+  /** @param {Todo} t */
   function dueDateBadge(t) {
     const b = bucket(t);
+    /** @type {Partial<Record<ReturnType<typeof bucket>, { label: string, variant: string }>>} */
     const map = {
       overdue: { label: 'en retard', variant: 'danger' },
       today: { label: "aujourd'hui", variant: 'accent' },
@@ -212,9 +237,9 @@ export function createTodosView(store, opts) {
     return UI.Badge({ variant: m.variant, children: m.label });
   }
 
+  /** @param {Todo} t */
   function openTodoEditor(t) {
     const projects = store.state.projects;
-    let modal;
     const nameW = UI.Input({ label: 'Titre', value: t.title, autoFocus: true });
     const descW = UI.Textarea({
       label: 'Description',
@@ -237,6 +262,7 @@ export function createTodosView(store, opts) {
       type: 'date',
       value: dueDateToTimestamp(t.dueDate) != null ? t.dueDate : '',
     });
+    /** @type {[string, string][]} */
     const shortcuts = [
       ['today', "Aujourd'hui"],
       ['tomorrow', 'Demain'],
@@ -279,7 +305,7 @@ export function createTodosView(store, opts) {
     nameW.input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') save();
     });
-    modal = UI.Modal({
+    const modal = UI.Modal({
       title: 'Modifier la tâche',
       width: 460,
       body: el('div', { class: 'ch-pile ch-g12' }, nameW, descW, projectW, dueW, shortcutsRow),
@@ -302,6 +328,10 @@ export function createTodosView(store, opts) {
     });
   }
 
+  /**
+   * @param {Todo} t
+   * @param {boolean} faded
+   */
   function todoRow(t, faded) {
     const project = store.state.projects.find((p) => p.id === t.projectId);
     const hasDesc = !!(t.description && t.description.trim());
@@ -320,6 +350,7 @@ export function createTodosView(store, opts) {
       el(
         'button',
         {
+          'data-mutates': '',
           onclick: () => store.actions.toggleTodo(t.id),
           'aria-label': t.done ? 'Rouvrir' : 'Terminer',
           style: {
@@ -422,6 +453,7 @@ export function createTodosView(store, opts) {
             ? UI.IconButton({
                 icon: 'play',
                 label: 'Démarrer un chrono sur cette tâche',
+                mutates: true,
                 onclick: () => opts.onStartOnTodo(t.projectId, t.title),
               })
             : null,
@@ -437,6 +469,7 @@ export function createTodosView(store, opts) {
             icon: 'trash',
             label: 'Effacer',
             size: 'sm',
+            mutates: true,
             onclick: () => {
               if (!confirm(`Effacer la tâche « ${t.title} » ? Cette action est définitive.`))
                 return;

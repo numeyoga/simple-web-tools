@@ -1,6 +1,6 @@
 // Dates and durations. Pure: nothing here reads the clock, callers pass the date in.
 
-import { toLocalIsoDate } from '@simple-web-tools/dates';
+import { getLocalDayBounds, toLocalIsoDate } from '@simple-web-tools/dates';
 
 /**
  * Start of the local day (00:00:00.000) as a timestamp.
@@ -43,4 +43,16 @@ export function formatDuration(ms, opts = {}) {
     return `${h}h${String(m).padStart(2, '0')}`;
   }
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * Bounds of the local day that holds a timestamp: `start` is local midnight, `end` the next
+ * local midnight (exclusive). A day lasts 23, 24 or 25 hours when the clocks change.
+ * @param {Date | number} d
+ * @returns {{ start: number, end: number }}
+ */
+export function dayBounds(d) {
+  const bounds = getLocalDayBounds(toLocalIsoDate(new Date(d)));
+  if (!bounds) throw new RangeError('invalid date');
+  return { start: bounds.startMs, end: bounds.endMs };
 }

@@ -159,17 +159,95 @@ export function v1ToV2(data) {
   return out;
 }
 
+/** Longest workspace id the registry of @simple-web-tools/storage accepts. */
+const MAX_WORKSPACE_ID_LENGTH = 40;
+const VALID_WORKSPACE_ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * A valid workspace id derived from a legacy one that the registry refuses (a trailing hyphen
+ * left by the 40-character cut, a `--` before a duplicate suffix, more than 40 characters), and
+ * different from every id in `taken`. A valid legacy id is returned as it is.
+ * @param {string} legacyId
+ * @param {ReadonlySet<string>} taken ids already in use
+ * @returns {string}
+ */
+export function validWorkspaceId(legacyId, taken) {
+  if (
+    legacyId.length <= MAX_WORKSPACE_ID_LENGTH &&
+    VALID_WORKSPACE_ID.test(legacyId) &&
+    !taken.has(legacyId)
+  ) {
+    return legacyId;
+  }
+  const words = legacyId
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  const slug = words
+    .join('-')
+    .slice(0, MAX_WORKSPACE_ID_LENGTH)
+    .split('-')
+    .filter(Boolean)
+    .join('-');
+  const base = slug || 'workspace';
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n += 1) {
+    const suffix = `-${n}`;
+    const candidate =
+      base.slice(0, MAX_WORKSPACE_ID_LENGTH - suffix.length).replace(/-+$/, '') + suffix;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
+/**
+ * Convert the version 1 workspace list. An entry whose id the registry would refuse gets a
+ * valid, unique id, and is listed in `renames` so that its database `chrono__<from>` can be
+ * copied to the new name. Entries without a usable id are skipped.
+ * @param {unknown[]} entries version 1 entries `{ id, label, creeLe, seedOnInit? }`
+ * @param {number} now used when an entry has no creation time
+ * @returns {{
+ *   workspaces: { id: string; label: string; createdAt: number }[];
+ *   renames: { from: string; to: string }[];
+ * }}
+ */
+export function planLegacyWorkspaces(entries, now) {
+  const parsed = entries.map((entry) => workspaceV1ToV2(entry, now)).filter((e) => e !== null);
+  // Ids that are fine as they are keep their name: the renames only take the ids that remain.
+  const taken = new Set(
+    parsed
+      .map((w) => w.id)
+      .filter((id) => id.length <= MAX_WORKSPACE_ID_LENGTH && VALID_WORKSPACE_ID.test(id)),
+  );
+  /** @type {Set<string>} */
+  const seen = new Set();
+  /** @type {{ id: string; label: string; createdAt: number }[]} */
+  const workspaces = [];
+  /** @type {{ from: string; to: string }[]} */
+  const renames = [];
+  for (const entry of parsed) {
+    const valid = taken.has(entry.id);
+    if (valid && seen.has(entry.id)) continue; // a duplicate id: the first entry wins
+    const id = valid ? entry.id : validWorkspaceId(entry.id, new Set([...taken, ...seen]));
+    seen.add(id);
+    if (!valid) renames.push({ from: entry.id, to: id });
+    workspaces.push({ ...entry, id });
+  }
+  return { workspaces, renames };
+}
+
 /**
  * Convert an entry of the version 1 workspace list.
- * @param {unknown} entry `{ id, label, creeLe, seedOnInit? }`
+ * @param {unknown} entry `{ id, label, creeLe, seedOnInit? }` (`seedOnInit`, the demo data of
+ *   a first start, is not read: the demo data is never loaded automatically)
  * @param {number} now used when the entry has no creation time
- * @returns {{ workspace: { id: string; label: string; createdAt: number }; demo: boolean } | null}
- *   `demo` is false for a workspace created without demo data (`seedOnInit: false`);
- *   null when the entry has no usable id
+ * @returns {{ id: string; label: string; createdAt: number } | null} null when the entry has
+ *   no usable id
  */
 export function workspaceV1ToV2(entry, now) {
   if (!isRecord(entry) || typeof entry.id !== 'string' || entry.id === '') return null;
   const label = typeof entry.label === 'string' && entry.label.trim() ? entry.label : entry.id;
   const createdAt = typeof entry.creeLe === 'number' ? entry.creeLe : now;
-  return { workspace: { id: entry.id, label, createdAt }, demo: entry.seedOnInit !== false };
+  return { id: entry.id, label, createdAt };
 }

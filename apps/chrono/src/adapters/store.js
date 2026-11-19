@@ -1,22 +1,25 @@
 // Application store. Holds the state, calls the pure domain rules of `src/core`, persists
-// (debounced) to IndexedDB with a localStorage fallback, emits onState / onTick, owns the
-// one-second timer and the BroadcastChannel of the active workspace.
+// (debounced) to IndexedDB, emits onState / onTick and owns the one-second timer.
 //
-// Several tabs may write at the same time (multi-writer model): each tab writes only what it
-// changed and re-reads everything when another tab announces a write.
+// Single-writer model (decision 0004): the tab that holds the Web Lock `chrono-write-lock` writes;
+// every other tab is read-only. Its actions are refused (see `onRefused`), it re-reads the
+// database when the writer announces a change on the workspace channel, and it becomes the
+// writer when the lock is released.
 
+import { acquireWriteLock, onWriteLockReleased, waitForWriteLock } from '@simple-web-tools/storage';
 import { migrateRelativeDueDates } from '../core/due-dates.js';
 import * as attendance from '../core/attendance.js';
 import * as projects from '../core/projects.js';
-import { emptyData, seed } from '../core/seed.js';
+import { seed } from '../core/seed.js';
 import * as sessions from '../core/sessions.js';
 import * as todos from '../core/todos.js';
 import { buildExport } from './backup.js';
-import { loadFallback, saveFallback } from './fallback.js';
-import { idbAll, idbBulkPut, idbSync, openDB } from './idb.js';
+import { importFallbackOnce } from './fallback.js';
+import { idbAll, idbSync, openDB } from './idb.js';
 import { uid } from './ids.js';
-import { channelName, fallbackKey } from './names.js';
-import { STORE_NAMES, isDemoEnabled, wsActiveId } from './workspace-list.js';
+import { copyLegacyDatabases } from './legacy-databases.js';
+import { APP, channelName } from './names.js';
+import { STORE_NAMES, wsActiveId } from './workspace-list.js';
 
 /** @typedef {import('../types.js').ChronoData} ChronoData */
 /** @typedef {import('../types.js').CollectionName} CollectionName */
@@ -24,6 +27,8 @@ import { STORE_NAMES, isDemoEnabled, wsActiveId } from './workspace-list.js';
 export function createStore() {
   const state = {
     loaded: false,
+    /** True in a tab that does not hold the write lock: it only reads. */
+    readOnly: false,
     /** @type {ChronoData['projects']} */ projects: [],
     /** @type {ChronoData['todos']} */ todos: [],
     /** @type {ChronoData['sessions']} */ sessions: [],
@@ -35,7 +40,6 @@ export function createStore() {
   const stateListeners = new Set();
   /** @type {Set<Listener>} */
   const tickListeners = new Set();
-  let usingIdb = false;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let saveTimer = null;
   /** @type {Set<CollectionName>} */
@@ -73,6 +77,7 @@ export function createStore() {
 
   /** @param {CollectionName} which */
   function scheduleSave(which) {
+    if (state.readOnly) return;
     dirtyStores.add(which);
     if (!state.loaded) return;
     if (saveTimer) clearTimeout(saveTimer);
@@ -92,37 +97,47 @@ export function createStore() {
   }
 
   /** @type {BroadcastChannel | null} */
-  let channel = null; // BroadcastChannel of the workspace (several tabs, IndexedDB)
+  let channel = null; // the writer announces its writes here, the readers listen
+
+  /** @type {Set<() => void>} */
+  const refusedListeners = new Set();
+  /**
+   * Called when a read-only tab refuses an action, so that the UI can tell the user.
+   * @param {() => void} fn
+   */
+  function onRefused(fn) {
+    refusedListeners.add(fn);
+    return () => refusedListeners.delete(fn);
+  }
 
   async function flush() {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
-    if (usingIdb) {
-      const names = STORE_NAMES.filter((n) => dirtyStores.has(n));
-      dirtyStores.clear();
-      let written = false;
-      await Promise.all(
-        names.map(async (n) => {
-          const items = state[n];
-          try {
-            if (await idbSync(n, items, persisted[n])) written = true;
-            persisted[n] = new Map(items.map((it) => [it.id, it]));
-          } catch (e) {
-            console.warn('[db] write failed (' + n + ')', e);
-            dirtyStores.add(n); // to retry on the next flush
-          }
-        }),
-      );
-      if (written && channel) {
+    if (state.readOnly) return;
+    const names = STORE_NAMES.filter((n) => dirtyStores.has(n));
+    dirtyStores.clear();
+    let written = false;
+    await Promise.all(
+      names.map(async (n) => {
+        const items = state[n];
         try {
-          channel.postMessage('update');
-        } catch {
-          /* ignore */
+          if (await idbSync(n, items, persisted[n])) written = true;
+          persisted[n] = new Map(items.map((it) => [it.id, it]));
+        } catch (e) {
+          console.warn('[db] write failed (' + n + ')', e);
+          dirtyStores.add(n); // to retry on the next flush
         }
-      }
-    } else if (dirtyStores.size) {
-      dirtyStores.clear();
-      saveFallback(state);
+      }),
+    );
+    if (written) announceChange();
+  }
+
+  /** Tells the read-only tabs of this workspace that the database changed. */
+  function announceChange() {
+    try {
+      channel?.postMessage('update');
+    } catch {
+      /* ignore */
     }
   }
 
@@ -130,7 +145,7 @@ export function createStore() {
   function flushNow() {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
-    if (state.loaded && dirtyStores.size) flush();
+    if (state.loaded && !state.readOnly && dirtyStores.size) flush();
   }
   window.addEventListener('pagehide', flushNow);
   if (typeof document !== 'undefined') {
@@ -139,104 +154,108 @@ export function createStore() {
     });
   }
 
-  // Another tab wrote: flush our pending writes, re-read everything from the persistence,
-  // replace the state and reset the snapshot.
-  async function reloadFromStorage() {
-    if (!state.loaded) return;
-    /** @type {Partial<ChronoData> | null} */
-    let latest = null;
-    for (let attempt = 0; attempt < 3 && !latest; attempt++) {
-      await flush();
-      /** @type {Partial<ChronoData> | null} */
-      let fresh;
-      if (usingIdb) {
-        const r = await Promise.all(STORE_NAMES.map(idbAll));
-        fresh = Object.fromEntries(STORE_NAMES.map((n, i) => [n, r[i]]));
-      } else {
-        fresh = loadFallback();
-      }
-      if (!fresh) return;
-      if (!dirtyStores.size) latest = fresh; // otherwise a local change came in meanwhile: retry
-    }
-    if (!latest) return;
-    const readBack = latest;
-    for (const n of STORE_NAMES) {
-      const v = readBack[n];
-      Object.assign(state, { [n]: Array.isArray(v) ? v : [] });
-    }
+  /**
+   * Replaces the state with what the database holds. Old relative due dates are migrated; the
+   * writer saves the migrated todos.
+   * @returns {Promise<boolean>} whether todos were migrated (and must be written by the writer)
+   */
+  async function readDatabase() {
+    const r = await Promise.all(STORE_NAMES.map(idbAll));
+    STORE_NAMES.forEach((n, i) => {
+      Object.assign(state, { [n]: r[i] ?? [] });
+    });
     resetPersisted(); // snapshot BEFORE migration: migrated todos are thus rewritten
     const migration = migrateRelativeDueDates(state.todos, Date.now());
     state.todos = migration.todos;
+    return migration.change;
+  }
+
+  // The writer announced a change: a read-only tab re-reads the database.
+  async function reloadFromStorage() {
+    if (!state.loaded || !state.readOnly) return;
+    await readDatabase();
     emitState();
-    if (migration.change) scheduleSave('todos');
+  }
+
+  /** @type {() => void} */
+  let cancelLockWait = () => {};
+  /** @type {() => void} */
+  let stopLockListener = () => {};
+
+  /**
+   * This tab gets the write lock: it re-reads the database (the former writer may have written
+   * until its last moment) and starts to write.
+   * @param {{ release: () => void }} granted
+   */
+  async function promote(granted) {
+    if (!state.readOnly) {
+      granted.release();
+      return;
+    }
+    cancelLockWait();
+    cancelLockWait = () => {};
+    // Read first: the tab must not act on a state older than the former writer's last write.
+    const migrated = await readDatabase();
+    state.readOnly = false;
+    if (migrated) scheduleSave('todos');
+    emitState();
+  }
+
+  async function retryAcquireLock() {
+    if (!state.readOnly) return;
+    const next = await acquireWriteLock(APP);
+    if (next.acquired) await promote(next);
+  }
+
+  /**
+   * "Resume editing" of the banner: takes the write lock if the other tab let it go.
+   * @returns {Promise<boolean>} whether this tab is now the writer
+   */
+  async function retryWriteLock() {
+    await retryAcquireLock();
+    return !state.readOnly;
   }
 
   /* --- initial load --- */
-  async function init({ seedIfEmpty = true } = {}) {
-    const db = await openDB();
-    if (db) {
-      usingIdb = true;
-      const [storedProjects, storedTodos, storedSessions, storedAttendance] = await Promise.all([
-        idbAll('projects'),
-        idbAll('todos'),
-        idbAll('sessions'),
-        idbAll('attendance'),
-      ]);
-      const isFresh =
-        /** @type {any[]} */ (storedProjects).length === 0 &&
-        /** @type {any[]} */ (storedTodos).length === 0 &&
-        /** @type {any[]} */ (storedSessions).length === 0 &&
-        /** @type {any[]} */ (storedAttendance).length === 0;
-      if (isFresh && seedIfEmpty && isDemoEnabled(wsActiveId())) {
-        const s = seed(Date.now());
-        await Promise.all([
-          idbBulkPut('projects', s.projects),
-          idbBulkPut('todos', s.todos),
-          idbBulkPut('sessions', s.sessions),
-          idbBulkPut('attendance', s.attendance),
-        ]);
-        state.projects = s.projects;
-        state.todos = s.todos;
-        state.sessions = s.sessions;
-        state.attendance = s.attendance;
-      } else {
-        state.projects = /** @type {any} */ (storedProjects);
-        state.todos = /** @type {any} */ (storedTodos);
-        state.sessions = /** @type {any} */ (storedSessions);
-        state.attendance = /** @type {any} */ (storedAttendance);
-      }
-      resetPersisted();
-      if (typeof BroadcastChannel !== 'undefined') {
-        channel = new BroadcastChannel(channelName(wsActiveId()));
-        channel.onmessage = () => {
-          reloadFromStorage();
-        };
-      }
-    } else {
-      usingIdb = false;
-      const ls = loadFallback();
-      if (ls) {
-        Object.assign(state, ls);
-      } else if (seedIfEmpty && isDemoEnabled(wsActiveId())) {
-        Object.assign(state, seed(Date.now()));
-      } else {
-        Object.assign(state, emptyData());
-      }
-      // localStorage fallback: another tab wrote the workspace key.
-      const key = fallbackKey(wsActiveId());
-      window.addEventListener('storage', (e) => {
-        if (e.key == null || e.key === key) reloadFromStorage();
+  async function init() {
+    const handle = await acquireWriteLock(APP);
+    state.readOnly = !handle.acquired;
+    try {
+      // Only the writer touches the databases of the other workspaces.
+      if (!state.readOnly) await copyLegacyDatabases();
+      const db = await openDB();
+      if (!state.readOnly) await importFallbackOnce(db, wsActiveId(), Date.now());
+    } catch (error) {
+      handle.release(); // nothing was written: let another tab try
+      throw error;
+    }
+    const migrated = await readDatabase();
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel = new BroadcastChannel(channelName(wsActiveId()));
+      channel.onmessage = () => {
+        reloadFromStorage();
+      };
+    }
+    if (state.readOnly) {
+      cancelLockWait = waitForWriteLock(APP, (granted) => {
+        void promote(granted);
+      });
+      stopLockListener = onWriteLockReleased(APP, () => {
+        void retryAcquireLock();
       });
     }
-    // Old relative due dates -> absolute dates. With IndexedDB, resetPersisted() has already run
-    // on the data read: the migrated todos differ from the snapshot and will be written.
-    const migration = migrateRelativeDueDates(state.todos, Date.now());
-    state.todos = migration.todos;
     state.loaded = true;
-    if (migration.change) scheduleSave('todos'); // after state.loaded: scheduleSave writes nothing before
+    // After state.loaded: scheduleSave writes nothing before.
+    if (migrated) scheduleSave('todos');
     emitState();
     setInterval(emitTick, 1000);
   }
+
+  window.addEventListener('pagehide', (event) => {
+    if (/** @type {PageTransitionEvent} */ (event).persisted) return;
+    cancelLockWait();
+    stopLockListener();
+  });
 
   /* ============= Actions ============= */
 
@@ -425,6 +444,17 @@ export function createStore() {
     apply(attendance.deleteAttendance(currentData(), { id }));
   }
 
+  // DEMO DATA: never loaded on its own, only when the user asks, in an empty workspace.
+  /** @returns {boolean} */
+  const isEmpty = () => STORE_NAMES.every((n) => state[n].length === 0);
+
+  /** @returns {boolean} whether the demo data was loaded */
+  function loadDemoData() {
+    if (!isEmpty()) return false;
+    apply(seed(Date.now()));
+    return true;
+  }
+
   /* --- export (current workspace) --- */
   async function exportJson() {
     // Make sure the pending writes are flushed before the export.
@@ -432,37 +462,65 @@ export function createStore() {
     return buildExport(currentData(), Date.now());
   }
 
+  /**
+   * A read-only tab refuses the action and tells the listeners; the writer runs it. The
+   * refused call returns `undefined`, which the callers that read a result (a new id) treat as
+   * "nothing was created".
+   * @template {(...args: never[]) => unknown} F
+   * @param {F} action
+   * @returns {F}
+   */
+  function writerOnly(action) {
+    const guarded = (/** @type {never[]} */ ...args) => {
+      if (state.readOnly) {
+        refusedListeners.forEach((fn) => fn());
+        return undefined;
+      }
+      return action(...args);
+    };
+    // The cast keeps the signature of the action for the callers (justified above).
+    return /** @type {F} */ (/** @type {unknown} */ (guarded));
+  }
+
+  const actions = {
+    startSession,
+    pauseSession,
+    resumeSession,
+    stopSession,
+    pauseAll,
+    resumeAll,
+    stopAll,
+    deleteSession,
+    updateSession,
+    addManualSession,
+    addTodo,
+    toggleTodo,
+    deleteTodo,
+    updateTodo,
+    addProject,
+    updateProject,
+    toggleProjectArchived,
+    deleteProject,
+    recordAttendance,
+    addAttendance,
+    updateAttendance,
+    deleteAttendance,
+    loadDemoData,
+  };
+
   return {
     state,
     init,
     onState,
     onTick,
-    actions: {
-      startSession,
-      pauseSession,
-      resumeSession,
-      stopSession,
-      pauseAll,
-      resumeAll,
-      stopAll,
-      deleteSession,
-      updateSession,
-      addManualSession,
-      addTodo,
-      toggleTodo,
-      deleteTodo,
-      updateTodo,
-      addProject,
-      updateProject,
-      toggleProjectArchived,
-      deleteProject,
-      recordAttendance,
-      addAttendance,
-      updateAttendance,
-      deleteAttendance,
-    },
+    onRefused,
+    retryWriteLock,
+    actions: /** @type {typeof actions} */ (
+      Object.fromEntries(Object.entries(actions).map(([name, fn]) => [name, writerOnly(fn)]))
+    ),
     attendanceState,
     activeSessions,
+    isEmpty,
     exportJson,
     flush,
     reloadFromStorage,

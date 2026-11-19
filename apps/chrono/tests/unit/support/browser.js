@@ -30,15 +30,100 @@ function fakeBroadcastChannel() {
       this.name = name;
       /** @type {((e: { data: unknown }) => void) | null} */
       this.onmessage = null;
+      /** @type {((e: { data: unknown }) => void)[]} */
+      this.listeners = [];
+      this.closed = false;
       registry.push(this);
     }
     /** @param {unknown} data */
     postMessage(data) {
       for (const c of registry) {
-        if (c !== this && c.name === this.name) setTimeout(() => c.onmessage?.({ data }), 0);
+        if (c === this || c.name !== this.name) continue;
+        setTimeout(() => {
+          if (c.closed) return;
+          c.onmessage?.({ data });
+          c.listeners.forEach((/** @type {(e: { data: unknown }) => void} */ fn) => fn({ data }));
+        }, 0);
       }
     }
-    close() {}
+    /**
+     * @param {string} _type
+     * @param {(e: { data: unknown }) => void} fn
+     */
+    addEventListener(_type, fn) {
+      this.listeners.push(fn);
+    }
+    close() {
+      this.closed = true;
+    }
+  };
+}
+
+/**
+ * In-memory `navigator.locks`: exclusive locks by name, `ifAvailable`, a queue and `signal`.
+ * `crash(name)` frees a lock the way the death of its tab would.
+ */
+export function fakeLocks() {
+  /** @type {Map<string, { free: () => void }>} */
+  const held = new Map();
+  /** @type {Map<string, (() => void)[]>} */
+  const queues = new Map();
+
+  /** @param {string} name */
+  function grantNext(name) {
+    const next = queues.get(name)?.shift();
+    if (next) next();
+  }
+
+  return {
+    /**
+     * @param {string} name
+     * @param {{ ifAvailable?: boolean, signal?: AbortSignal }} options
+     * @param {(lock: object | null) => Promise<unknown> | undefined} callback
+     */
+    request(name, options, callback) {
+      return new Promise((resolve, reject) => {
+        const grant = () => {
+          const release = () => {
+            if (held.get(name) !== entry) return;
+            held.delete(name);
+            grantNext(name);
+          };
+          const entry = { free: release };
+          held.set(name, entry);
+          Promise.resolve(callback({ name })).then(
+            (value) => {
+              release();
+              resolve(value);
+            },
+            (error) => {
+              release();
+              reject(error);
+            },
+          );
+        };
+        if (!held.has(name)) {
+          grant();
+        } else if (options.ifAvailable) {
+          Promise.resolve(callback(null)).then(resolve, reject);
+        } else {
+          const queue = queues.get(name) ?? [];
+          queues.set(name, queue);
+          queue.push(grant);
+          options.signal?.addEventListener('abort', () => {
+            const at = queue.indexOf(grant);
+            if (at >= 0) queue.splice(at, 1);
+            reject(new DOMException('aborted', 'AbortError'));
+          });
+        }
+      });
+    },
+    /** The holder of the lock disappears (tab closed or crashed). @param {string} name */
+    crash(name) {
+      held.get(name)?.free();
+    },
+    /** @param {string} name */
+    isHeld: (name) => held.has(name),
   };
 }
 
@@ -51,6 +136,8 @@ const previous = new Map();
  * @param {number} [options.now] frozen clock (only `Date` is faked, timers stay real)
  */
 export function installBrowser({ indexedDB = true, now } = {}) {
+  const locks = fakeLocks();
+  vi.stubGlobal('navigator', { locks });
   const localStorage = fakeLocalStorage();
   /** @type {Map<string, ((e: any) => void)[]>} */
   const listeners = new Map();
@@ -74,6 +161,7 @@ export function installBrowser({ indexedDB = true, now } = {}) {
   if (now != null) vi.setSystemTime(now);
   return {
     localStorage,
+    locks,
     /** Moves the frozen clock. */
     setNow: (/** @type {number} */ ts) => vi.setSystemTime(ts),
     /** Dispatches a window event to the listeners registered by the code under test. */

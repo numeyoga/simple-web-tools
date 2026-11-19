@@ -16,8 +16,17 @@ export const channelName = (id) => storageName(APP, `sync-${id}`);
 /** Workspace list key of the registry of @simple-web-tools/storage (`chrono-workspaces`). */
 export const workspaceListKey = () => storageName(APP, 'workspaces');
 
-/** Workspaces created without demo data (JSON list of ids): `chrono-workspaces-no-demo`. */
-export const noDemoKey = () => storageName(APP, 'workspaces-no-demo');
+/**
+ * Workspaces whose id was repaired during the migration of the version 1 list, with the state
+ * of the copy of their database (JSON `{ from, to, copied }[]`): `chrono-legacy-workspaces`.
+ */
+export const legacyWorkspacesKey = () => storageName(APP, 'legacy-workspaces');
+
+/** Ids of the removed workspaces, whose old fallback must not come back: `chrono-fallback-skipped`. */
+export const fallbackSkippedKey = () => storageName(APP, 'fallback-skipped');
+
+/** Raw name of a version 1 database, which may not be a valid workspace id: `chrono__<id>`. @param {string} legacyId */
+export const legacyDatabaseName = (legacyId) => `${APP}__${legacyId}`;
 
 /** Version 1 workspace list, `{ id, label, creeLe, seedOnInit }[]`. */
 export const LEGACY_WORKSPACES_KEY = 'chrono.workspaces';

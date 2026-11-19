@@ -1,4 +1,5 @@
-// Store on IndexedDB (fake-indexeddb): differential writes, two tabs, migration on load.
+// Store on IndexedDB (fake-indexeddb): differential writes and migration on load. The two-tab
+// behaviour is in store-single-writer.test.js.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { closeDatabase, openDB } from '../../src/adapters/idb.js';
 import { createStore } from '../../src/adapters/store.js';
@@ -14,8 +15,10 @@ const yesterday = new Date(2026, 10, 17, 9, 0).getTime();
 /** @type {(string | undefined)[][]} */
 let ops = [];
 
+/** @type {ReturnType<typeof installBrowser>} */
+let nav;
 beforeEach(() => {
-  installBrowser({ now: h(9) });
+  nav = installBrowser({ now: h(9) });
 });
 afterEach(uninstallBrowser);
 
@@ -55,47 +58,12 @@ function spyOnWrites() {
 
 async function newStore() {
   const store = createStore();
-  await store.init({ seedIfEmpty: false });
+  await store.init();
   return store;
 }
 
 const names = async (/** @type {string} */ collection) =>
   (await readStore(DB, collection)).map((x) => x.name).sort();
-
-describe('two tabs', () => {
-  test('neither erases the additions of the other', async () => {
-    const A = await newStore();
-    const B = await newStore();
-    spyOnWrites();
-
-    A.actions.addProject('Alpha');
-    B.actions.addProject('Beta');
-    await A.flush();
-    await B.flush();
-
-    expect(await names('projects')).toEqual(['Alpha', 'Beta']);
-    expect(ops.some((o) => o[0] === 'clear')).toBe(false);
-    // Reload through the BroadcastChannel: each tab sees everything.
-    await vi.waitFor(() => {
-      expect(A.state.projects.map((p) => p.name).sort()).toEqual(['Alpha', 'Beta']);
-      expect(B.state.projects.map((p) => p.name).sort()).toEqual(['Alpha', 'Beta']);
-    });
-  });
-
-  test('on reception, the tab flushes its pending writes first, then re-reads', async () => {
-    const A = await newStore();
-    const B = await newStore();
-    B.actions.addProject('Beta');
-    await B.flush();
-
-    A.actions.addProject('Alpha'); // pending (80 ms timer) when the message of B arrives
-
-    await vi.waitFor(async () => {
-      expect(await names('projects')).toEqual(['Alpha', 'Beta']);
-      expect(A.state.projects.map((p) => p.name).sort()).toEqual(['Alpha', 'Beta']);
-    });
-  });
-});
 
 describe('differential writes', () => {
   test('puts only the modified objects, deletes the removed ones', async () => {
@@ -116,6 +84,90 @@ describe('differential writes', () => {
 
     expect(ops).toEqual([['delete', 'projects', a]]);
     expect(await names('projects')).toEqual(['Beta']);
+  });
+});
+
+describe('immediate flush when the page goes away', () => {
+  /**
+   * From now on the 80 ms debounce can never fire on its own: only `setTimeout` and
+   * `clearTimeout` are faked, and the fake time is never advanced. `installBrowser` fakes `Date`,
+   * so the date is set again. `uninstallBrowser` restores the real timers, which drops any
+   * pending debounce: nothing leaks into the next test.
+   */
+  function freezeDebounce() {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(h(9));
+  }
+
+  /** Lets the fake IndexedDB, which runs on `setImmediate`, finish what it was asked to do. */
+  async function drain() {
+    // Node's `setImmediate` is not in the DOM typings of this project.
+    const { setImmediate } = /** @type {{ setImmediate: (fn: () => void) => void }} */ (
+      /** @type {unknown} */ (globalThis)
+    );
+    for (let i = 0; i < 100; i += 1) await new Promise((resolve) => setImmediate(() => resolve(0)));
+  }
+
+  /** @type {(() => void)[]} */
+  let documentListeners = [];
+
+  /** A `document` that records its `visibilitychange` listeners (Node has none). */
+  function stubDocument(/** @type {string} */ visibilityState) {
+    documentListeners = [];
+    vi.stubGlobal('document', {
+      visibilityState,
+      addEventListener: (/** @type {string} */ type, /** @type {() => void} */ fn) => {
+        if (type === 'visibilitychange') documentListeners.push(fn);
+      },
+    });
+  }
+
+  test('pagehide writes the pending change without waiting for the debounce', async () => {
+    const store = await newStore();
+    freezeDebounce();
+
+    store.actions.addProject('Alpha');
+    await drain();
+    expect(await names('projects')).toEqual([]); // the debounce has not fired
+    nav.fire('pagehide');
+    await drain();
+
+    expect(await names('projects')).toEqual(['Alpha']);
+  });
+
+  test('pagehide without a change writes nothing', async () => {
+    await newStore();
+    freezeDebounce();
+    spyOnWrites();
+
+    nav.fire('pagehide');
+    await drain();
+
+    expect(ops).toEqual([]);
+  });
+
+  test('visibilitychange to hidden flushes the pending change too', async () => {
+    stubDocument('hidden');
+    const store = await newStore();
+    freezeDebounce();
+
+    store.actions.addProject('Alpha');
+    documentListeners.forEach((fn) => fn());
+    await drain();
+
+    expect(await names('projects')).toEqual(['Alpha']);
+  });
+
+  test('visibilitychange to visible does not flush', async () => {
+    stubDocument('visible');
+    const store = await newStore();
+    freezeDebounce();
+
+    store.actions.addProject('Alpha');
+    documentListeners.forEach((fn) => fn());
+    await drain();
+
+    expect(await names('projects')).toEqual([]);
   });
 });
 

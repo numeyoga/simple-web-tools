@@ -4,7 +4,7 @@
 // reference, so the storage layer can write only what changed.
 // When a function returns the very same `data` object, nothing changed.
 
-import { startOfDay } from './dates.js';
+import { dayBounds } from './dates.js';
 import { presenceRanges } from './presence.js';
 
 /** @typedef {import('../types.js').ChronoData} ChronoData */
@@ -144,8 +144,7 @@ export function stopSession(data, { id }, now) {
  * @returns {ChronoData} the same object when nothing is cut
  */
 export function truncateToPresence(data, endedIds, now) {
-  const dayStart = startOfDay(new Date(now));
-  const dayEnd = dayStart + 86400000;
+  const { start: dayStart, end: dayEnd } = dayBounds(now);
   const events = data.attendance.filter((p) => p.at >= dayStart && p.at < dayEnd);
   if (!events.some((e) => e.type === 'arrival')) return data;
   const ranges = presenceRanges(events, now);
@@ -241,13 +240,31 @@ export function deleteSession(data, { id }) {
 }
 
 /**
+ * Would the patch leave a finished session with an end that is not after its start?
+ * @param {Session} current
+ * @param {Partial<Session>} patch
+ * @returns {boolean}
+ */
+function endsBeforeStart(current, patch) {
+  const touchesTimes = patch.start !== undefined || patch.end !== undefined;
+  const next = { ...current, ...patch };
+  if (!touchesTimes || next.status !== 'done' || next.end == null) return false;
+  return next.end <= next.start;
+}
+
+/**
  * Edits a session. For a finished session, the duration follows `start` and `end` unless it
  * is given explicitly; pauses already counted are kept.
+ * A change of `start` or `end` that leaves a finished session with `end <= start` is refused
+ * (the same data object comes back). A stored zero-duration session stays editable as long as
+ * its times are not touched.
  * @param {ChronoData} data
  * @param {{ id: string, patch: Partial<Session> }} payload
- * @returns {ChronoData}
+ * @returns {ChronoData} the same object when the edit is refused
  */
 export function updateSession(data, { id, patch }) {
+  const current = data.sessions.find((s) => s.id === id);
+  if (current && endsBeforeStart(current, patch)) return data;
   return {
     ...data,
     sessions: data.sessions.map((s) => {
@@ -289,7 +306,7 @@ export function updateSession(data, { id, patch }) {
  */
 export function addManualSession(data, { projectId, description = '', start, end }, newId) {
   if (!projectId || start == null || end == null) return data;
-  if (end < start) return data;
+  if (end <= start) return data;
   /** @type {Session} */
   const session = {
     id: newId,
