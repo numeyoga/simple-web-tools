@@ -292,15 +292,16 @@ export function ouvrirQuickAdd(
   function paintFooter() {
     if (mode === 'live') {
       footerHint.replaceChildren(UI.Kbd('Entrée'), document.createTextNode(' pour démarrer'));
-      submitBtn.innerHTML = '';
-      submitBtn.append(
+      submitBtn.replaceChildren(
         icon('play', { size: 14, weight: 'fill' }),
         document.createTextNode('Démarrer'),
       );
     } else {
       footerHint.replaceChildren(UI.Kbd('Entrée'), document.createTextNode(' pour enregistrer'));
-      submitBtn.innerHTML = '';
-      submitBtn.append(icon('check', { size: 14 }), document.createTextNode('Enregistrer'));
+      submitBtn.replaceChildren(
+        icon('check', { size: 14 }),
+        document.createTextNode('Enregistrer'),
+      );
     }
   }
 
