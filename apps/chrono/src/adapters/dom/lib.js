@@ -14,6 +14,9 @@ import {
 } from '../../core/presence.js';
 import { uid } from '../ids.js';
 
+// Properties that would parse a string as HTML: el() refuses them.
+const HTML_PROPS = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
+
 /* ------------------------------------------------------------------ */
 /* Constructeur d'éléments DOM ergonomique. Utilisation :
      el('div', { class: 'card', style: { padding: 12 }, onclick: fn },
@@ -28,6 +31,9 @@ export function el(tag, props, ...children) {
     for (const k in props) {
       const v = props[k];
       if (v == null || v === false) continue;
+      if (HTML_PROPS.has(k)) {
+        throw new Error(`el(): '${k}' would parse HTML; build children instead`);
+      }
       if (k === 'style' && typeof v === 'object') {
         for (const sk in v) {
           const sv = v[sk];
@@ -38,8 +44,6 @@ export function el(tag, props, ...children) {
         node.className = v;
       } else if (k === 'dataset') {
         Object.assign(node.dataset, v);
-      } else if (k === 'html') {
-        node.innerHTML = v;
       } else if (k === 'ref' && typeof v === 'function') {
         v(node);
       } else if (k.startsWith('on') && typeof v === 'function') {
