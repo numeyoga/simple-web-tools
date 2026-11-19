@@ -95,6 +95,8 @@ html, body {
   font-feature-settings: 'cv11', 'ss01';
 }
 body { font-size: var(--cv-text-sm); }
+/* A nested theme scope (data-theme on any element) re-applies the page colours of its theme. */
+:where([data-theme]) { color: var(--cv-fg); background-color: var(--cv-bg); }
 button, input, select, textarea { font: inherit; color: inherit; }
 code, kbd, samp, pre { font-family: var(--cv-font-mono); font-size: max(0.95em, var(--cv-text-xs)); } /* never below the 12 px floor */
 [hidden] { display: none !important; }
@@ -678,6 +680,57 @@ a.cv-card:hover { border-color: var(--cv-border-strong); background: var(--cv-su
 .cv-shell__scrim { display: none; }
 .cv-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: var(--cv-space-5); }
 .cv-span-2 { grid-column: span 2; } .cv-span-4 { grid-column: span 4; } .cv-span-8 { grid-column: span 8; }
+
+/* ---------- Category colours (projects): a deliberate extension ----------
+   A category is not a status and never carries meaning alone: the name is always next to it or inside it.
+   data-cat="1".."16" sets two local properties on the element and its children:
+   --cv-cat (marker: stripe, dot, chart segment; 3:1 on bg, surface, surface-2, surface-raised) and
+   --cv-cat-fill (fill behind a white label, same in both themes). Without data-cat, category 16 (slate) applies.
+   data-cat="custom" takes --cv-cat-custom-light, --cv-cat-custom-dark and --cv-cat-custom-fill, set by Covenant.setCategory(). */
+[data-cat="1"] { --cv-cat: var(--cv-cat-1); --cv-cat-fill: var(--cv-cat-1-fill); }
+[data-cat="2"] { --cv-cat: var(--cv-cat-2); --cv-cat-fill: var(--cv-cat-2-fill); }
+[data-cat="3"] { --cv-cat: var(--cv-cat-3); --cv-cat-fill: var(--cv-cat-3-fill); }
+[data-cat="4"] { --cv-cat: var(--cv-cat-4); --cv-cat-fill: var(--cv-cat-4-fill); }
+[data-cat="5"] { --cv-cat: var(--cv-cat-5); --cv-cat-fill: var(--cv-cat-5-fill); }
+[data-cat="6"] { --cv-cat: var(--cv-cat-6); --cv-cat-fill: var(--cv-cat-6-fill); }
+[data-cat="7"] { --cv-cat: var(--cv-cat-7); --cv-cat-fill: var(--cv-cat-7-fill); }
+[data-cat="8"] { --cv-cat: var(--cv-cat-8); --cv-cat-fill: var(--cv-cat-8-fill); }
+[data-cat="9"] { --cv-cat: var(--cv-cat-9); --cv-cat-fill: var(--cv-cat-9-fill); }
+[data-cat="10"] { --cv-cat: var(--cv-cat-10); --cv-cat-fill: var(--cv-cat-10-fill); }
+[data-cat="11"] { --cv-cat: var(--cv-cat-11); --cv-cat-fill: var(--cv-cat-11-fill); }
+[data-cat="12"] { --cv-cat: var(--cv-cat-12); --cv-cat-fill: var(--cv-cat-12-fill); }
+[data-cat="13"] { --cv-cat: var(--cv-cat-13); --cv-cat-fill: var(--cv-cat-13-fill); }
+[data-cat="14"] { --cv-cat: var(--cv-cat-14); --cv-cat-fill: var(--cv-cat-14-fill); }
+[data-cat="15"] { --cv-cat: var(--cv-cat-15); --cv-cat-fill: var(--cv-cat-15-fill); }
+[data-cat="16"] { --cv-cat: var(--cv-cat-16); --cv-cat-fill: var(--cv-cat-16-fill); }
+[data-cat="custom"] { --cv-cat: var(--cv-cat-custom-light); --cv-cat-fill: var(--cv-cat-custom-fill); }
+[data-theme="dark"] [data-cat="custom"], [data-cat="custom"][data-theme="dark"] { --cv-cat: var(--cv-cat-custom-dark); }
+[data-theme="dark"] [data-theme="light"] [data-cat="custom"] { --cv-cat: var(--cv-cat-custom-light); }
+.cv-cat-stripe { box-shadow: inset 4px 0 0 0 var(--cv-cat, var(--cv-cat-16)); }
+.cv-cat-dot {
+  display: inline-block; flex: none; width: 0.625rem; height: 0.625rem; border-radius: var(--cv-radius-full);
+  background: var(--cv-cat, var(--cv-cat-16)); vertical-align: 0.0625em;
+}
+.cv-cat-name { display: inline-flex; align-items: center; gap: var(--cv-space-2); min-width: 0; }
+.cv-cat-block {
+  display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: var(--cv-space-1) var(--cv-space-2); border-radius: var(--cv-radius-sm);
+  background: var(--cv-cat-fill, var(--cv-cat-16-fill)); color: var(--cv-fg-on-cat);
+  font-size: var(--cv-text-xs); font-weight: var(--cv-weight-medium); line-height: var(--cv-leading-snug);
+}
+.cv-cat-segment { background: var(--cv-cat, var(--cv-cat-16)); min-width: 2px; }
+/* Day timeline: blocks placed with --cv-start and --cv-span (percentages of the day shown) */
+.cv-cat-timeline { position: relative; min-height: var(--cv-row-lg); margin: 0; padding: 0; list-style: none; border-radius: var(--cv-radius-sm); background: var(--cv-surface-2); }
+.cv-cat-timeline > .cv-cat-block { position: absolute; top: 2px; bottom: 2px; left: var(--cv-start, 0%); width: calc(var(--cv-span, 0%) - 2px); display: flex; align-items: center; }
+/* Stacked bar chart: one row per period, segments sized with --cv-share; a 2 px gap keeps neighbours apart */
+.cv-cat-chart { display: grid; gap: var(--cv-space-3); margin: 0; }
+.cv-cat-chart > figcaption { font-size: var(--cv-text-sm); font-weight: var(--cv-weight-semibold); color: var(--cv-fg); }
+.cv-cat-chart__rows { display: grid; gap: var(--cv-space-2); margin: 0; padding: 0; list-style: none; }
+.cv-cat-chart__row { display: grid; grid-template-columns: 3rem minmax(0, 1fr) auto; align-items: center; gap: var(--cv-space-3); font-size: var(--cv-text-xs); color: var(--cv-fg-muted); }
+.cv-cat-chart__bar { display: flex; gap: 2px; min-height: 1rem; }
+.cv-cat-chart__bar > .cv-cat-segment { flex: 0 1 var(--cv-share, 0%); border-radius: 2px; }
+.cv-cat-legend { display: flex; flex-wrap: wrap; gap: var(--cv-space-2) var(--cv-space-4); margin: 0; padding: 0; list-style: none; font-size: var(--cv-text-xs); color: var(--cv-fg-muted); }
+.cv-cat-legend > li { display: inline-flex; align-items: center; gap: var(--cv-space-2); }
 
 @media (max-width: 1023px) {
   .cv-shell { grid-template-columns: minmax(0, 1fr); }

@@ -97,12 +97,13 @@ A disciplined three-tier system:
 | Need | Token |
 | --- | --- |
 | Page, panels, wells, pressed | `--cv-bg`, `--cv-surface`, `--cv-surface-2`, `--cv-surface-3`, `--cv-surface-raised` |
-| Inverse fill (tooltip, selected segment) and its ink | `--cv-surface-inverse`, `--cv-fg-inverse` |
+| Inverse fill (tooltip, selected segment, running-timer card) and its ink | `--cv-surface-inverse`, `--cv-fg-inverse`, `--cv-fg-inverse-muted` |
 | Text | `--cv-fg`, `--cv-fg-muted`, `--cv-fg-subtle`, `--cv-fg-accent`, `--cv-fg-<status>` |
 | Borders | `--cv-border`, `--cv-border-strong`, `--cv-border-control`, `--cv-border-focus`, `--cv-border-selected`, `--cv-border-danger` |
 | Fills behind text | `--cv-accent-fill` (+ `-hover`, `-pressed`) with `--cv-fg-on-accent`; `--cv-danger-fill` (+ `-hover`, `-pressed`) with `--cv-fg-on-danger` |
 | Status tints | `--cv-<status>-surface`, `--cv-<status>-border`, `--cv-bg-accent-subtle` |
 | Brand artwork | `--cv-brand-accent`, `--cv-brand-tint`, `--cv-brand-deep` |
+| Categories (projects) | `--cv-cat-1` … `--cv-cat-16` (markers), `--cv-cat-1-fill` … `--cv-cat-16-fill` with `--cv-fg-on-cat` (labelled fills), through `data-cat` |
 | Scrim, shadows | `--cv-overlay`, `--cv-shadow-*` |
 
 All pairings are verified at **WCAG 2.2 AA (4.5:1 for body, 3:1 for large text and UI)** in both light and dark:
@@ -110,6 +111,16 @@ All pairings are verified at **WCAG 2.2 AA (4.5:1 for body, 3:1 for large text a
 - On `--cv-surface-3` (pressed and selected states, avatars) only `--cv-fg` and `--cv-fg-muted` are allowed (6.1:1 or more). `--cv-fg-subtle` is never placed on it.
 - Status text, icons and badge dots use `--cv-fg-<status>` on `--cv-<status>-surface` (6.8:1 or more in both themes); a badge dot takes the badge's text colour. Status is never shown by color alone: it always comes with a word or an icon.
 - Boundaries of inputs, selects, segmented controls and checkboxes use `--cv-border-control` (3:1 or more, WCAG 1.4.11).
+- **Text on the inverse surface** (`--cv-surface-inverse`): `--cv-fg-inverse` for main text (17.7:1 light, 18.2:1 dark) and `--cv-fg-inverse-muted` for captions such as a project name or a start time (6.91:1 light, 5.16:1 dark). `--cv-fg-muted` (2.29:1 light, 1.57:1 dark) and `--cv-fg-subtle` (3.21:1, 2.74:1) never go on it.
+
+#### Category colours (a deliberate extension)
+Projects, clients or other user-defined groups get one of 16 **category colours**. A category is **not a status** and never replaces a status badge, and it **never carries meaning alone**: the name is always next to the colour or inside it, and charts have a legend or direct labels.
+
+- Each hue has two roles. `--cv-cat-N` is the **marker** (stripe, dot, chart segment, border of a selected swatch): a light and a dark value, 3:1 or more against `--cv-bg`, `--cv-surface`, `--cv-surface-2` and `--cv-surface-raised` (3.20:1 at worst). Markers never sit on `--cv-surface-3`. `--cv-cat-N-fill` is the **fill behind a white label** (`--cv-fg-on-cat`), the same in both themes, 4.5:1 or more (4.60:1 at worst). A labelled block needs no 3:1 against its surface: its label identifies it.
+- The hues follow the colour wheel (1 orange, 2 amber, 3 yellow, 4 lime, 5 green, 6 teal, 7 cyan, 8 sky, 9 blue, 10 indigo, 11 violet, 12 purple, 13 fuchsia, 14 pink, 15 rose, 16 slate) and alternate a **bright** tier (odd numbers, at the contrast minimum) and a **deep** tier (even numbers: darker in light and in fills, lighter as dark markers). Neighbours therefore differ in lightness as well as hue, which keeps them apart for colour-vision deficiencies too.
+- Applications store the **number**, set it with `data-cat`, and assign new projects in the default order 9, 4, 14, 10, 7, 6, 16, 13, 8, 11, 12, 5, 3, 2, 15, 1, which keeps the first six apart for everyone and puts the status look-alikes (green, yellow, amber, rose) and the accent look-alike (orange) last. After 16, the order starts again.
+- Custom colours: restrict users to the palette. If an application must accept any colour, `Covenant.setCategory(element, "#rrggbb")` derives the three values by changing the lightness only.
+- See the **CategoryColor** component for the recipes, the accessibility rules and the decisions.
 
 ### Typography
 - **IBM Plex Sans** for everything UI.
@@ -149,7 +160,7 @@ A 4 px base scale (0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 px at standard
 - **0 / 2 / 4 / 8 / 12 / 16 / full**.
 - Default `--cv-radius-md: 8px` on cards, inputs, buttons.
 - `--cv-radius-lg: 12px` on modals, drawers and the command menu; `--cv-radius-sm: 4px` on tags, keycaps and menu items. No other values.
-- `full` (pill) only on status badges, tab counters, avatars and switches.
+- `full` (pill) only on status badges, tab counters, avatars, switches and category dots.
 - Never mix radii on adjacent surfaces — a card at 8 px contains inputs at 8 px, not 4 px.
 
 ### Hover, press, focus
@@ -279,7 +290,7 @@ Covenant is Vanilla Web: no framework, no build step. It works the same in a sta
 3. Set the theme on the root: `<html lang="en" data-theme="light">` or `data-theme="dark"`. Add `data-text-size="standard|comfortable|large"` from the user's stored preference, or leave it out for automatic scaling. Never set a `font-size` on `<html>` in your application: `covenant.css` sets it to apply the text scale.
 4. Copy the **Anatomy** markup from each component page and keep its classes, roles and ARIA attributes. Never restyle a component locally: extend `bundle.css` deliberately.
 5. Use semantic tokens (`var(--cv-fg)`, `var(--cv-surface)`, `var(--cv-shadow-sm)`, …) for anything you build around the components; never a hard-coded value and never a primitive scale token, so everything follows the theme.
-6. Behaviours start by themselves. For markup added later, call `Covenant.init(element)`. `Covenant.setTextSize(size)` changes the text size and fires `cv:textsize` so the app can save the choice. `Covenant.toast({ status, title, text })` shows a toast; `Covenant.openDialog(id)` and `Covenant.closeDialog(id)` drive dialogs.
+6. Behaviours start by themselves. For markup added later, call `Covenant.init(element)`. `Covenant.setTextSize(size)` changes the text size and fires `cv:textsize` so the app can save the choice. `Covenant.toast({ status, title, text })` shows a toast; `Covenant.openDialog(id)` and `Covenant.closeDialog(id)` drive dialogs. `Covenant.setCategory(element, n | '#rrggbb')` sets a category colour; `Covenant.categoryColors(hex)` returns the derived light marker, dark marker and fill.
 7. Run the **Checklist** before review.
 
 **In an existing app:** align **tokens** first (load `tokens.css` and remap your theme variables onto `--cv-*`), then move components one surface at a time: buttons, forms, navigation, tables.

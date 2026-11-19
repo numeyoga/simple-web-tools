@@ -3,7 +3,8 @@
    Native HTML first: <dialog> for modals, drawers and the command menu, the
    popover attribute for menus, native inputs for dates. This script only adds
    what the platform does not provide. Load once; it initialises itself and
-   exposes window.Covenant = { init, toast, setTextSize, getTextSize, openDialog, closeDialog }. */
+   exposes window.Covenant = { init, toast, setTextSize, getTextSize, openDialog, closeDialog,
+   categoryColors, setCategory }. */
 (function () {
   'use strict';
   if (window.Covenant && window.Covenant.__loaded) return;
@@ -331,6 +332,95 @@
     });
   }
 
+  /* ---------- Category colours: derive marker and fill from a picked colour ----------
+     Keeps the hue and saturation (HSL) and moves the lightness only:
+     light marker = the lightest value at 3:1 or more on every light ground,
+     dark marker  = the darkest value at 3:1 or more on every dark ground,
+     fill         = the lightest value that keeps white text at 4.5:1 or more.
+     The grounds are read from the tokens, so the result follows any token change. */
+  var CAT_GROUNDS = ['--cv-bg', '--cv-surface', '--cv-surface-2', '--cv-surface-raised'];
+  var groundCache = null;
+  function hexToRgb(hex) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex).trim());
+    if (!m) return null;
+    var h = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
+    return [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16) / 255; });
+  }
+  function rgbToHex(c) { return '#' + c.map(function (v) { return ('0' + Math.round(v * 255).toString(16)).slice(-2); }).join(''); }
+  function cssRgb(s) { var m = String(s).match(/[\d.]+/g); return m ? m.slice(0, 3).map(function (v) { return v / 255; }) : null; }
+  function luminance(c) {
+    var f = function (v) { return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+  function contrast(a, b) { var x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function toHsl(c) {
+    var r = c[0], g = c[1], b = c[2], max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, h = 0, s = 0, d = max - min;
+    if (d) {
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h /= 6;
+    }
+    return [h, s, l];
+  }
+  function fromHsl(h, s, l) {
+    if (!s) return [l, l, l];
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    var t = function (x) { x = (x + 1) % 1; return x < 1 / 6 ? p + (q - p) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? p + (q - p) * (2 / 3 - x) * 6 : p; };
+    return [t(h + 1 / 3), t(h), t(h - 1 / 3)];
+  }
+  function grounds() {
+    if (groundCache) return groundCache;
+    var out = {};
+    ['light', 'dark'].forEach(function (theme) {
+      var probe = document.createElement('div');
+      probe.setAttribute('data-theme', theme);
+      probe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden';
+      document.body.appendChild(probe);
+      out[theme] = CAT_GROUNDS.map(function (name) {
+        probe.style.color = 'var(' + name + ')';
+        return cssRgb(getComputedStyle(probe).color);
+      }).filter(Boolean);
+      document.body.removeChild(probe);
+    });
+    return (groundCache = out);
+  }
+  /* Search the lightness in 0.001 steps; `lightest` picks the lightest passing value, otherwise the darkest. */
+  function pick(hsl, ok, lightest) {
+    for (var i = 0; i <= 1000; i++) {
+      var l = lightest ? 1 - i / 1000 : i / 1000, hex = rgbToHex(fromHsl(hsl[0], hsl[1], l));
+      if (ok(hexToRgb(hex))) return hex; /* tested after rounding to the hex value that is applied */
+    }
+    return lightest ? '#000000' : '#ffffff';
+  }
+  function categoryColors(hex) {
+    var c = hexToRgb(hex);
+    if (!c) return null;
+    var hsl = toHsl(c), g = grounds(), white = [1, 1, 1];
+    var minOn = function (list) { return function (x) { return list.every(function (b) { return contrast(x, b) >= 3.1; }); }; };
+    return {
+      light: pick(hsl, minOn(g.light), true),
+      dark: pick(hsl, minOn(g.dark), false),
+      fill: pick(hsl, function (x) { return contrast(x, white) >= 4.6; }, true)
+    };
+  }
+  /* setCategory(el, 1..16) uses the palette; setCategory(el, '#rrggbb') derives a custom category. */
+  function setCategory(el, value) {
+    if (!el) return null;
+    var n = parseInt(value, 10);
+    if (String(n) === String(value).trim() && n >= 1 && n <= 16) {
+      el.setAttribute('data-cat', String(n));
+      ['--cv-cat-custom-light', '--cv-cat-custom-dark', '--cv-cat-custom-fill'].forEach(function (p) { el.style.removeProperty(p); });
+      return { cat: n };
+    }
+    var c = categoryColors(value);
+    if (!c) return null;
+    el.setAttribute('data-cat', 'custom');
+    el.style.setProperty('--cv-cat-custom-light', c.light);
+    el.style.setProperty('--cv-cat-custom-dark', c.dark);
+    el.style.setProperty('--cv-cat-custom-fill', c.fill);
+    return c;
+  }
+
   window.Covenant = {
     __loaded: true,
     init: init,
@@ -338,7 +428,9 @@
     setTextSize: setTextSize,
     getTextSize: getTextSize,
     openDialog: function (id) { var d = typeof id === 'string' ? document.getElementById(id) : id; if (d) { initDialog(d); openDialog(d); } },
-    closeDialog: function (id) { var d = typeof id === 'string' ? document.getElementById(id) : id; closeDialog(d); }
+    closeDialog: function (id) { var d = typeof id === 'string' ? document.getElementById(id) : id; closeDialog(d); },
+    categoryColors: categoryColors,
+    setCategory: setCategory
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { init(document); });
