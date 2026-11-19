@@ -1,207 +1,118 @@
 ---
 name: covenant-design-system
-description: >
-  Design system for Vanilla Web backoffice/dashboard applications (HTML5, CSS natif, JS vanilla).
-  ALWAYS use this skill whenever you must create, modify, style, structure, or review any UI element —
-  including but not limited to: HTML pages, components, layouts, forms, tables, modals, drawers,
-  navigation, toasts, alerts, badges, tabs, dropdowns, tooltips, empty states, loading states,
-  error states, icons, CSS tokens, color themes, spacing, typography, accessibility (WCAG),
-  responsive behavior, or any visual/frontend code. Also use this skill when generating code that
-  will be rendered in a browser, when reviewing UI code for conformity, or when answering questions
-  about UI conventions, design tokens, or component APIs. If the task touches anything visual or
-  structural in the frontend, read this skill FIRST. Even partial UI tasks (e.g. "add a button",
-  "style this table", "fix the layout") require this skill.
+description: Build or review web UI with the Covenant Design System (Vanilla Web backoffice, WCAG 2.2 AA). Use for any HTML, CSS or JS screen, component or prototype that must follow Covenant, and before declaring such UI done.
 ---
 
-# Vanilla Web Design System — Skill Guide
+# Covenant Design System
 
-## Purpose
+Covenant is a design system for backoffice web applications, written in **Vanilla Web**: plain HTML, CSS and vanilla JavaScript, no framework, no build step. Every component is defined once in this skill. Your job is to assemble those components, not to invent new ones, and to prove each result against the checklist.
 
-This skill enforces a comprehensive design system for **personal-use backoffice/dashboard SPAs** built with the **Vanilla Web** stack (HTML5, native CSS custom properties, vanilla JS ES2024+). No framework, preprocessor, or transpiler in the production bundle.
+## Files
 
-The design system is documented across 9 reference files in the `references/` directory. This SKILL.md contains the critical rules that apply to **every** task, plus a routing table to load only the specific reference files needed.
+| Path | What it is | When to read it |
+| --- | --- | --- |
+| `references/foundations.md` | Voice, colour roles, type, spacing, radii, states, motion, layout and reflow rules | Once per task, before writing UI |
+| `references/components/<Name>.md` | Anatomy (HTML to copy), classes and states, accessibility and keyboard, usage, component checklist | For every component you use |
+| `references/checklist.md` | Covenant conformity + WCAG 2.2 AA checklist, with the test procedure | Before you call anything done |
+| `assets/covenant-tokens.css` | Design tokens (`--cv-*`), light and dark | Copy into the project |
+| `assets/covenant.css` | All component classes (`.cv-*`), base styles, fonts, layout | Copy into the project |
+| `assets/covenant.js` | Behaviours the platform lacks (`window.Covenant`) | Copy into the project |
+| `assets/tokens.json` | Token source with a usage note per token | To look up a token's role |
+| `assets/logos/` | Logo lockups and mark (SVG) | Copy, never redraw |
+| `templates/page.html` | A full page: includes + AppShell (skip link, sidebar, top bar, main) | Start every new page from it |
 
----
+The references describe the published design system: there `tokens.css` is `assets/covenant-tokens.css` here, `components/bundle.css` is `assets/covenant.css`, `components/bundle.js` is `assets/covenant.js`, and `assets/*.svg` (written `../../assets/…` in the Logo page) is `assets/logos/`.
 
-## Critical Rules — Always Apply
+## In this repository
 
-These rules are non-negotiable. Apply them to every piece of UI code you produce, regardless of which reference files you read.
+This section is a local adaptation of the published skill. It overrides the set-up step below.
 
-### Stack
+- No CDN and no third-party request (decision 0003). Do not keep the Google Fonts `@import`
+  from `assets/covenant.css` or the unpkg `<script>`: IBM Plex comes from the `@fontsource`
+  packages and Phosphor from the `@phosphor-icons/web` npm package, both bundled by Vite.
+- Phosphor follows the version pinned in the apps' `package.json`, which Dependabot updates.
+- `assets/` is the reference copy; the apps will load Covenant from `packages/covenant`
+  (roadmap step 3) instead of copying the files next to each page.
+- UI strings go through the app's translation catalog (`@simple-web-tools/i18n`), never inline.
 
-- **HTML5 sémantique, CSS natif (custom properties), JavaScript vanilla (ES2024+)**
-- Zero frameworks, preprocessors, or transpilers in the delivered code
-- Web Platform **Baseline "Newly Available"** as the compatibility floor
-- Target browsers: Chrome and Opera (Chromium-based)
+## Workflow
 
-### Design Tokens — Mandatory
+1. **Read** `references/foundations.md`.
+2. **Set up** the project once: copy the three files from `assets/` next to the page and load them in this order:
+   ```html
+   <link rel="stylesheet" href="covenant-tokens.css">
+   <link rel="stylesheet" href="covenant.css">
+   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+   <script src="covenant.js" defer></script>
+   ```
+   Set `<html lang="…" data-theme="light|dark">`. New pages start from `templates/page.html`.
+3. **Pick components** from the index below and open each one's reference. Copy its **Anatomy** markup verbatim; change only text, `id`s (keep them unique and keep every `for`, `aria-controls`, `aria-labelledby` and `aria-describedby` pointing at the right `id`) and data.
+4. **Compose** with tokens only. Layout glue may use `display`, `gap` and `grid`, with `var(--cv-space-*)` values. Any colour, radius, shadow or size is a `var(--cv-*)` token.
+5. **Behaviour** comes from `covenant.js`: it starts by itself; call `Covenant.init(element)` after inserting markup; `Covenant.toast({ status, title, text })`, `Covenant.openDialog(id)`, `Covenant.closeDialog(id)`. Listen to `cv:change` (combobox) and `cv:command` (command menu).
+6. **Verify** with `references/checklist.md` plus the checklist of every component used, in both themes. When you can run a browser, run axe-core (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa` tags) in light and dark, tab through every control, open and close every overlay with the keyboard, and check a 320 px wide window. Report what you checked and what you could not.
+7. **Stop and ask** when a design needs something no component or token covers. Never invent a token, a colour, a component or a variant; propose a deliberate extension instead.
 
-Every color, spacing, font-size, border-radius, shadow, z-index, and animation duration **must** use a CSS custom property token. No raw hex, px, or ms values in application CSS.
+## Firm rules
 
-Token architecture (two levels):
-- **Primitive tokens** (`--palette-*`, `--font-*`, `--spacing-*`, etc.) — defined in `tokens.css`, **never consumed directly** in component/application CSS.
-- **Semantic tokens** (`--color-*`, `--text-*`, `--radius-*`, etc.) — reference primitives and are the **only** tokens used in component and application code.
+- Vanilla Web only. Do not add React, Vue, Tailwind or any UI library. If the host project already uses a framework, render the same Covenant markup and classes in its templates.
+- Native HTML first: `<button>`, `<a href>`, `<input>`, `<select>`, `<dialog>`, `popover`, `<fieldset>`/`<legend>`, `<table>`.
+- One accent, orange. Text never sits on `--cv-accent-500`; fills behind text use `--cv-accent-fill` with `--cv-fg-on-accent`. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`.
+- Status colours mean status only, and status is always carried by a word or an icon too.
+- Sentence case, no emoji, no exclamation mark. Buttons are verbs; errors say what failed, why, and what to do next.
+- IBM Plex Sans for UI, IBM Plex Mono for numbers, IDs, durations and timestamps. Phosphor 2.1.1 icons only.
+- No gradients, no decorative imagery, no `backdrop-filter`, no bounce. Motion only on overlays and toasts.
+- WCAG 2.2 AA in both themes is the floor: 4.5:1 text, 3:1 boundaries and focus, 24 px targets, full keyboard support, reflow at 320 px.
+- Every size is in rem (text, spacing, rows, icons, panel widths); never set `font-size` on `<html>`, never write a font size in px, never go below `--cv-text-xs` (12 px). Text size is chosen with `data-text-size` on `<html>` (`standard`, `comfortable`, `large`; none = automatic, larger on screens 2000 CSS px wide and more).
 
-### Accessibility — WCAG 2.2 AA
+## Component index
 
-| Criterion              | Requirement                              |
-|------------------------|------------------------------------------|
-| Text contrast          | ≥ 4.5:1 (normal text)                   |
-| Large text contrast    | ≥ 3:1 (≥ 18pt or 14pt bold)             |
-| UI element contrast    | ≥ 3:1                                   |
-| Keyboard navigation    | All interactive elements                 |
-| Visible focus          | Mandatory, styled via tokens             |
-| ARIA attributes        | When native HTML semantics are not enough|
-| Interactive target size| Minimum 24×24 CSS pixels                 |
+**Actions**
+- `Button` — Buttons trigger an action: primary, secondary (default), ghost and danger, at 32 px (default) or 28 px (`cv-btn--sm`).
+- `Link` — Links navigate to another page or place; they read in `cv-fg-accent` and are always underlined.
 
-### Typography
+**Forms**
+- `Checkbox` — Native checkboxes in a labelled fieldset; checked boxes fill with `cv-accent-fill`.
+- `Combobox` — A combobox filters a long list as you type and lets you pick with the arrow keys; Escape closes the list.
+- `DateTimeInput` — Dates and times use the native `date`, `time` and `datetime-local` inputs, set in mono, with the browser picker.
+- `FormField` — A form field wraps one control with its label, an optional hint and an error message, all linked for assistive technology.
+- `Radio` — Native radio buttons for one choice among a few, grouped in a fieldset.
+- `SegmentedControl` — A segmented control picks one of two to five views; it is a radio group drawn as joined buttons.
+- `Select` — A native `<select>` styled like the text input, with a drawn chevron; use it for 2 to 15 known options.
+- `Switch` — A switch turns a setting on or off immediately; it is a native checkbox with `role="switch"`.
+- `TextInput` — A single-line text input at 32 px with a 3:1 boundary, optionally with a leading icon or in mono for codes and amounts.
+- `Textarea` — A multi-line text input that grows vertically, with the same boundary, focus and error states as the text input.
 
-- Root font-size: `16px` (do not change)
-- Base interface text: `0.875rem` (14px) via `--text-base`
-- Font stack: system-ui based (see tokens)
+**Feedback**
+- `Alert` — An inline alert states a fact about the current view: success, warning, danger or info, always with an icon and a bold lead.
+- `Badge` — Badges label a status or a category: status pills with a dot and a word, or square tags for versions and metadata.
+- `EmptyState` — An empty state explains why a view has no content and offers the next action.
+- `Skeleton` — Skeletons hold the place of content while it loads; they are static blocks in `cv-surface-3`, with no shimmer.
+- `Toast` — Toasts confirm the result of an action, bottom-right, on a raised surface; errors and warnings stay until dismissed.
+- `Tooltip` — A tooltip names an icon-only control or adds a short hint; it shows on hover and focus, stays while hovered and closes with Escape.
 
-### Layout — Desktop-First
+**Overlays**
+- `CommandMenu` — The command menu opens with ⌘K or Ctrl+K and runs a command by name; it is a modal `<dialog>` holding a combobox with an always-visible list.
+- `Drawer` — A drawer slides in from the right to show or edit the details of an item without leaving the list; it is a native modal `<dialog>`.
+- `Menu` — A menu lists actions on an item; it opens from a button with the native popover API and is driven with the arrow keys.
+- `Modal` — A modal asks for a decision or a short form on top of the page; it is a native `<dialog>` opened with `showModal()`.
 
-- Primary design viewport: **2048 × 1056 CSS px** (QHD at 125% scaling)
-- Media queries use `max-width` (desktop-first)
-- App Shell pattern: topbar + optional sidebar + main content area
-- Grid system based on CSS Grid, not flexbox (flexbox for alignment within cells)
+**Navigation**
+- `Breadcrumbs` — Breadcrumbs show where the page sits in the hierarchy; ancestors are links and the current page is plain text.
+- `Pagination` — Pagination moves through pages of a long list; the current page is filled with the accent.
+- `SidebarNav` — The sidebar is the main navigation: 14.5rem (232 px at standard scale) wide, the logo, then icon and label links grouped under overline headings.
+- `Tabs` — Tabs switch between views of the same object; the selected tab is underlined in the accent.
+- `TopBar` — The top bar is 3rem (48 px at standard scale) high and holds the page title, the search that opens the command menu and the account actions.
 
-### CSS Conventions
+**Data display**
+- `Avatar` — Avatars show a person as a photo or initials in a circle at 24, 32 or 40 px.
+- `Card` — Cards group the summary of one object: a title, metadata and an optional footer; a card that opens the object is a link.
+- `DataTable` — Data tables list records in 32 px rows with a sentence-case header, mono numbers aligned right, and scroll inside their own region on narrow screens.
+- `Kbd` — Keycaps show a keyboard shortcut in mono, with a thicker bottom border.
 
-- **BEM** naming: `block__element--modifier` for structural classes
-- **`data-*` attributes** for variant/state modifiers (not BEM modifier classes)
-- **`data-js-*` attributes** as JS hooks (never use CSS classes as JS selectors)
-- One component per CSS file (`css/components/button.css`, etc.)
+**Layout**
+- `AppShell` — The app shell lays out every page: a fixed 14.5rem sidebar and a 3rem top bar from 1024 px, an off-canvas drawer below, and content that reflows to one column.
+- `TextSize` — The text size setting lets each user enlarge the whole interface: automatic (follows the screen), standard, comfortable or large.
 
-### HTML Conventions
-
-- Semantic elements (`<header>`, `<nav>`, `<main>`, `<section>`, `<dialog>`, etc.)
-- Native `<dialog>` for modals and drawers (focus trap, backdrop, Escape built-in)
-- `accent-color` for checkbox/radio styling
-- `lang="fr"` and `data-theme="light"` on `<html>`
-
-### JS Conventions
-
-- ES modules (`type="module"`)
-- `data-js-*` attributes for DOM queries
-- No inline event handlers; use `addEventListener`
-
----
-
-## Reference File Routing
-
-Read **only** the files relevant to your current task. Always start with the routing table below.
-
-> **How to read**: Use the `view` tool on the file path shown. The files are in the `references/` subdirectory relative to this SKILL.md.
-
-| If your task involves…                          | Read these files (in order)                          |
-|-------------------------------------------------|------------------------------------------------------|
-| **Any UI task** (baseline context)              | `00-fondations.md` (skim §2–§3)                     |
-| Design tokens, colors, spacing, typography, shadows, z-index, themes | `01-design-tokens.md`                  |
-| Page structure, app shell, grid, containers     | `02-layout.md`                                       |
-| Buttons                                         | `03-composants.md` §2                                |
-| Inputs, textarea, select                        | `03-composants.md` §3–§5                             |
-| Checkbox, radio, toggle                         | `03-composants.md` §6–§7                             |
-| Cards                                           | `03-composants.md` §8                                |
-| Data tables                                     | `03-composants.md` §9                                |
-| Badges                                          | `03-composants.md` §10                               |
-| Alerts                                          | `03-composants.md` §11                               |
-| Dropdowns / menus                               | `03-composants.md` §12                               |
-| Tabs                                            | `03-composants.md` §13                               |
-| Tooltips                                        | `03-composants.md` §14                               |
-| Page headers                                    | `04-patterns.md` §2                                  |
-| Toolbars                                        | `04-patterns.md` §3                                  |
-| Forms (create/edit patterns)                    | `04-patterns.md` §4                                  |
-| List with search/filters                        | `04-patterns.md` §5                                  |
-| Modals (dialogs)                                | `04-patterns.md` §6                                  |
-| Drawers (side panels)                           | `04-patterns.md` §7                                  |
-| Toasts / notifications                          | `04-patterns.md` §8                                  |
-| Empty states                                    | `04-patterns.md` §9                                  |
-| Sidebar navigation                              | `04-patterns.md` §10                                 |
-| Loading states, skeletons, spinners             | `05-etats-feedback.md` §3                            |
-| Success states                                  | `05-etats-feedback.md` §4                            |
-| Error states, validation                        | `05-etats-feedback.md` §5                            |
-| Empty/disabled/data states                      | `05-etats-feedback.md` §6–§8                         |
-| Feedback animations                             | `05-etats-feedback.md` §9                            |
-| Icons (Lucide SVG, sprite, usage)               | `06-iconographie.md`                                 |
-| HTML/CSS/JS code conventions                    | `07-regles-code.md`                                  |
-| File/project structure                          | `07-regles-code.md` §5–§6                            |
-| **Final review / conformity audit**             | `08-checklist.md`                                    |
-
-### Reading Strategy
-
-1. **Simple task** (e.g., "add a button"): Read the specific component section only. The critical rules above give you enough context.
-2. **Medium task** (e.g., "build a form page"): Read `02-layout.md` + the relevant sections of `03-composants.md` + `04-patterns.md` §4.
-3. **Full page or new project**: Read `00-fondations.md`, `01-design-tokens.md`, `02-layout.md`, `07-regles-code.md`, then the component/pattern files as needed.
-4. **Code review or audit**: Read `08-checklist.md` and cross-reference with the specific documents for any failing items.
-
----
-
-## File Structure Reference (Quick)
-
-A conforming project follows this structure:
-
-```
-project/
-├── index.html
-├── css/
-│   ├── tokens.css          ← All design tokens
-│   ├── reset.css            ← CSS reset
-│   ├── base.css             ← Base element styles
-│   ├── layout.css           ← App shell + grid
-│   ├── utilities.css        ← Utility classes
-│   └── components/
-│       ├── button.css
-│       ├── input.css
-│       └── …
-├── js/
-│   ├── main.js              ← Entry point (type="module")
-│   └── components/
-│       └── …
-├── icons/
-│   └── sprite.svg           ← Lucide SVG sprite
-└── package.json             ← Browserslist + dev-only tooling
-```
-
----
-
-## Component Quick Reference
-
-| Component     | CSS Class       | Key Element       | Variants via `data-*`              |
-|---------------|-----------------|-------------------|------------------------------------|
-| Button        | `.btn`          | `<button>`        | `data-variant`, `data-size`        |
-| Input         | `.input`        | `<input>`         | `data-size`                        |
-| Textarea      | `.textarea`     | `<textarea>`      | —                                  |
-| Select        | `.select`       | `<select>`        | `data-size`                        |
-| Checkbox      | `.checkbox`     | `<input type>`    | styled via `accent-color`          |
-| Radio         | `.radio`        | `<input type>`    | styled via `accent-color`          |
-| Toggle        | `.toggle`       | `<button>`        | `data-size`                        |
-| Card          | `.card`         | `<article>`       | `data-variant`                     |
-| Data Table    | `.data-table`   | `<table>`         | `data-density`                     |
-| Badge         | `.badge`        | `<span>`          | `data-variant`, `data-size`        |
-| Alert         | `.alert`        | `<div role=alert>`| `data-variant`                     |
-| Dropdown      | `.dropdown`     | `<div>` + `<menu>`| `data-position`                    |
-| Tabs          | `.tabs`         | `<div role=tablist>`| —                                |
-| Tooltip       | `.tooltip`      | `<span>` / CSS    | `data-position`                    |
-
----
-
-## Anti-Patterns — Never Do This
-
-- ❌ Raw color values (`#fff`, `rgb(...)`) in component/application CSS
-- ❌ Raw spacing values (`margin: 8px`) — use `var(--space-*)`
-- ❌ BEM modifier classes for states — use `data-*` attributes
-- ❌ CSS classes as JS hooks — use `data-js-*`
-- ❌ Framework-specific code (React, Vue, Svelte) in the delivered bundle
-- ❌ `<div>` where a semantic element exists (`<nav>`, `<main>`, `<section>`, `<dialog>`)
-- ❌ Custom modal/drawer implementations — use native `<dialog>`
-- ❌ Inline styles or `!important` (except documented utility exceptions)
-- ❌ Z-index values not from the token layer system
-- ❌ Animations without `prefers-reduced-motion` respect
-
----
-
-## Post-Production Checklist Reminder
-
-After completing any UI task, mentally walk through `08-checklist.md`. For significant deliverables (full pages, new components), read the checklist file explicitly and verify each applicable item.
+**Brand**
+- `Icons` — Covenant uses Phosphor Icons 2.1.1, regular weight by default and bold for emphasis, sized at 1em in `currentColor`.
+- `Logo` — The Covenant lockup and mark: two arcs that meet around an orange point, beside the wordmark in IBM Plex Sans semibold.
