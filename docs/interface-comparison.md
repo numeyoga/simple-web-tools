@@ -471,6 +471,20 @@ maximised whiteboard (`LA:1037-1040` offsets it by `--cv-topbar-h`; `app.css` se
 | 10  | Text below 12 px                   | **Answered**: floor 12 px (S:69).                                                                                                                                                                                                                              |
 | 11  | Source of truth, skill or `--cv-*` | **Answered**: the skill is normative and now matches the `--cv-*` implementation; the old premise (blue primary, 14 px, Lucide) no longer applies. Phosphor and bundled fonts are confirmed.                                                                   |
 
+## Decisions (2026-11-19)
+
+The maintainer answered the six open questions below. They are binding for `packages/covenant` and the
+Chrono port.
+
+| Question                           | Decision                                                                                                                                                                         |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B. Hover and press                 | **Instant**, no fade and no press scale, as the skill says.                                                                                                                      |
+| C. Project colour                  | **Add to Covenant** as an extension. A prompt for Claude Design proposes categorical tokens (a marker value per theme and a fill value for white labels) for the 16 Chrono hues. |
+| D. Running-timers card             | `--cv-surface-inverse` with `--cv-fg-inverse`, plus a **new `--cv-fg-inverse-muted`** role (4.5:1 or more in both themes) for captions. Requested from Claude Design with C.     |
+| F. Live timers and presence widget | **Page header of the Timeline view**, in the top bar on narrow screens.                                                                                                          |
+| G. Page title                      | **The skill's top bar `h1`.**                                                                                                                                                    |
+| H. Single-key shortcuts            | **Kept, behind a "Single-key shortcuts" preference** that turns them off. They never fire while focus is in a text field.                                                        |
+
 ## Remaining open questions
 
 The skill update closed two of the eight questions (A and E) and narrowed a third (D). Six stay open
