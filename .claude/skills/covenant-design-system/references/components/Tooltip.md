@@ -11,7 +11,7 @@ A tooltip names an icon-only control or adds a short hint; it shows on hover and
 
 ## Classes and states
 
-- `cv-tooltip-wrap` holds the trigger and a `cv-tooltip` (`role="tooltip"`); `cv-tooltip--bottom` places it below. Fill `cv-neutral-900`, text `cv-neutral-0` (17.7:1) in both themes.
+- `cv-tooltip-wrap` holds the trigger and a `cv-tooltip` (`role="tooltip"`); `cv-tooltip--bottom` places it below. Fill `cv-surface-inverse`, text `cv-fg-inverse`: a dark bubble in light, a light bubble in dark, so it always stands out from the page (17.7:1 and 18.2:1).
 - bundle.js links it with `aria-describedby`, shows it on hover or focus, keeps it while the pointer is over it, hides it on Escape.
 
 ## Accessibility and keyboard

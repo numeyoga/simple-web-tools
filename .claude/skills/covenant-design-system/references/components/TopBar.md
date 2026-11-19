@@ -33,4 +33,4 @@ Run the shared checklist (`checklist.md`) and these points:
 
 - [ ] Page has one `<h1>` (1.3.1, 2.4.6).
 - [ ] Icon-only controls named (4.1.2).
-- [ ] Sticky bar never hides the focused element (2.4.11): content uses `scroll-padding-top: 48px`.
+- [ ] Sticky bar never hides the focused element (2.4.11): `html` has `scroll-padding-top: var(--cv-topbar-h)` (3rem).

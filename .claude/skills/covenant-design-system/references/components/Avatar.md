@@ -10,7 +10,7 @@ Avatars show a person as a photo or initials in a circle at 24, 32 or 40 px.
 
 ## Classes and states
 
-- `cv-avatar` 32 px; `--sm` 24 px, `--lg` 40 px. Initials in `cv-neutral-900` on `cv-neutral-200`; a photo fills the circle.
+- `cv-avatar` 32 px; `--sm` 24 px, `--lg` 40 px. Initials in `cv-fg` on `cv-surface-3` (14.0:1 light, 11.0:1 dark); a photo fills the circle.
 
 ## Accessibility and keyboard
 

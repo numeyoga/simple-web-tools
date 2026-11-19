@@ -18,36 +18,39 @@ Covenant is a design system for backoffice web applications, written in **Vanill
 | `assets/covenant.css` | All component classes (`.cv-*`), base styles, fonts, layout | Copy into the project |
 | `assets/covenant.js` | Behaviours the platform lacks (`window.Covenant`) | Copy into the project |
 | `assets/tokens.json` | Token source with a usage note per token | To look up a token's role |
+| `assets/fonts/` | IBM Plex Sans and Mono, Latin `.woff2`, `covenant-fonts.css`, `OFL.txt` | Copy into the project |
+| `assets/phosphor/` | Phosphor 2.1.2 icon font, regular and bold, with its MIT `LICENSE` | Copy into the project |
 | `assets/logos/` | Logo lockups and mark (SVG) | Copy, never redraw |
 | `templates/page.html` | A full page: includes + AppShell (skip link, sidebar, top bar, main) | Start every new page from it |
+| `CHANGELOG.md` | What changed in each version, with contrast figures | When updating an existing project |
 
-The references describe the published design system: there `tokens.css` is `assets/covenant-tokens.css` here, `components/bundle.css` is `assets/covenant.css`, `components/bundle.js` is `assets/covenant.js`, and `assets/*.svg` (written `../../assets/…` in the Logo page) is `assets/logos/`.
+The references describe the published design system: there `tokens.css` is `assets/covenant-tokens.css` here, `components/bundle.css` is `assets/covenant.css`, `components/bundle.js` is `assets/covenant.js`, `fonts/` is `assets/fonts/`, `assets/*.svg` (written `../../assets/…` in the Logo page) is `assets/logos/`, and the Phosphor stylesheets the preview pages load from unpkg are `assets/phosphor/`.
 
 ## In this repository
 
-This section is a local adaptation of the published skill. It overrides the set-up step below.
+Local adaptation of the published skill, to merge back if it proves useful:
 
-- No CDN and no third-party request (decision 0003). Do not keep the Google Fonts `@import`
-  from `assets/covenant.css` or the unpkg `<script>`: IBM Plex comes from the `@fontsource`
-  packages and Phosphor from the `@phosphor-icons/web` npm package, both bundled by Vite.
-- Phosphor follows the version pinned in the apps' `package.json`, which Dependabot updates.
-- `assets/` is the reference copy; the apps will load Covenant from `packages/covenant`
-  (roadmap step 3) instead of copying the files next to each page.
+- The apps do not copy `assets/` next to their pages. They load Covenant from
+  `packages/covenant` (roadmap step 3), and Vite bundles IBM Plex from the `@fontsource`
+  packages and Phosphor from the `@phosphor-icons/web` package pinned in their
+  `package.json`. `assets/fonts/` and `assets/phosphor/` are the reference copy.
 - UI strings go through the app's translation catalog (`@simple-web-tools/i18n`), never inline.
 
 ## Workflow
 
 1. **Read** `references/foundations.md`.
-2. **Set up** the project once: copy the three files from `assets/` next to the page and load them in this order:
+2. **Set up** the project once: copy everything in `assets/` (except `tokens.json`) next to the page, keeping the `fonts/` and `phosphor/` folders, and load them in this order. Nothing is loaded from a CDN:
    ```html
+   <link rel="stylesheet" href="fonts/covenant-fonts.css">
    <link rel="stylesheet" href="covenant-tokens.css">
    <link rel="stylesheet" href="covenant.css">
-   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+   <link rel="stylesheet" href="phosphor/regular/style.css">
+   <link rel="stylesheet" href="phosphor/bold/style.css">
    <script src="covenant.js" defer></script>
    ```
    Set `<html lang="…" data-theme="light|dark">`. New pages start from `templates/page.html`.
 3. **Pick components** from the index below and open each one's reference. Copy its **Anatomy** markup verbatim; change only text, `id`s (keep them unique and keep every `for`, `aria-controls`, `aria-labelledby` and `aria-describedby` pointing at the right `id`) and data.
-4. **Compose** with tokens only. Layout glue may use `display`, `gap` and `grid`, with `var(--cv-space-*)` values. Any colour, radius, shadow or size is a `var(--cv-*)` token.
+4. **Compose** with semantic tokens only. Layout glue may use `display`, `gap` and `grid`, with `var(--cv-space-*)` values. Any colour, radius, shadow or size is a semantic `var(--cv-*)` token that follows the theme.
 5. **Behaviour** comes from `covenant.js`: it starts by itself; call `Covenant.init(element)` after inserting markup; `Covenant.toast({ status, title, text })`, `Covenant.openDialog(id)`, `Covenant.closeDialog(id)`. Listen to `cv:change` (combobox) and `cv:command` (command menu).
 6. **Verify** with `references/checklist.md` plus the checklist of every component used, in both themes. When you can run a browser, run axe-core (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa` tags) in light and dark, tab through every control, open and close every overlay with the keyboard, and check a 320 px wide window. Report what you checked and what you could not.
 7. **Stop and ask** when a design needs something no component or token covers. Never invent a token, a colour, a component or a variant; propose a deliberate extension instead.
@@ -56,10 +59,11 @@ This section is a local adaptation of the published skill. It overrides the set-
 
 - Vanilla Web only. Do not add React, Vue, Tailwind or any UI library. If the host project already uses a framework, render the same Covenant markup and classes in its templates.
 - Native HTML first: `<button>`, `<a href>`, `<input>`, `<select>`, `<dialog>`, `popover`, `<fieldset>`/`<legend>`, `<table>`.
-- One accent, orange. Text never sits on `--cv-accent-500`; fills behind text use `--cv-accent-fill` with `--cv-fg-on-accent`. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`.
+- Everything follows the theme. Use semantic tokens only (`--cv-bg`, `--cv-surface*`, `--cv-fg*`, `--cv-border*`, `--cv-<status>-surface|border`, `--cv-*-fill*`, `--cv-brand-*`). Never use a primitive scale token (`--cv-neutral-*`, `--cv-accent-<n>`, `--cv-<status>-<n>`), a hex, `rgb()` or named colour in component CSS or markup: `grep -nE "var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)"` must return nothing. A missing role is a gap to report, not a primitive to borrow.
+- One accent, orange. Text never sits on `--cv-brand-accent`; fills behind text use `--cv-accent-fill` with `--cv-fg-on-accent`. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`. Invalid fields use `--cv-border-danger`, selection `--cv-border-selected`, inverse bubbles `--cv-surface-inverse` with `--cv-fg-inverse`. On `--cv-surface-3` only `--cv-fg` and `--cv-fg-muted`.
 - Status colours mean status only, and status is always carried by a word or an icon too.
 - Sentence case, no emoji, no exclamation mark. Buttons are verbs; errors say what failed, why, and what to do next.
-- IBM Plex Sans for UI, IBM Plex Mono for numbers, IDs, durations and timestamps. Phosphor 2.1.1 icons only.
+- IBM Plex Sans for UI, IBM Plex Mono for numbers, IDs, durations and timestamps. Phosphor 2.1.x icons only (2.1.2 shipped). Fonts and icons are self-hosted: no Google Fonts, no unpkg, no CDN in an application.
 - No gradients, no decorative imagery, no `backdrop-filter`, no bounce. Motion only on overlays and toasts.
 - WCAG 2.2 AA in both themes is the floor: 4.5:1 text, 3:1 boundaries and focus, 24 px targets, full keyboard support, reflow at 320 px.
 - Every size is in rem (text, spacing, rows, icons, panel widths); never set `font-size` on `<html>`, never write a font size in px, never go below `--cv-text-xs` (12 px). Text size is chosen with `data-text-size` on `<html>` (`standard`, `comfortable`, `large`; none = automatic, larger on screens 2000 CSS px wide and more).
@@ -114,5 +118,5 @@ This section is a local adaptation of the published skill. It overrides the set-
 - `TextSize` — The text size setting lets each user enlarge the whole interface: automatic (follows the screen), standard, comfortable or large.
 
 **Brand**
-- `Icons` — Covenant uses Phosphor Icons 2.1.1, regular weight by default and bold for emphasis, sized at 1em in `currentColor`.
+- `Icons` — Covenant uses Phosphor Icons 2.1.x, regular weight by default and bold for emphasis, sized at 1em in `currentColor`.
 - `Logo` — The Covenant lockup and mark: two arcs that meet around an orange point, beside the wordmark in IBM Plex Sans semibold.

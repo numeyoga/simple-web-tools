@@ -17,7 +17,7 @@ Tabs switch between views of the same object; the selected tab is underlined in 
 
 ## Classes and states
 
-- `cv-tab`: 40 px, `cv-fg-muted`; selected: `cv-fg` with a 2 px `cv-accent-500` underline (3:1 or more). `cv-tab__count`: pill on `cv-surface-2`, accent tint when selected.
+- `cv-tab`: 40 px, `cv-fg-muted`; selected: `cv-fg` with a 2 px `cv-border-selected` underline (4.7:1 or more in both themes). `cv-tab__count`: pill on `cv-surface-2`, accent tint when selected.
 - bundle.js keeps one tab in the tab order and activates on ←/→/Home/End.
 
 ## Accessibility and keyboard

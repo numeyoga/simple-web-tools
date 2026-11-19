@@ -19,7 +19,7 @@ A form field wraps one control with its label, an optional hint and an error mes
 
 - `cv-field`: column, 4 px gap. `cv-label`: 12 px medium, `cv-fg-muted`. `cv-required`: `cv-fg-danger` asterisk.
 - `cv-hint`: 12 px `cv-fg-subtle`. `cv-error`: 12 px `cv-fg-danger` with a warning icon.
-- Invalid control: `aria-invalid="true"` turns the border to `cv-danger-600`.
+- Invalid control: `aria-invalid="true"` turns the border to `cv-border-danger` (8.0:1 light, 6.5:1 dark on `cv-surface`).
 
 ## Accessibility and keyboard
 

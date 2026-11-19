@@ -4,29 +4,32 @@ Run this list on every component and every screen before review. A component is 
 
 How to test, in order:
 
-1. **Automated**: axe-core with the `wcag2a`, `wcag2aa`, `wcag21aa` and `wcag22aa` tags, in light and in dark. Zero violations.
-2. **Keyboard only**: unplug the mouse. Tab through everything, operate every control, open and close every overlay.
-3. **Zoom and reflow**: 200 % browser zoom, then a 320 px wide window. Nothing is cut off; nothing scrolls sideways except a data table inside its own region.
-4. **Large screen and text size**: a 2560 × 1440 window at 100 % (body text 16.25 px, rows 40 px), then `data-text-size="large"` on a 1280 px window, then the browser's default font size at 20 px. Everything grows together; nothing overlaps, clips or scrolls sideways.
-5. **Text spacing**: apply line height 1.5, paragraph spacing 2, letter spacing 0.12, word spacing 0.16 (a bookmarklet does this). No text is clipped or overlaps.
-6. **Screen reader**: NVDA or VoiceOver on the component. Every control announces its name, role and state.
+1. **Automated**: axe-core with the `wcag2a`, `wcag2aa`, `wcag21aa` and `wcag22aa` tags, in light and in dark, with every overlay open (modal, drawer, menu, command menu, combobox list, tooltip, toast). Zero violations. axe does not measure the contrast of control borders or focus rings: step 3 does.
+2. **Keyboard only**: unplug the mouse. Tab through everything, operate every control, open and close every overlay. Hover a timed toast, leave it, and check that it disappears after the time that was left.
+3. **Theme and non-text contrast**: switch `data-theme` to dark and back. Every colour changes with the theme. Measure the borders of inputs, selects and checkboxes, the invalid border, the selected-tab underline and every focus ring against what touches them: 3:1 or more in both themes (1.4.11). Search the component CSS and markup for primitive tokens: `grep -nE "var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)"` returns nothing.
+4. **Zoom and reflow**: 200 % browser zoom, then a 320 px wide window. Nothing is cut off; nothing scrolls sideways except a data table inside its own region.
+5. **Large screen and text size**: a 2560 × 1440 window at 100 % (body text 16.25 px, rows 40 px), then `data-text-size="large"` on a 1280 px window, then the browser's default font size at 20 px. Everything grows together; nothing overlaps, clips or scrolls sideways.
+6. **Text spacing**: apply line height 1.5, paragraph spacing 2, letter spacing 0.12, word spacing 0.16 (a bookmarklet does this). No text is clipped or overlaps.
+7. **Screen reader**: NVDA or VoiceOver on the component. Every control announces its name, role and state.
 
 ## 1. Covenant conformity
 
 ### Tokens and values
-- [ ] Every color, space, radius and shadow is a `var(--cv-*)` token. No hex, `rgb()`, named color or raw length in component CSS or markup.
+- [ ] Every color, space, radius and shadow is a **semantic** `var(--cv-*)` token that follows the theme. No primitive scale token (`--cv-neutral-*`, `--cv-accent-*`, `--cv-<status>-<number>`), no hex, `rgb()`, named color or raw length in component CSS or markup. A missing role becomes a new semantic token with a light and a dark value.
 - [ ] Only the components stylesheet (`components/bundle.css`) and `tokens.css` style it; no inline style except layout in a demo.
-- [ ] Radii come from the scale: `cv-radius-md` (8 px) on cards, inputs and buttons; `cv-radius-lg` (12 px) on modals, drawers and the command menu; `cv-radius-sm` (4 px) on tags, keycaps and menu items; `cv-radius-full` only on status badges, avatars and switches.
+- [ ] Radii come from the scale: `cv-radius-md` (8 px) on cards, inputs and buttons; `cv-radius-lg` (12 px) on modals, drawers and the command menu; `cv-radius-sm` (4 px) on tags, keycaps and menu items; `cv-radius-full` only on status badges, tab counters, avatars and switches.
 - [ ] Spacing comes from the 4 px scale (`cv-space-*`).
 - [ ] Controls use `min-height`, never a fixed `height`.
-- [ ] Every size is in `rem` (text, spacing, row heights, icons, widths of panels). Only borders, outlines, shadows and radii are in px. Nothing sets `font-size` on `<html>`.
+- [ ] Every size is in `rem` (text, spacing, row heights, icons, widths of panels). Only borders, outlines, shadows and radii are in px. The application never sets `font-size` on `<html>` (`covenant.css` sets it for the text scale).
 
 ### Color roles
-- [ ] One accent only. Text never sits on `cv-accent-500`: a fill behind text is `cv-accent-fill` with `cv-fg-on-accent`.
+- [ ] One accent only. Text never sits on `cv-brand-accent`: a fill behind text is `cv-accent-fill` with `cv-fg-on-accent`.
 - [ ] Accent text is `cv-fg-accent`; links are underlined.
 - [ ] Status colors (success, warning, danger, info) mean status only, through `cv-<status>-surface`, `cv-<status>-border` and `cv-fg-<status>`.
 - [ ] Destructive actions use `cv-danger-fill` with `cv-fg-on-danger`.
-- [ ] Form-control boundaries use `cv-border-control`; focus uses `cv-border-focus`.
+- [ ] Text and icons on a coloured fill (accent or danger) are white, in both themes; a primary and a danger button side by side are told apart at a glance.
+- [ ] Form-control boundaries use `cv-border-control`, invalid controls `cv-border-danger`, selection `cv-border-selected`; focus uses `cv-border-focus` (or `cv-fg-inverse` on `cv-surface-inverse`).
+- [ ] On `cv-surface-3` only `cv-fg` and `cv-fg-muted`; `cv-fg-subtle` never sits on it.
 - [ ] No gradient, no texture, no `backdrop-filter`. The only transparency is the `cv-overlay` scrim.
 
 ### States
@@ -44,8 +47,8 @@ How to test, in order:
 - [ ] Durations in a fixed format (`01:42:15` or `1h 42m`); counts never rounded in tables.
 
 ### Icons and motion
-- [ ] Phosphor 2.1.1 only, regular by default, `cv-icon` sizing; decorative icons `aria-hidden="true"`.
-- [ ] Transitions only on modals, drawers, menus and toasts (180 ms enter/exit, 280 ms drawers, standard easing). Buttons, inputs and rows change instantly. No loop, no shimmer.
+- [ ] Phosphor 2.1.x only (self-hosted from `@phosphor-icons/web`), regular by default, `cv-icon` sizing; decorative icons `aria-hidden="true"`.
+- [ ] Motion only on overlays and toasts: 120 ms fade for menus and list boxes (`--cv-duration-fast`), 180 ms for modals and toasts, 280 ms for drawers, via the duration tokens. Buttons, inputs and rows change instantly. No loop, no shimmer.
 - [ ] `prefers-reduced-motion: reduce` removes motion (handled by `bundle.css`).
 
 ### Markup

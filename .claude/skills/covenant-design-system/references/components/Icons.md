@@ -1,9 +1,11 @@
-Covenant uses Phosphor Icons 2.1.1, regular weight by default and bold for emphasis, sized at 1em in `currentColor`.
+Covenant uses Phosphor Icons 2.1.x, regular weight by default and bold for emphasis, sized at 1em in `currentColor`.
 
 ## Anatomy
 
 ```html
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<!-- Self-hosted, from your copy of @phosphor-icons/web 2.1.x -->
+<link rel="stylesheet" href="phosphor/regular/style.css">
+<link rel="stylesheet" href="phosphor/bold/style.css">
 <i class="ph ph-timer cv-icon" aria-hidden="true"></i>
 <i class="ph-bold ph-check cv-icon" aria-hidden="true"></i>
 ```
@@ -16,6 +18,7 @@ Covenant uses Phosphor Icons 2.1.1, regular weight by default and bold for empha
 
 - Decorative icons take `aria-hidden="true"`; an icon-only control has an `aria-label`.
 - Status icons always come with a word.
+- Self-host Phosphor: copy `src/regular` and `src/bold` from the `@phosphor-icons/web` npm package (any 2.1.x) and link their `style.css`; no CDN request.
 
 ## Use
 

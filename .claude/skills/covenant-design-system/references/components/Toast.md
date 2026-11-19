@@ -14,7 +14,7 @@ Toasts confirm the result of an action, bottom-right, on a raised surface; error
 
 - `cv-toast-region`: fixed bottom-right, 360 px wide, stack with 8 px gap. `cv-toast`: `cv-surface-raised`, `cv-border`, `cv-shadow-xl`, 180 ms entrance.
 - Status icon in `cv-fg-<status>`; second line in `cv-fg-muted`.
-- `Covenant.toast({ status, title, text, timeout })` creates one; success and info leave after 6 s, paused on hover or focus; warning and danger stay.
+- `Covenant.toast({ status, title, text, timeout })` creates one; success and info leave after 6 s; the countdown pauses while the toast is hovered or holds focus and resumes with the time left when the pointer or focus leaves; warning and danger stay until dismissed.
 
 ## Accessibility and keyboard
 

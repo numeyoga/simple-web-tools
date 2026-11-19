@@ -3,15 +3,16 @@ The Covenant lockup and mark: two arcs that meet around an orange point, beside 
 ## Anatomy
 
 ```html
-<img src="../../assets/covenant-logo.svg" alt="Covenant" height="34">
-<img src="../../assets/covenant-logo-dark.svg" alt="Covenant" height="34">
-<img src="../../assets/covenant-mark.svg" alt="Covenant" height="34">
+<span class="cv-logo">
+  <img class="cv-logo__light" src="../../assets/covenant-logo.svg" alt="Covenant">
+  <img class="cv-logo__dark" src="../../assets/covenant-logo-dark.svg" alt="Covenant">
+</span>
 ```
 
 ## Classes and states
 
-- `covenant-logo.svg` on light surfaces, `covenant-logo-dark.svg` on dark ones, `covenant-mark.svg` alone where space is tight.
-- Centre point `cv-accent-500` (`#ea580c`) in light, `cv-accent-400` (`#fb923c`) on dark. The mark's arcs are `currentColor`, black inside an `<img>`: inline the SVG to colour them.
+- `cv-logo` holds both lockups and shows the one that matches `data-theme`: `covenant-logo.svg` in light, `covenant-logo-dark.svg` in dark. `covenant-mark.svg` (or the inline mark of `SidebarNav`) alone where space is tight.
+- Centre point `cv-brand-accent` (`#ea580c` in light, `#fb923c` in dark). Inline, the mark's arcs are `currentColor` and its point uses `var(--cv-brand-accent)`, so it follows the theme.
 
 ## Accessibility and keyboard
 

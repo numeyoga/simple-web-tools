@@ -20,7 +20,7 @@ A single-line text input at 32 px with a 3:1 boundary, optionally with a leading
 ## Classes and states
 
 - `cv-input`: `cv-surface`, 1 px `cv-border-control` (3:1 or more, 1.4.11), 8 px radius, `min-height` 32 px.
-- Focus: border and 2 px outline in `cv-border-focus`. Invalid: `cv-danger-600` border. Disabled: opacity 0.5.
+- Focus: border and 2 px outline in `cv-border-focus`. Invalid: `cv-border-danger` border. Disabled: opacity 0.5.
 - `cv-input-group` adds a leading icon; `cv-input--mono` sets IBM Plex Mono for codes, durations and amounts.
 
 ## Accessibility and keyboard
