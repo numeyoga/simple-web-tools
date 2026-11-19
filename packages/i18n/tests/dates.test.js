@@ -43,6 +43,7 @@ describe.each(ZONES)('formatDate under TZ=%s', (zone) => {
   it('is not moved by a timeZone option from the caller', () => {
     const { formatDate } = createTranslator({ locale: 'en', catalogs: {} });
     expect(formatDate('2026-11-18', { day: 'numeric', timeZone: 'Pacific/Kiritimati' })).toBe('18');
+    expect(formatDate('2026-11-18', { day: 'numeric', timeZone: 'Pacific/Pago_Pago' })).toBe('18');
   });
 });
 

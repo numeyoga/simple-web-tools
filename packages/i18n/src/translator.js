@@ -29,7 +29,10 @@ import { flattenCatalog, interpolate, isPluralMessage, selectPlural } from './me
  * @typedef {object} Translator
  * @property {string} locale
  * @property {(key: string, params?: Record<string, unknown>) => string} t
- * @property {(isoDate: string, options?: Intl.DateTimeFormatOptions) => string} formatDate
+ * @property {(isoDate: string, options?: Intl.DateTimeFormatOptions) => string} formatDate formats
+ *   a calendar day (`YYYY-MM-DD`), not an instant. It is always pinned to UTC so the day cannot
+ *   shift, so `options.timeZone` is ignored on purpose. For an instant (a `Date` or a
+ *   timestamp), use `formatDateTime`.
  * @property {(value: Date | number, options?: Intl.DateTimeFormatOptions) => string} formatDateTime
  * @property {(value: number, options?: Intl.NumberFormatOptions) => string} formatNumber
  * @property {(items: readonly string[], options?: Intl.ListFormatOptions) => string} formatList
@@ -104,6 +107,15 @@ export function createTranslator({ locale, catalogs, fallbackLocale = 'en', onMi
     locale,
     t: (key, params = {}) => render(key, params),
 
+    /**
+     * Formats a calendar day (`YYYY-MM-DD`). `options.timeZone` is ignored on purpose: a time
+     * zone would shift a date-only value to a neighbouring day. To format an instant, use
+     * `formatDateTime`.
+     *
+     * @param {string} isoDate
+     * @param {Intl.DateTimeFormatOptions} [options]
+     * @returns {string}
+     */
     formatDate(isoDate, options = DEFAULT_DATE) {
       const parts = parseIsoDate(isoDate);
       if (!parts) return String(isoDate);
