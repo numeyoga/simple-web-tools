@@ -1,4 +1,4 @@
-const CACHE_NAME = 'locavern-shell-v3';
+const CACHE_NAME = 'locavern-shell-v4';
 
 const CORE_ASSETS = [
   './',
@@ -10,12 +10,6 @@ const CORE_ASSETS = [
   './apple-touch-icon.png',
   './icon-192.png',
   './icon-512.png',
-  './vendor/covenant/covenant-tokens.css',
-  './vendor/covenant/covenant.css',
-  './vendor/covenant/covenant.js',
-  './vendor/covenant/logos/covenant-mark.svg',
-  './vendor/covenant/logos/covenant-logo.svg',
-  './vendor/covenant/logos/covenant-logo-dark.svg',
 ];
 
 self.addEventListener('install', (event) => {

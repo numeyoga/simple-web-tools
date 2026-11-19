@@ -186,7 +186,10 @@ test.describe('Vue Calendrier mensuelle & hebdomadaire (Todos 5 & 15)', () => {
     await expect(slot21).toContainText('21:30');
     await expect(slot21).toContainText('18h–7h');
 
-    // Audit axe-core vue Semaine (thème clair puis thème sombre)
+    // Audit axe-core vue Semaine (thème clair puis thème sombre).
+    // Covenant's top bar is sticky: audit from the top of the page, where no target sits
+    // partly under its search button (axe target-size, "partiallyObscured").
+    await page.evaluate(() => window.scrollTo(0, 0));
     await expectNoA11yViolations(page);
 
     await page.locator('#theme-switch').click();
