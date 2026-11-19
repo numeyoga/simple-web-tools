@@ -149,4 +149,53 @@ describe('slugifyWorkspaceLabel', () => {
     expect(slugifyWorkspaceLabel(`${'-'.repeat(100_000)}x${'-'.repeat(100_000)}!`)).toBe('x');
     expect(performance.now() - start).toBeLessThan(500);
   });
+  describe('importWorkspaces', () => {
+    const entries = [
+      { id: 'default', label: 'Espace principal', createdAt: 5 },
+      { id: 'perso', label: '  Perso  ', createdAt: 6 },
+    ];
+
+    it('seeds an empty registry, keeping ids and the active workspace', () => {
+      const { storage, registry } = setup();
+      expect(registry.importWorkspaces(entries, 'perso')).toBe(true);
+      expect(registry.list()).toEqual([
+        { id: 'default', label: 'Espace principal', createdAt: 5 },
+        { id: 'perso', label: 'Perso', createdAt: 6 },
+      ]);
+      expect(registry.activeId()).toBe('perso');
+      expect([...storage.map.keys()].sort()).toEqual([
+        'chrono-workspace-active',
+        'chrono-workspaces',
+      ]);
+    });
+
+    it('does nothing when a list is already stored, readable or not', () => {
+      const first = setup({ 'chrono-workspaces': '[{"id":"keep","label":"Keep","createdAt":1}]' });
+      expect(first.registry.importWorkspaces(entries)).toBe(false);
+      expect(first.registry.list().map((w) => w.id)).toEqual(['keep']);
+
+      const broken = setup({ 'chrono-workspaces': '{broken' });
+      expect(broken.registry.importWorkspaces(entries)).toBe(false);
+      expect(broken.storage.map.get('chrono-workspaces')).toBe('{broken');
+    });
+
+    it('skips invalid and duplicate entries, and ignores an unknown active id', () => {
+      const { storage, registry } = setup();
+      const messy = [
+        { id: 'Bad Id', label: 'x', createdAt: 1 },
+        { id: 'a', label: '   ', createdAt: 2 },
+        { id: 'a', label: 'duplicate', createdAt: 3 },
+        { id: 'b', label: 'B', createdAt: 'nope' },
+      ];
+      expect(registry.importWorkspaces(/** @type {any} */ (messy), 'zzz')).toBe(true);
+      expect(registry.list()).toEqual([{ id: 'a', label: 'a', createdAt: 2 }]);
+      expect(storage.map.has('chrono-workspace-active')).toBe(false);
+    });
+
+    it('returns false and writes nothing when no entry is valid', () => {
+      const { storage, registry } = setup();
+      expect(registry.importWorkspaces([])).toBe(false);
+      expect(storage.map.size).toBe(0);
+    });
+  });
 });

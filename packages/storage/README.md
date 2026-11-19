@@ -96,6 +96,10 @@ workspaces.remove(w.id); // registry only: then deleteDatabase(workspaces.databa
 
 The list and the active id are stored under `<app>-workspaces` and `<app>-workspace-active`.
 The last workspace cannot be removed; an unreadable list falls back to a default workspace.
+`workspaces.importWorkspaces(entries, activeId)` seeds a registry that has no stored list yet,
+for an app that moves its list from an older storage layout (Chrono does it once at startup).
+It returns `false` and writes nothing when a list is already stored; invalid and duplicate
+entries are skipped.
 Locavern does not use workspaces.
 
 ## JSON export and import

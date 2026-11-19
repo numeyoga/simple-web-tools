@@ -155,6 +155,32 @@ export function createWorkspaceRegistry({ app, storage, now, defaultLabel = 'Mai
       storage.setItem(activeKey, id);
     },
     /**
+     * Seed the registry from a list that was kept elsewhere, for example by an older storage
+     * layout. It only applies to a registry that has no stored list yet: it returns `false`,
+     * and writes nothing, when a list (even an unreadable one) is already stored or when no
+     * entry is valid. Entries with an invalid id or a duplicate id are skipped, a blank label
+     * becomes the id. The active id is stored when it is one of the imported workspaces.
+     * @param {readonly { id: string; label: string; createdAt: number }[]} entries
+     * @param {string | null} [activeId]
+     * @returns {boolean} whether the list was imported
+     */
+    importWorkspaces(entries, activeId = null) {
+      if (storage.getItem(listKey) !== null) return false;
+      /** @type {Workspace[]} */
+      const imported = [];
+      for (const entry of entries) {
+        if (!isWorkspace(entry) || imported.some((w) => w.id === entry.id)) continue;
+        const label = entry.label.trim().slice(0, MAX_LABEL_LENGTH) || entry.id;
+        imported.push({ id: entry.id, label, createdAt: entry.createdAt });
+      }
+      if (imported.length === 0) return false;
+      save(imported);
+      if (activeId !== null && imported.some((w) => w.id === activeId)) {
+        storage.setItem(activeKey, activeId);
+      }
+      return true;
+    },
+    /**
      * Add a workspace. The id is derived from the label and made unique.
      * @param {string} label
      * @returns {Workspace}
