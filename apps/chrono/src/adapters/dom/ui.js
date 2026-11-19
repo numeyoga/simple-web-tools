@@ -1,5 +1,5 @@
-// Primitives Covenant en vanilla : Button, IconButton, Input, Select, Badge, Kbd, Modal, Toast.
-// Toutes les primitives renvoient un HTMLElement.
+// Covenant primitives in vanilla JS: Button, IconButton, Input, Select, Badge, Kbd, Modal, Toast.
+// Every primitive returns an HTMLElement.
 
 import { el, icon } from './lib.js';
 
@@ -128,7 +128,7 @@ function Input(opts = {}) {
     },
     onblurCapture: null,
   });
-  // Restaurer la bordure au blur (focus / blur en 2 listeners)
+  // Restore the border on blur (focus / blur as 2 listeners)
   input.addEventListener('blur', (e) => {
     e.target.style.borderColor = 'var(--cv-border-strong)';
     e.target.style.boxShadow = 'none';
@@ -163,7 +163,7 @@ function Input(opts = {}) {
   return wrapper;
 }
 
-/* ------------------ Textarea (label + textarea + compteur) ------------------ */
+/* ------------------ Textarea (label + textarea + counter) ------------------ */
 function Textarea(opts = {}) {
   const {
     label,
@@ -288,10 +288,10 @@ function Select(opts = {}) {
   return wrapper;
 }
 
-/* ------------------ Autocomplete (input + suggestions, free-text accepté) ------------------ */
-/* Comportement : champ libre — l'utilisateur peut taper n'importe quoi. Le dropdown
-   propose les valeurs déjà existantes qui matchent (contains, insensible à la casse).
-   Clavier : ↑/↓ pour parcourir, Entrée pour valider, Échap pour fermer. */
+/* ------------------ Autocomplete (input + suggestions, free text accepted) ------------------ */
+/* Behaviour: free field, the user can type anything. The dropdown
+   offers the existing values that match (contains, case-insensitive).
+   Keyboard: up/down to browse, Enter to validate, Escape to close. */
 function Autocomplete(opts = {}) {
   const {
     label,
@@ -347,18 +347,18 @@ function Autocomplete(opts = {}) {
 
   function recomputeSuggestions() {
     const q = input.value.trim().toLowerCase();
-    /* Uniques, triées : matchs en tête (préfixe d'abord, puis contains). Si q vide, tout. */
-    const uniques = Array.from(new Set(options.filter(Boolean).map((s) => s.trim()))).filter(
+    /* Unique and sorted: matches first (prefix first, then contains). Empty q: everything. */
+    const unique = Array.from(new Set(options.filter(Boolean).map((s) => s.trim()))).filter(
       Boolean,
     );
     if (!q) {
-      suggestions = uniques.sort((a, b) => a.localeCompare(b, 'fr')).slice(0, 50);
+      suggestions = unique.sort((a, b) => a.localeCompare(b, 'fr')).slice(0, 50);
     } else {
-      const prefix = uniques.filter((s) => s.toLowerCase().startsWith(q));
-      const others = uniques.filter(
+      const prefix = unique.filter((s) => s.toLowerCase().startsWith(q));
+      const others = unique.filter(
         (s) => !s.toLowerCase().startsWith(q) && s.toLowerCase().includes(q),
       );
-      /* On n'inclut pas une suggestion strictement égale à ce qui est déjà tapé. */
+      /* A suggestion strictly equal to what is already typed is not included. */
       suggestions = [...prefix, ...others].filter((s) => s.toLowerCase() !== q).slice(0, 50);
     }
     highlighted = suggestions.length > 0 ? 0 : -1;
@@ -378,7 +378,7 @@ function Autocomplete(opts = {}) {
           {
             role: 'option',
             onmousedown: (e) => {
-              e.preventDefault(); /* éviter blur avant click */
+              e.preventDefault(); /* avoid blur before click */
             },
             onclick: () => {
               selectValue(s);
@@ -433,7 +433,7 @@ function Autocomplete(opts = {}) {
   input.addEventListener('blur', () => {
     input.style.borderColor = 'var(--cv-border-strong)';
     input.style.boxShadow = 'none';
-    setTimeout(close, 100); // laisse le temps au mousedown sur la liste
+    setTimeout(close, 100); // leave time for the mousedown on the list
   });
   input.addEventListener('input', () => {
     if (onchange) onchange(input.value);
@@ -454,7 +454,7 @@ function Autocomplete(opts = {}) {
         return;
       }
       if (e.key === 'Enter' && highlighted >= 0) {
-        /* Entrée valide la suggestion surlignée ; sinon laisse passer pour valider le formulaire. */
+        /* Enter validates the highlighted suggestion; otherwise let it through to submit the form. */
         e.preventDefault();
         selectValue(suggestions[highlighted]);
         return;

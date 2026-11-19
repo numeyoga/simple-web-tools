@@ -1,33 +1,28 @@
 // Todos: add, toggle, delete, edit.
 
-/** @typedef {import('../types.js').Donnees} Donnees */
+/** @typedef {import('../types.js').ChronoData} ChronoData */
 /** @typedef {import('../types.js').Todo} Todo */
 
 /**
  * Adds a todo at the top of the list.
- * @param {Donnees} data
- * @param {{ titre: string, projetId?: string | null, echeance?: string | null, description?: string }} payload
+ * @param {ChronoData} data
+ * @param {{ title: string, projectId?: string | null, dueDate?: string | null, description?: string }} payload
  * @param {number} now creation time
  * @param {string} newId
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function ajouterTodo(
-  data,
-  { titre, projetId, echeance = null, description = '' },
-  now,
-  newId,
-) {
+export function addTodo(data, { title, projectId, dueDate = null, description = '' }, now, newId) {
   return {
     ...data,
     todos: [
       {
         id: newId,
-        titre,
+        title,
         description: (description || '').slice(0, 2000),
-        fait: false,
-        projetId: projetId || null,
-        echeance,
-        creeLe: now,
+        done: false,
+        projectId: projectId || null,
+        dueDate,
+        createdAt: now,
       },
       ...data.todos,
     ],
@@ -35,28 +30,28 @@ export function ajouterTodo(
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string }} payload
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
 export function toggleTodo(data, { id }) {
-  return { ...data, todos: data.todos.map((t) => (t.id === id ? { ...t, fait: !t.fait } : t)) };
+  return { ...data, todos: data.todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)) };
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string }} payload
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function supprimerTodo(data, { id }) {
+export function deleteTodo(data, { id }) {
   return { ...data, todos: data.todos.filter((t) => t.id !== id) };
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string, patch: Partial<Todo> }} payload
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function majTodo(data, { id, patch }) {
+export function updateTodo(data, { id, patch }) {
   return { ...data, todos: data.todos.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
 }

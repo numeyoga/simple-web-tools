@@ -1,16 +1,16 @@
-// widget sidebar : présence + chrono actif.
-// Re-rendu complet à chaque update (état OU tick). Le composant est petit, c'est sans incidence.
+// sidebar widget: presence + active timer.
+// Full re-render on every update (state OR tick). The component is small, so it does not matter.
 
 import * as UI from './ui.js';
 
-const { el, icon, fmtDuree, fmtHeure, dureeVivante } = UI;
+const { el, icon, formatDuration, formatTime, liveDuration } = UI;
 
 function totalPauses(events) {
   let total = 0;
   let pauseStart = null;
   for (const e of events) {
-    if (e.type === 'pause_debut') pauseStart = e.at;
-    else if (e.type === 'pause_fin' && pauseStart) {
+    if (e.type === 'break_start') pauseStart = e.at;
+    else if (e.type === 'break_end' && pauseStart) {
       total += e.at - pauseStart;
       pauseStart = null;
     }
@@ -19,29 +19,30 @@ function totalPauses(events) {
   return total;
 }
 
-export function createPointageWidget(store, opts) {
+export function createAttendanceWidget(store, opts) {
   const host = el('div', { class: 'ch-pile ch-g12' });
 
   function render() {
     const s = store.state;
-    const etat = store.etatPointage();
-    const actives = s.sessions
-      .filter((x) => x.statut !== 'terminee')
-      .sort((a, b) => a.debut - b.debut);
-    const nbEnCours = actives.filter((x) => x.statut === 'en_cours').length;
+    const attState = store.attendanceState();
+    const actives = s.sessions.filter((x) => x.status !== 'done').sort((a, b) => a.start - b.start);
+    const runningCount = actives.filter((x) => x.status === 'running').length;
 
-    const statut = etat.statut;
-    const arrivee = etat.events.find((e) => e.type === 'arrivee');
-    const pauseDebut = etat.events.filter((e) => e.type === 'pause_debut').slice(-1)[0];
-    const dureePresence = arrivee ? Date.now() - arrivee.at - totalPauses(etat.events) : 0;
-    const dureePauseEnCours = pauseDebut && statut === 'pause' ? Date.now() - pauseDebut.at : 0;
+    const status = attState.status;
+    const arrival = attState.events.find((e) => e.type === 'arrival');
+    const lastBreakStartEvent = attState.events
+      .filter((e) => e.type === 'break_start')
+      .slice(-1)[0];
+    const presenceDuration = arrival ? Date.now() - arrival.at - totalPauses(attState.events) : 0;
+    const currentBreakDuration =
+      lastBreakStartEvent && status === 'on_break' ? Date.now() - lastBreakStartEvent.at : 0;
 
     const meta = {
-      pas_arrive: {
+      not_arrived: {
         label: 'Pas encore arrivé',
         color: 'var(--cv-fg-muted)',
         dot: 'var(--cv-neutral-400)',
-        action: 'arrivee',
+        action: 'arrival',
         cta: 'Pointer arrivée',
         ctaVariant: 'primary',
       },
@@ -49,19 +50,19 @@ export function createPointageWidget(store, opts) {
         label: 'Présent',
         color: 'var(--cv-success-700)',
         dot: 'var(--cv-success-500)',
-        action: 'pause_debut',
+        action: 'break_start',
         cta: 'Pause',
         ctaVariant: 'secondary',
       },
-      pause: {
+      on_break: {
         label: 'En pause',
         color: 'var(--cv-warning-700)',
         dot: 'var(--cv-warning-500)',
-        action: 'pause_fin',
+        action: 'break_end',
         cta: 'Reprendre',
         ctaVariant: 'primary',
       },
-      parti: {
+      left: {
         label: 'Journée terminée',
         color: 'var(--cv-fg-muted)',
         dot: 'var(--cv-neutral-400)',
@@ -69,9 +70,9 @@ export function createPointageWidget(store, opts) {
         cta: null,
         ctaVariant: 'secondary',
       },
-    }[statut];
+    }[status];
 
-    // ----- bloc présence -----
+    // ----- presence block -----
     const presenceBlock = el(
       'section',
       {
@@ -87,8 +88,8 @@ export function createPointageWidget(store, opts) {
             height: 8,
             borderRadius: '50%',
             background: meta.dot,
-            animation: statut === 'present' ? 'cv-pulse 2s infinite' : 'none',
-            boxShadow: statut === 'present' ? '0 0 0 3px rgba(22,163,74,0.15)' : 'none',
+            animation: status === 'present' ? 'cv-pulse 2s infinite' : 'none',
+            boxShadow: status === 'present' ? '0 0 0 3px rgba(22,163,74,0.15)' : 'none',
           },
         }),
         el(
@@ -105,7 +106,7 @@ export function createPointageWidget(store, opts) {
         ),
       ),
 
-      arrivee && statut !== 'pas_arrive'
+      arrival && status !== 'not_arrived'
         ? el(
             'div',
             { class: 'ch-pile ch-g6' },
@@ -128,7 +129,7 @@ export function createPointageWidget(store, opts) {
                     letterSpacing: '-0.02em',
                   },
                 },
-                fmtDuree(dureePresence),
+                formatDuration(presenceDuration),
               ),
             ),
             el(
@@ -142,14 +143,14 @@ export function createPointageWidget(store, opts) {
                 el(
                   'span',
                   { style: { fontFamily: 'var(--cv-font-mono)', color: 'var(--cv-fg)' } },
-                  fmtHeure(arrivee.at),
+                  formatTime(arrival.at),
                 ),
               ),
-              statut === 'pause'
+              status === 'on_break'
                 ? el(
                     'span',
                     { style: { marginLeft: 'auto', color: 'var(--cv-warning-700)' } },
-                    `pause · ${fmtDuree(dureePauseEnCours, { compact: true })}`,
+                    `pause · ${formatDuration(currentBreakDuration, { compact: true })}`,
                   )
                 : null,
             ),
@@ -163,13 +164,13 @@ export function createPointageWidget(store, opts) {
           ? UI.Button({
               variant: meta.ctaVariant,
               size: 'sm',
-              icon: statut === 'pas_arrive' ? 'sign-in' : statut === 'present' ? 'pause' : 'play',
+              icon: status === 'not_arrived' ? 'sign-in' : status === 'present' ? 'pause' : 'play',
               children: meta.cta,
-              onclick: () => store.actions.pointer(meta.action),
+              onclick: () => store.actions.recordAttendance(meta.action),
               style: { flex: 1 },
             })
           : null,
-        statut === 'present' || statut === 'pause'
+        status === 'present' || status === 'on_break'
           ? UI.Button({
               variant: 'ghost',
               size: 'sm',
@@ -177,14 +178,14 @@ export function createPointageWidget(store, opts) {
               children: 'Partir',
               title: 'Clôturer la journée',
               onclick: () => {
-                // En pause : on clôt la pause d'abord pour avoir un historique propre.
-                // Le chrono suspendu par la pause sera repris puis stoppé net par 'depart' juste après.
-                if (statut === 'pause') store.actions.pointer('pause_fin');
-                store.actions.pointer('depart'); // stoppe automatiquement le chrono actif s'il y en a un
+                // On a break: close the break first to keep a clean history.
+                // The timer suspended by the break is resumed, then stopped right after by 'departure'.
+                if (status === 'on_break') store.actions.recordAttendance('break_end');
+                store.actions.recordAttendance('departure'); // automatically stops the active timer if there is one
               },
             })
           : null,
-        statut === 'parti'
+        status === 'left'
           ? el(
               'div',
               {
@@ -197,10 +198,10 @@ export function createPointageWidget(store, opts) {
       ),
     );
 
-    // ----- chronos actifs (parallèles) -----
+    // ----- active timers (parallel) -----
     function chronoCard(active) {
-      const proj = s.projets.find((p) => p.id === active.projetId);
-      const enCours = active.statut === 'en_cours';
+      const project = s.projects.find((p) => p.id === active.projectId);
+      const isRunning = active.status === 'running';
       return el(
         'section',
         {
@@ -222,14 +223,14 @@ export function createPointageWidget(store, opts) {
               height: 7,
               borderRadius: '50%',
               flexShrink: 0,
-              background: enCours ? 'var(--cv-accent-400)' : 'var(--cv-neutral-400)',
-              animation: enCours ? 'cv-pulse 1.2s infinite' : 'none',
+              background: isRunning ? 'var(--cv-accent-400)' : 'var(--cv-neutral-400)',
+              animation: isRunning ? 'cv-pulse 1.2s infinite' : 'none',
             },
           }),
-          proj
+          project
             ? el('span', {
                 class: 'ch-pastille',
-                style: { background: proj.couleur, flexShrink: 0 },
+                style: { background: project.color, flexShrink: 0 },
               })
             : null,
           el(
@@ -241,7 +242,7 @@ export function createPointageWidget(store, opts) {
                 class: 'ch-ellipse',
                 style: { font: '500 12px/1.2 var(--cv-font-sans)' },
               },
-              proj?.nom || 'Sans projet',
+              project?.name || 'Sans projet',
             ),
             active.description
               ? el(
@@ -267,13 +268,13 @@ export function createPointageWidget(store, opts) {
             {
               style: { font: '500 20px/1 var(--cv-font-mono)', letterSpacing: '-0.02em', flex: 1 },
             },
-            fmtDuree(dureeVivante(active), { withSeconds: true }),
+            formatDuration(liveDuration(active), { withSeconds: true }),
           ),
-          enCours
+          isRunning
             ? el(
                 'button',
                 {
-                  onclick: () => store.actions.pauserSession(active.id),
+                  onclick: () => store.actions.pauseSession(active.id),
                   class: 'ch-btn-sombre',
                   title: 'Mettre en pause',
                 },
@@ -282,7 +283,7 @@ export function createPointageWidget(store, opts) {
             : el(
                 'button',
                 {
-                  onclick: () => store.actions.reprendreSession(active.id),
+                  onclick: () => store.actions.resumeSession(active.id),
                   class: 'ch-btn-sombre ch-btn-sombre--accent',
                   title: 'Reprendre',
                 },
@@ -291,7 +292,7 @@ export function createPointageWidget(store, opts) {
           el(
             'button',
             {
-              onclick: () => store.actions.arreterSession(active.id),
+              onclick: () => store.actions.stopSession(active.id),
               class: 'ch-btn-sombre',
               title: 'Arrêter & enregistrer',
             },
@@ -331,8 +332,8 @@ export function createPointageWidget(store, opts) {
           size: 'sm',
           icon: 'play',
           children: 'Démarrer un chrono',
-          onclick: opts.onOuvrirQuickAdd,
-          disabled: statut === 'parti',
+          onclick: opts.onOpenQuickAdd,
+          disabled: status === 'left',
           style: { alignSelf: 'stretch' },
         }),
       );
@@ -347,7 +348,7 @@ export function createPointageWidget(store, opts) {
           },
           actives.length > 1 ? `${actives.length} chronos en parallèle` : 'Chrono actif',
         ),
-        actives.length > 1 && nbEnCours > 0
+        actives.length > 1 && runningCount > 0
           ? el(
               'span',
               {
@@ -359,7 +360,7 @@ export function createPointageWidget(store, opts) {
                   borderRadius: 4,
                 },
               },
-              `${nbEnCours} en cours`,
+              `${runningCount} en cours`,
             )
           : null,
       );
@@ -369,13 +370,13 @@ export function createPointageWidget(store, opts) {
           ? el(
               'div',
               { class: 'ch-flex ch-g6' },
-              nbEnCours > 0
+              runningCount > 0
                 ? UI.Button({
                     variant: 'secondary',
                     size: 'sm',
                     icon: 'pause',
                     children: 'Tout mettre en pause',
-                    onclick: () => store.actions.pauserTout(),
+                    onclick: () => store.actions.pauseAll(),
                     style: { flex: 1 },
                   })
                 : UI.Button({
@@ -383,7 +384,7 @@ export function createPointageWidget(store, opts) {
                     size: 'sm',
                     icon: 'play',
                     children: 'Tout reprendre',
-                    onclick: () => store.actions.reprendreTout(),
+                    onclick: () => store.actions.resumeAll(),
                     style: { flex: 1 },
                   }),
               UI.Button({
@@ -391,7 +392,7 @@ export function createPointageWidget(store, opts) {
                 size: 'sm',
                 icon: 'stop',
                 title: 'Tout arrêter & enregistrer',
-                onclick: () => store.actions.arreterTout(),
+                onclick: () => store.actions.stopAll(),
               }),
             )
           : null;
@@ -407,8 +408,8 @@ export function createPointageWidget(store, opts) {
           size: 'sm',
           icon: 'plus',
           children: 'Démarrer un autre chrono',
-          onclick: opts.onOuvrirQuickAdd,
-          disabled: statut === 'parti',
+          onclick: opts.onOpenQuickAdd,
+          disabled: status === 'left',
           style: { alignSelf: 'stretch' },
         }),
       );

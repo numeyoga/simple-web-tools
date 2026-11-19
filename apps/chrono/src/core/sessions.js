@@ -5,9 +5,9 @@
 // When a function returns the very same `data` object, nothing changed.
 
 import { startOfDay } from './dates.js';
-import { plagesPresence } from './presence.js';
+import { presenceRanges } from './presence.js';
 
-/** @typedef {import('../types.js').Donnees} Donnees */
+/** @typedef {import('../types.js').ChronoData} ChronoData */
 /** @typedef {import('../types.js').Session} Session */
 
 /**
@@ -15,7 +15,7 @@ import { plagesPresence } from './presence.js';
  * @param {Session} s
  * @param {number} now
  */
-const ecoule = (s, now) => now - /** @type {number} */ (s.dernierDebut);
+const elapsed = (s, now) => now - /** @type {number} */ (s.lastStart);
 
 /**
  * Pauses a running session: its elapsed time is added to the accumulated duration.
@@ -23,11 +23,11 @@ const ecoule = (s, now) => now - /** @type {number} */ (s.dernierDebut);
  * @param {number} now
  * @returns {Session}
  */
-const mettreEnPause = (s, now) => ({
+const toPaused = (s, now) => ({
   ...s,
-  duree: (s.duree || 0) + ecoule(s, now),
-  dernierDebut: null,
-  statut: 'en_pause',
+  duration: (s.duration || 0) + elapsed(s, now),
+  lastStart: null,
+  status: 'paused',
 });
 
 /**
@@ -35,241 +35,241 @@ const mettreEnPause = (s, now) => ({
  * @param {number} now
  * @returns {Session}
  */
-const terminer = (s, now) => {
-  const addDuree = s.statut === 'en_cours' ? ecoule(s, now) : 0;
+const toDone = (s, now) => {
+  const addedDuration = s.status === 'running' ? elapsed(s, now) : 0;
   return {
     ...s,
-    fin: now,
-    duree: (s.duree || 0) + addDuree,
-    dernierDebut: null,
-    statut: 'terminee',
+    end: now,
+    duration: (s.duration || 0) + addedDuration,
+    lastStart: null,
+    status: 'done',
   };
 };
 
 /**
- * Active timers: every session that is not 'terminee' (running or paused). Several timers can
+ * Active timers: every session that is not 'done' (running or paused). Several timers can
  * run in parallel: starting one never stops the others.
  * @param {Session[]} sessions
  * @returns {Session[]}
  */
-export function sessionsActives(sessions) {
-  return sessions.filter((s) => s.statut !== 'terminee');
+export function activeSessions(sessions) {
+  return sessions.filter((s) => s.status !== 'done');
 }
 
 /**
  * Starts a timer.
- * @param {Donnees} data
- * @param {{ projetId: string, description?: string }} payload
+ * @param {ChronoData} data
+ * @param {{ projectId: string, description?: string }} payload
  * @param {number} now
  * @param {string} newId id of the new session
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function demarrer(data, { projetId, description = '' }, now, newId) {
+export function startSession(data, { projectId, description = '' }, now, newId) {
   return {
     ...data,
     sessions: [
       ...data.sessions,
       {
         id: newId,
-        projetId,
+        projectId,
         description: description || '',
-        debut: now,
-        dernierDebut: now,
-        fin: null,
-        duree: 0,
-        statut: 'en_cours',
+        start: now,
+        lastStart: now,
+        end: null,
+        duration: 0,
+        status: 'running',
       },
     ],
   };
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string }} payload
  * @param {number} now
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function pauserSession(data, { id }, now) {
+export function pauseSession(data, { id }, now) {
   return {
     ...data,
     sessions: data.sessions.map((s) => {
-      if (s.id !== id || s.statut !== 'en_cours') return s;
-      return mettreEnPause(s, now);
+      if (s.id !== id || s.status !== 'running') return s;
+      return toPaused(s, now);
     }),
   };
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string }} payload
  * @param {number} now
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function reprendreSession(data, { id }, now) {
+export function resumeSession(data, { id }, now) {
   return {
     ...data,
     sessions: data.sessions.map((s) =>
-      s.id === id && s.statut === 'en_pause' ? { ...s, statut: 'en_cours', dernierDebut: now } : s,
+      s.id === id && s.status === 'paused' ? { ...s, status: 'running', lastStart: now } : s,
     ),
   };
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string }} payload
  * @param {number} now
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function arreterSession(data, { id }, now) {
-  const arretee = {
+export function stopSession(data, { id }, now) {
+  const stopped = {
     ...data,
     sessions: data.sessions.map((s) => {
-      if (s.id !== id || s.statut === 'terminee') return s;
-      return terminer(s, now);
+      if (s.id !== id || s.status === 'done') return s;
+      return toDone(s, now);
     }),
   };
-  return tronquerSurPresence(arretee, [id], now);
+  return truncateToPresence(stopped, [id], now);
 }
 
 /**
  * A working time greater than the presence makes no sense. For each session that has just
  * been stopped, the duration must not exceed the presence time overlapping its interval
- * [debut, fin] (parallel timers are therefore allowed: each session is judged on its own).
+ * [start, end] (parallel timers are therefore allowed: each session is judged on its own).
  * Without a clock-in for that day, nothing changes (presence unknown).
- * If the session was never paused (duree == fin - debut), `debut` is moved forward by the
- * amount cut so that the drawn block matches the counted time; otherwise only `duree` changes.
- * @param {Donnees} data
+ * If the session was never paused (duration == end - start), `start` is moved forward by the
+ * amount cut so that the drawn block matches the counted time; otherwise only `duration` changes.
+ * @param {ChronoData} data
  * @param {string[]} endedIds
  * @param {number} now
- * @returns {Donnees} the same object when nothing is cut
+ * @returns {ChronoData} the same object when nothing is cut
  */
-export function tronquerSurPresence(data, endedIds, now) {
-  const jourDebut = startOfDay(new Date(now));
-  const jourFin = jourDebut + 86400000;
-  const events = data.pointage.filter((p) => p.at >= jourDebut && p.at < jourFin);
-  if (!events.some((e) => e.type === 'arrivee')) return data;
-  const plages = plagesPresence(events, now);
-  /** @type {Map<string, { couvert: number, cut: number, sansPause: boolean }>} */
-  const coupes = new Map();
+export function truncateToPresence(data, endedIds, now) {
+  const dayStart = startOfDay(new Date(now));
+  const dayEnd = dayStart + 86400000;
+  const events = data.attendance.filter((p) => p.at >= dayStart && p.at < dayEnd);
+  if (!events.some((e) => e.type === 'arrival')) return data;
+  const ranges = presenceRanges(events, now);
+  /** @type {Map<string, { covered: number, cut: number, withoutBreaks: boolean }>} */
+  const cuts = new Map();
   for (const s of data.sessions) {
-    if (!endedIds.includes(s.id) || s.statut !== 'terminee') continue;
-    if (s.debut < jourDebut || s.debut >= jourFin) continue;
-    const fin = /** @type {number} */ (s.fin);
-    const duree = s.duree || 0;
-    const couvert = plages.reduce(
-      (acc, p) => acc + Math.max(0, Math.min(fin, p.fin) - Math.max(s.debut, p.debut)),
+    if (!endedIds.includes(s.id) || s.status !== 'done') continue;
+    if (s.start < dayStart || s.start >= dayEnd) continue;
+    const end = /** @type {number} */ (s.end);
+    const duration = s.duration || 0;
+    const covered = ranges.reduce(
+      (acc, p) => acc + Math.max(0, Math.min(end, p.end) - Math.max(s.start, p.start)),
       0,
     );
-    if (duree > couvert + 1000) {
+    if (duration > covered + 1000) {
       // 1 s tolerance
-      coupes.set(s.id, {
-        couvert,
-        cut: duree - couvert,
-        sansPause: Math.abs(duree - (fin - s.debut)) <= 1000,
+      cuts.set(s.id, {
+        covered,
+        cut: duration - covered,
+        withoutBreaks: Math.abs(duration - (end - s.start)) <= 1000,
       });
     }
   }
-  if (coupes.size === 0) return data;
+  if (cuts.size === 0) return data;
   return {
     ...data,
     sessions: data.sessions.map((s) => {
-      const c = coupes.get(s.id);
+      const c = cuts.get(s.id);
       if (!c) return s;
-      return { ...s, duree: c.couvert, debut: c.sansPause ? s.debut + c.cut : s.debut };
+      return { ...s, duration: c.covered, start: c.withoutBreaks ? s.start + c.cut : s.start };
     }),
   };
 }
 
 /**
  * Pauses every running timer.
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {number} now
- * @returns {Donnees} the same object when no timer is running
+ * @returns {ChronoData} the same object when no timer is running
  */
-export function pauserTout(data, now) {
+export function pauseAll(data, now) {
   let changed = false;
   const sessions = data.sessions.map((s) => {
-    if (s.statut !== 'en_cours') return s;
+    if (s.status !== 'running') return s;
     changed = true;
-    return mettreEnPause(s, now);
+    return toPaused(s, now);
   });
   return changed ? { ...data, sessions } : data;
 }
 
 /**
  * Resumes every paused timer.
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {number} now
- * @returns {Donnees} the same object when no timer is paused
+ * @returns {ChronoData} the same object when no timer is paused
  */
-export function reprendreTout(data, now) {
+export function resumeAll(data, now) {
   let changed = false;
   const sessions = data.sessions.map((s) => {
-    if (s.statut !== 'en_pause') return s;
+    if (s.status !== 'paused') return s;
     changed = true;
-    return /** @type {Session} */ ({ ...s, statut: 'en_cours', dernierDebut: now });
+    return /** @type {Session} */ ({ ...s, status: 'running', lastStart: now });
   });
   return changed ? { ...data, sessions } : data;
 }
 
 /**
  * Stops every active timer.
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {number} now
- * @returns {Donnees} the same object when no timer is active
+ * @returns {ChronoData} the same object when no timer is active
  */
-export function arreterTout(data, now) {
+export function stopAll(data, now) {
   let changed = false;
   /** @type {string[]} */
   const endedIds = [];
   const sessions = data.sessions.map((s) => {
-    if (s.statut === 'terminee') return s;
+    if (s.status === 'done') return s;
     changed = true;
     endedIds.push(s.id);
-    return terminer(s, now);
+    return toDone(s, now);
   });
-  return changed ? tronquerSurPresence({ ...data, sessions }, endedIds, now) : data;
+  return changed ? truncateToPresence({ ...data, sessions }, endedIds, now) : data;
 }
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string }} payload
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function supprimerSession(data, { id }) {
+export function deleteSession(data, { id }) {
   return { ...data, sessions: data.sessions.filter((s) => s.id !== id) };
 }
 
 /**
- * Edits a session. For a finished session, the duration follows `debut` and `fin` unless it
+ * Edits a session. For a finished session, the duration follows `start` and `end` unless it
  * is given explicitly; pauses already counted are kept.
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {{ id: string, patch: Partial<Session> }} payload
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function majSession(data, { id, patch }) {
+export function updateSession(data, { id, patch }) {
   return {
     ...data,
     sessions: data.sessions.map((s) => {
       if (s.id !== id) return s;
       const next = { ...s, ...patch };
-      if (next.statut === 'terminee' && next.debut != null && next.fin != null) {
-        if (patch.duree != null) {
+      if (next.status === 'done' && next.start != null && next.end != null) {
+        if (patch.duration != null) {
           // explicit duration wins.
-        } else if (s.statut === 'terminee' && s.debut != null && s.fin != null) {
+        } else if (s.status === 'done' && s.start != null && s.end != null) {
           // Keep the pause time already counted (old block - old duration).
-          const pauses = Math.max(0, s.fin - s.debut - (s.duree || 0));
-          next.duree = Math.max(0, next.fin - next.debut - pauses);
+          const pauses = Math.max(0, s.end - s.start - (s.duration || 0));
+          next.duration = Math.max(0, next.end - next.start - pauses);
         } else {
-          next.duree = Math.max(0, next.fin - next.debut);
+          next.duration = Math.max(0, next.end - next.start);
         }
-      } else if (next.statut === 'en_cours' && patch.debut != null) {
+      } else if (next.status === 'running' && patch.start != null) {
         // A running session that was never paused (accumulated duration = 0 and
-        // dernierDebut followed debut): resynchronise dernierDebut on the new debut so that
+        // lastStart followed start): resynchronise lastStart on the new start so that
         // the live duration reflects the time correction at once and the block on the
         // timeline stays consistent.
-        if ((s.duree || 0) === 0 && s.dernierDebut === s.debut) {
-          next.dernierDebut = patch.debut;
+        if ((s.duration || 0) === 0 && s.lastStart === s.start) {
+          next.lastStart = patch.start;
         }
       }
       // A paused session: the accumulated duration is no longer tied to the start time, so
@@ -281,25 +281,25 @@ export function majSession(data, { id, patch }) {
 
 /**
  * Manual entry of an already finished session (correction / catch-up). It is NOT made
- * active: it has a start and an end, so status 'terminee' and the duration is computed at once.
- * @param {Donnees} data
- * @param {{ projetId: string, description?: string, debut: number, fin: number }} payload
+ * active: it has a start and an end, so status 'done' and the duration is computed at once.
+ * @param {ChronoData} data
+ * @param {{ projectId: string, description?: string, start: number, end: number }} payload
  * @param {string} newId
- * @returns {Donnees} the same object when the entry is invalid
+ * @returns {ChronoData} the same object when the entry is invalid
  */
-export function ajouterSessionManuelle(data, { projetId, description = '', debut, fin }, newId) {
-  if (!projetId || debut == null || fin == null) return data;
-  if (fin < debut) return data;
+export function addManualSession(data, { projectId, description = '', start, end }, newId) {
+  if (!projectId || start == null || end == null) return data;
+  if (end < start) return data;
   /** @type {Session} */
   const session = {
     id: newId,
-    projetId,
+    projectId,
     description: (description || '').trim(),
-    debut,
-    fin,
-    dernierDebut: null,
-    duree: Math.max(0, fin - debut),
-    statut: 'terminee',
+    start,
+    end,
+    lastStart: null,
+    duration: Math.max(0, end - start),
+    status: 'done',
   };
   return { ...data, sessions: [...data.sessions, session] };
 }

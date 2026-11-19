@@ -1,45 +1,45 @@
-// modal "ajouter un chrono".
+// "add a timer" modal.
 //
-// Deux modes :
-//   • "live"   : démarre un chrono qui tourne immédiatement.
-//   • "manuel" : crée une session déjà terminée (début + fin saisis)
-//                — typiquement pour rattraper une plage oubliée. La session
-//                n'est PAS activée car elle a déjà une fin.
+// Two modes:
+//   • "live"   : starts a timer that runs immediately.
+//   • "manual" : creates an already finished session (start + end entered)
+//                — typically to catch up on a forgotten range. The session
+//                is NOT made active because it already has an end.
 import * as UI from './ui.js';
 
-const { el, icon, fmtDuree } = UI;
+const { el, icon, formatDuration } = UI;
 
-function tsVersLocal(ts) {
+function timestampToLocal(ts) {
   const d = new Date(ts);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-function localVersTs(v) {
+function localToTimestamp(v) {
   const t = new Date(v).getTime();
   return isNaN(t) ? null : t;
 }
 
-export function ouvrirQuickAdd(
+export function openQuickAddModal(
   store,
   {
-    projetPrefill = null,
+    projectPrefill = null,
     descriptionPrefill = '',
     mode: modePrefill = 'live',
-    debutPrefill = null,
-    finPrefill = null,
-    onDemarre,
-    onAjoutManuel,
+    startPrefill = null,
+    endPrefill = null,
+    onStart,
+    onManualAdd,
   } = {},
 ) {
-  let projetId =
-    projetPrefill ||
-    store.state.projets.find((p) => !p.archive)?.id ||
-    store.state.projets[0]?.id ||
+  let projectId =
+    projectPrefill ||
+    store.state.projects.find((p) => !p.archived)?.id ||
+    store.state.projects[0]?.id ||
     '';
-  let mode = modePrefill === 'manuel' ? 'manuel' : 'live';
+  let mode = modePrefill === 'manual' ? 'manual' : 'live';
   let modal;
   let inputDesc;
-  let debutW, finW, dureeAffichee, errorBox;
+  let startW, endW, displayedDuration, errorBox;
 
   /* --- segmented control mode --- */
   const segWrap = el('div', {
@@ -83,39 +83,39 @@ export function ouvrirQuickAdd(
     return btn;
   }
   const segLive = segBtn('live', 'play', 'Démarrer maintenant');
-  const segManuel = segBtn('manuel', 'pencil-simple', 'Saisir manuellement');
+  const segManual = segBtn('manual', 'pencil-simple', 'Saisir manuellement');
   segWrap.appendChild(segLive);
-  segWrap.appendChild(segManuel);
+  segWrap.appendChild(segManual);
 
   function paintSeg() {
-    for (const b of [segLive, segManuel]) {
-      const actif = b.dataset.value === mode;
-      b.style.background = actif ? 'var(--cv-surface)' : 'transparent';
-      b.style.color = actif ? 'var(--cv-fg)' : 'var(--cv-fg-muted)';
-      b.style.boxShadow = actif ? 'var(--cv-shadow-sm)' : 'none';
+    for (const b of [segLive, segManual]) {
+      const isOn = b.dataset.value === mode;
+      b.style.background = isOn ? 'var(--cv-surface)' : 'transparent';
+      b.style.color = isOn ? 'var(--cv-fg)' : 'var(--cv-fg-muted)';
+      b.style.boxShadow = isOn ? 'var(--cv-shadow-sm)' : 'none';
     }
   }
 
-  /* --- liste des projets --- */
+  /* --- project list --- */
   const listHost = el('div', {
     class: 'ch-pile ch-g4',
     style: { maxHeight: 240, overflowY: 'auto' },
   });
-  function renderListe() {
-    const projets = store.state.projets.filter((p) => !p.archive);
+  function renderListView() {
+    const projects = store.state.projects.filter((p) => !p.archived);
     listHost.replaceChildren(
-      ...projets.map((p) =>
+      ...projects.map((p) =>
         el(
           'button',
           {
             onclick: () => {
-              projetId = p.id;
-              renderListe();
+              projectId = p.id;
+              renderListView();
             },
-            class: projetId === p.id ? 'ch-option est-actif' : 'ch-option',
+            class: projectId === p.id ? 'ch-option est-actif' : 'ch-option',
           },
           el('span', {
-            style: { width: 10, height: 10, borderRadius: 3, background: p.couleur, flexShrink: 0 },
+            style: { width: 10, height: 10, borderRadius: 3, background: p.color, flexShrink: 0 },
           }),
           el(
             'div',
@@ -123,7 +123,7 @@ export function ouvrirQuickAdd(
             el(
               'div',
               { class: 'ch-ellipse', style: { font: '500 13px/1.2 var(--cv-font-sans)' } },
-              p.nom,
+              p.name,
             ),
             p.client
               ? el(
@@ -139,7 +139,7 @@ export function ouvrirQuickAdd(
                 )
               : null,
           ),
-          projetId === p.id
+          projectId === p.id
             ? icon('check-circle', {
                 weight: 'fill',
                 size: 16,
@@ -150,7 +150,7 @@ export function ouvrirQuickAdd(
       ),
     );
   }
-  renderListe();
+  renderListView();
 
   /* --- description --- */
   inputDesc = el('input', {
@@ -181,17 +181,21 @@ export function ouvrirQuickAdd(
     },
   });
 
-  /* --- bloc "saisie manuelle" --- */
-  // Valeurs par défaut : si pas de prefill, on propose une plage d'une heure
-  // se terminant maintenant arrondie au quart d'heure le plus proche.
+  /* --- "manual entry" block --- */
+  // Defaults: without a prefill, propose a one-hour range
+  // ending now, rounded to the nearest quarter hour.
   const now = new Date();
   now.setSeconds(0, 0);
-  const finDefault = finPrefill != null ? finPrefill : now.getTime();
-  const debutDefault = debutPrefill != null ? debutPrefill : finDefault - 60 * 60_000;
+  const defaultEnd = endPrefill != null ? endPrefill : now.getTime();
+  const defaultStart = startPrefill != null ? startPrefill : defaultEnd - 60 * 60_000;
 
-  debutW = UI.Input({ label: 'Début', type: 'datetime-local', value: tsVersLocal(debutDefault) });
-  finW = UI.Input({ label: 'Fin', type: 'datetime-local', value: tsVersLocal(finDefault) });
-  dureeAffichee = el(
+  startW = UI.Input({
+    label: 'Début',
+    type: 'datetime-local',
+    value: timestampToLocal(defaultStart),
+  });
+  endW = UI.Input({ label: 'Fin', type: 'datetime-local', value: timestampToLocal(defaultEnd) });
+  displayedDuration = el(
     'div',
     {
       style: { font: '500 16px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' },
@@ -210,34 +214,34 @@ export function ouvrirQuickAdd(
     },
   });
 
-  function recalcDuree() {
-    const d = localVersTs(debutW.input.value);
-    const f = localVersTs(finW.input.value);
+  function recomputeDuration() {
+    const d = localToTimestamp(startW.input.value);
+    const f = localToTimestamp(endW.input.value);
     if (d == null || f == null) {
-      dureeAffichee.textContent = '—';
+      displayedDuration.textContent = '—';
       return;
     }
     if (f < d) {
-      dureeAffichee.textContent = '—';
+      displayedDuration.textContent = '—';
       return;
     }
-    dureeAffichee.textContent = fmtDuree(f - d);
+    displayedDuration.textContent = formatDuration(f - d);
   }
-  debutW.input.addEventListener('input', () => {
+  startW.input.addEventListener('input', () => {
     hideError();
-    recalcDuree();
+    recomputeDuration();
   });
-  finW.input.addEventListener('input', () => {
+  endW.input.addEventListener('input', () => {
     hideError();
-    recalcDuree();
+    recomputeDuration();
   });
-  debutW.input.addEventListener('keydown', (e) => {
+  startW.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submit();
   });
-  finW.input.addEventListener('keydown', (e) => {
+  endW.input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submit();
   });
-  recalcDuree();
+  recomputeDuration();
 
   function showError(msg) {
     errorBox.textContent = msg;
@@ -247,14 +251,14 @@ export function ouvrirQuickAdd(
     errorBox.style.display = 'none';
   }
 
-  const manuelBlock = el(
+  const manualBlock = el(
     'div',
     { class: 'ch-pile ch-g10' },
     el(
       'div',
       { class: 'ch-flex ch-g10' },
-      el('div', { style: { flex: 1 } }, debutW),
-      el('div', { style: { flex: 1 } }, finW),
+      el('div', { style: { flex: 1 } }, startW),
+      el('div', { style: { flex: 1 } }, endW),
     ),
     el(
       'div',
@@ -268,12 +272,12 @@ export function ouvrirQuickAdd(
         },
       },
       el('span', { class: 'ch-surtitre' }, 'Durée'),
-      dureeAffichee,
+      displayedDuration,
     ),
     errorBox,
   );
 
-  /* --- footer dynamique --- */
+  /* --- dynamic footer --- */
   const footerHint = el('div', {
     class: 'ch-flex-c ch-g8',
     style: {
@@ -305,14 +309,14 @@ export function ouvrirQuickAdd(
     }
   }
 
-  /* --- swap body selon le mode --- */
+  /* --- swap the body according to the mode --- */
   const modeHost = el('div', { class: 'ch-pile ch-g14' });
   function renderMode() {
     paintSeg();
     paintFooter();
     modeHost.replaceChildren(
-      mode === 'manuel'
-        ? manuelBlock
+      mode === 'manual'
+        ? manualBlock
         : el(
             'div',
             {
@@ -333,14 +337,14 @@ export function ouvrirQuickAdd(
   }
 
   function submit() {
-    if (!projetId) return;
+    if (!projectId) return;
     if (mode === 'live') {
-      store.actions.demarrer(projetId, inputDesc.value);
-      onDemarre && onDemarre(projetId);
+      store.actions.startSession(projectId, inputDesc.value);
+      onStart && onStart(projectId);
       modal.close();
     } else {
-      const d = localVersTs(debutW.input.value);
-      const f = localVersTs(finW.input.value);
+      const d = localToTimestamp(startW.input.value);
+      const f = localToTimestamp(endW.input.value);
       if (d == null || f == null) {
         showError('Renseigne un début et une fin valides.');
         return;
@@ -349,22 +353,22 @@ export function ouvrirQuickAdd(
         showError('La fin doit être postérieure au début.');
         return;
       }
-      const id = store.actions.ajouterSessionManuelle({
-        projetId,
+      const id = store.actions.addManualSession({
+        projectId,
         description: inputDesc.value,
-        debut: d,
-        fin: f,
+        start: d,
+        end: f,
       });
       if (!id) {
         showError('Impossible d’enregistrer cette session.');
         return;
       }
-      onAjoutManuel && onAjoutManuel(id, projetId);
+      onManualAdd && onManualAdd(id, projectId);
       modal.close();
     }
   }
 
-  /* --- corps du modal --- */
+  /* --- modal body --- */
   const body = el(
     'div',
     { class: 'ch-pile ch-g14' },

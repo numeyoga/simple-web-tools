@@ -1,12 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { creerProjet, ouvrirApp, attendreEcriture } from './support.js';
+import { createProject, openApp, waitForWrite } from './support.js';
 
-test('export JSON puis import dans un espace vide : les données sont restaurées', async ({
-  page,
-}) => {
-  const { erreurs } = await ouvrirApp(page);
-  await creerProjet(page, 'Alpha');
+test('JSON export then import into an empty workspace: the data is restored', async ({ page }) => {
+  const { errors } = await openApp(page);
+  await createProject(page, 'Alpha');
   await page.getByRole('button', { name: 'Todos' }).click();
   await page.getByPlaceholder("Qu'est-ce qu'il faut faire ?").fill('Envoyer la facture');
   await page.getByRole('main').getByRole('button', { name: 'Ajouter' }).click();
@@ -14,24 +12,26 @@ test('export JSON puis import dans un espace vide : les données sont restaurée
 
   // Export
   await page.getByRole('button', { name: /^Espace de sauvegarde/ }).click();
-  const telechargement = page.waitForEvent('download');
+  const downloadEvent = page.waitForEvent('download');
   await page
     .getByRole('dialog', { name: 'Espaces de sauvegarde' })
     .getByRole('button', { name: 'Exporter JSON' })
     .click();
-  const fichier = await telechargement;
-  const contenu = await readFile(await fichier.path());
-  const export_ = JSON.parse(contenu.toString('utf8'));
-  expect(export_.version).toBe(1);
-  expect(export_.data.projets.map((/** @type {{ nom: string }} */ p) => p.nom)).toEqual(['Alpha']);
-  expect(export_.data.todos.map((/** @type {{ titre: string }} */ t) => t.titre)).toEqual([
+  const download = await downloadEvent;
+  const content = await readFile(await download.path());
+  const exported = JSON.parse(content.toString('utf8'));
+  expect(exported).toMatchObject({ app: 'chrono', format: 'chrono-workspace', version: 2 });
+  expect(exported.data.projects.map((/** @type {{ name: string }} */ p) => p.name)).toEqual([
+    'Alpha',
+  ]);
+  expect(exported.data.todos.map((/** @type {{ title: string }} */ t) => t.title)).toEqual([
     'Envoyer la facture',
   ]);
 
-  // Un espace vide, où l'on bascule
-  const gestion = page.getByRole('dialog', { name: 'Espaces de sauvegarde' });
-  await gestion.getByPlaceholder('Ex. Perso, Freelance, Test, Q4…').fill('Vide');
-  await gestion.getByRole('button', { name: 'Créer', exact: true }).click();
+  // An empty workspace, where we switch
+  const management = page.getByRole('dialog', { name: 'Espaces de sauvegarde' });
+  await management.getByPlaceholder('Ex. Perso, Freelance, Test, Q4…').fill('Vide');
+  await management.getByRole('button', { name: 'Créer', exact: true }).click();
   await page
     .getByRole('dialog', { name: 'Basculer sur cet espace ?' })
     .getByRole('button', { name: 'Confirmer' })
@@ -40,12 +40,12 @@ test('export JSON puis import dans un espace vide : les données sont restaurée
   await page.getByRole('button', { name: 'Projets' }).click();
   await expect(page.getByText('Aucun projet actif.')).toBeVisible();
 
-  // Import : la page se recharge avec les données du fichier
+  // Import: the page reloads with the data of the file
   await page.getByRole('button', { name: /^Espace de sauvegarde/ }).click();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'export.json',
     mimeType: 'application/json',
-    buffer: contenu,
+    buffer: content,
   });
   await page
     .getByRole('dialog', { name: 'Remplacer les données ?' })
@@ -57,17 +57,17 @@ test('export JSON puis import dans un espace vide : les données sont restaurée
   await page.getByRole('button', { name: 'Todos' }).click();
   await expect(page.getByRole('main').getByText('Envoyer la facture')).toBeVisible();
 
-  expect(erreurs).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
-test('les données survivent au rechargement de la page', async ({ page }) => {
-  const { erreurs } = await ouvrirApp(page);
-  await creerProjet(page, 'Alpha');
+test('the data survives a page reload', async ({ page }) => {
+  const { errors } = await openApp(page);
+  await createProject(page, 'Alpha');
   await page.getByRole('button', { name: 'Todos' }).click();
   await page.getByPlaceholder("Qu'est-ce qu'il faut faire ?").fill('Envoyer la facture');
   await page.getByRole('main').getByRole('button', { name: 'Ajouter' }).click();
-  await attendreEcriture(page, 'projets', 'nom', 'Alpha');
-  await attendreEcriture(page, 'todos', 'titre', 'Envoyer la facture');
+  await waitForWrite(page, 'projects', 'name', 'Alpha');
+  await waitForWrite(page, 'todos', 'title', 'Envoyer la facture');
 
   await page.reload();
 
@@ -76,5 +76,5 @@ test('les données survivent au rechargement de la page', async ({ page }) => {
   await page.getByRole('button', { name: 'Todos' }).click();
   await expect(page.getByRole('main').getByText('Envoyer la facture')).toBeVisible();
 
-  expect(erreurs).toEqual([]);
+  expect(errors).toEqual([]);
 });

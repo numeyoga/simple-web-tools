@@ -1,57 +1,57 @@
 // Live duration of a session and presence computed from the clock-in events.
 
 /** @typedef {import('../types.js').Session} Session */
-/** @typedef {import('../types.js').Pointage} Pointage */
-/** @typedef {import('../types.js').Plage} Plage */
+/** @typedef {import('../types.js').AttendanceEvent} AttendanceEvent */
+/** @typedef {import('../types.js').TimeRange} TimeRange */
 
 /**
- * Live duration of a session: adds the time since `dernierDebut` when it is running.
+ * Live duration of a session: adds the time since `lastStart` when it is running.
  * @param {Session | null | undefined} session
  * @param {number} now
  * @returns {number}
  */
-export function dureeVivante(session, now) {
+export function liveDuration(session, now) {
   if (!session) return 0;
-  if (session.statut === 'en_cours' && session.dernierDebut) {
-    return (session.duree || 0) + (now - session.dernierDebut);
+  if (session.status === 'running' && session.lastStart) {
+    return (session.duration || 0) + (now - session.lastStart);
   }
-  return session.duree || 0;
+  return session.duration || 0;
 }
 
 /**
- * Presence ranges of a day from its clock-in events. `arrivee` and `pause_fin` open a range,
- * `pause_debut` and `depart` close it; a range still open ends at `now`.
- * @param {Pick<Pointage, 'type' | 'at'>[] | null | undefined} events
+ * Presence ranges of a day from its clock-in events. `arrival` and `break_end` open a range,
+ * `break_start` and `departure` close it; a range still open ends at `now`.
+ * @param {Pick<AttendanceEvent, 'type' | 'at'>[] | null | undefined} events
  * @param {number} now
- * @returns {Plage[]}
+ * @returns {TimeRange[]}
  */
-export function plagesPresence(events, now) {
+export function presenceRanges(events, now) {
   const evs = (events || []).slice().sort((a, b) => a.at - b.at);
-  /** @type {Plage[]} */
-  const plages = [];
+  /** @type {TimeRange[]} */
+  const ranges = [];
   /** @type {number | null} */
   let openAt = null;
   for (const e of evs) {
-    if (e.type === 'arrivee' || e.type === 'pause_fin') {
+    if (e.type === 'arrival' || e.type === 'break_end') {
       if (openAt == null) openAt = e.at;
-    } else if (e.type === 'pause_debut' || e.type === 'depart') {
+    } else if (e.type === 'break_start' || e.type === 'departure') {
       if (openAt != null) {
-        plages.push({ debut: openAt, fin: Math.max(openAt, e.at) });
+        ranges.push({ start: openAt, end: Math.max(openAt, e.at) });
         openAt = null;
       }
     }
   }
-  if (openAt != null) plages.push({ debut: openAt, fin: Math.max(openAt, now) });
-  return plages;
+  if (openAt != null) ranges.push({ start: openAt, end: Math.max(openAt, now) });
+  return ranges;
 }
 
 /**
  * Presence duration of a day: sum of the ranges. When the day is not closed, the last range
  * runs until `now`.
- * @param {Pick<Pointage, 'type' | 'at'>[] | null | undefined} events
+ * @param {Pick<AttendanceEvent, 'type' | 'at'>[] | null | undefined} events
  * @param {number} now
  * @returns {number}
  */
-export function dureePresence(events, now) {
-  return plagesPresence(events, now).reduce((total, p) => total + (p.fin - p.debut), 0);
+export function presenceDuration(events, now) {
+  return presenceRanges(events, now).reduce((total, p) => total + (p.end - p.start), 0);
 }

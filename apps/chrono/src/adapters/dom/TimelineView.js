@@ -1,41 +1,41 @@
-// vue "Timeline" : bandeau date, stats, chart horaire, sessions, répartition.
+// "Timeline" view: date banner, stats, hourly chart, sessions, distribution.
 import * as UI from './ui.js';
 
-const { el, icon, fmtDuree, fmtHeure, dureeVivante } = UI;
+const { el, icon, formatDuration, formatTime, liveDuration } = UI;
 
-const HEURE_DEBUT = 7;
-const HEURE_FIN = 20;
-const PX_PAR_HEURE = 84;
+const START_HOUR = 7;
+const END_HOUR = 20;
+const PX_PER_HOUR = 84;
 
-const POINTAGE_TYPES = [
-  { value: 'arrivee', label: 'Arrivée', icon: 'sign-in', color: 'var(--cv-success-600)' },
-  { value: 'pause_debut', label: 'Début de pause', icon: 'pause', color: 'var(--cv-warning-700)' },
-  { value: 'pause_fin', label: 'Fin de pause', icon: 'play', color: 'var(--cv-warning-700)' },
-  { value: 'depart', label: 'Départ', icon: 'sign-out', color: 'var(--cv-fg-muted)' },
+const ATTENDANCE_TYPES = [
+  { value: 'arrival', label: 'Arrivée', icon: 'sign-in', color: 'var(--cv-success-600)' },
+  { value: 'break_start', label: 'Début de pause', icon: 'pause', color: 'var(--cv-warning-700)' },
+  { value: 'break_end', label: 'Fin de pause', icon: 'play', color: 'var(--cv-warning-700)' },
+  { value: 'departure', label: 'Départ', icon: 'sign-out', color: 'var(--cv-fg-muted)' },
 ];
-const POINTAGE_META = Object.fromEntries(POINTAGE_TYPES.map((p) => [p.value, p]));
+const ATTENDANCE_META = Object.fromEntries(ATTENDANCE_TYPES.map((p) => [p.value, p]));
 
-// Échelle horizontale du graphique (px depuis le bord gauche du contenu).
+// Horizontal scale of the chart (px from the left edge of the content).
 const CHART_PAD_X = 16;
-const hourToPx = (h) => (h - HEURE_DEBUT) * PX_PAR_HEURE;
+const hourToPx = (h) => (h - START_HOUR) * PX_PER_HOUR;
 const tsToPx = (ts) => {
   const d = new Date(ts);
   const h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   return hourToPx(h);
 };
 
-// Pose une clé de focus stable (dataset.focusKey) sur un élément déjà construit.
-const cle = (node, key) => {
+// Sets a stable focus key (dataset.focusKey) on an element that is already built.
+const withFocusKey = (node, key) => {
   node.dataset.focusKey = key;
   return node;
 };
 
-export function createTimeline(store, opts) {
+export function createTimelineView(store, opts) {
   let dateOffset = 0;
 
   const host = el('div', { class: 'ch-pile ch-g20' });
 
-  function statBloc(label, valeur, sousTexte, { accent, mono = true } = {}) {
+  function statBlock(label, value, subtext, { accent, mono = true } = {}) {
     return el(
       'div',
       null,
@@ -50,9 +50,9 @@ export function createTimeline(store, opts) {
             letterSpacing: '-0.01em',
           },
         },
-        valeur,
+        value,
       ),
-      sousTexte
+      subtext
         ? el(
             'div',
             {
@@ -62,13 +62,13 @@ export function createTimeline(store, opts) {
                 color: 'var(--cv-fg-subtle)',
               },
             },
-            sousTexte,
+            subtext,
           )
         : null,
     );
   }
 
-  function legendeItem(couleur, label, stripe) {
+  function legendItem(color, label, stripe) {
     return el(
       'span',
       { style: { display: 'inline-flex', alignItems: 'center', gap: 6 } },
@@ -78,35 +78,35 @@ export function createTimeline(store, opts) {
           height: 8,
           borderRadius: 2,
           background: stripe
-            ? `repeating-linear-gradient(135deg, ${couleur} 0 3px, transparent 3px 6px)`
-            : couleur,
-          border: stripe ? `1px solid ${couleur}` : 'none',
+            ? `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`
+            : color,
+          border: stripe ? `1px solid ${color}` : 'none',
         },
       }),
       label,
     );
   }
 
-  function ouvrirEditionSession(s) {
-    const projets = store.state.projets;
+  function openSessionEditor(s) {
+    const projects = store.state.projects;
     let modal;
 
-    function tsVersLocal(ts) {
+    function timestampToLocal(ts) {
       const d = new Date(ts);
       const pad = (n) => String(n).padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
-    function localVersTs(v) {
+    function localToTimestamp(v) {
       const t = new Date(v).getTime();
       return isNaN(t) ? null : t;
     }
 
-    const projW = UI.Select({
+    const projectW = UI.Select({
       label: 'Projet',
-      value: s.projetId,
-      options: projets.map((p) => ({
+      value: s.projectId,
+      options: projects.map((p) => ({
         value: p.id,
-        label: p.nom + (p.archive ? ' (archivé)' : ''),
+        label: p.name + (p.archived ? ' (archivé)' : ''),
       })),
     });
     const descW = UI.Input({
@@ -114,76 +114,76 @@ export function createTimeline(store, opts) {
       value: s.description || '',
       placeholder: 'Ex. maquette homepage v3',
     });
-    const debutW = UI.Input({
+    const startW = UI.Input({
       label: 'Début',
-      value: tsVersLocal(s.debut),
+      value: timestampToLocal(s.start),
       type: 'datetime-local',
     });
-    const finW =
-      s.statut === 'terminee'
-        ? UI.Input({ label: 'Fin', value: tsVersLocal(s.fin), type: 'datetime-local' })
+    const endW =
+      s.status === 'done'
+        ? UI.Input({ label: 'Fin', value: timestampToLocal(s.end), type: 'datetime-local' })
         : null;
 
-    const dureeAffichee = el(
+    const displayedDuration = el(
       'div',
       {
         style: { font: '500 18px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 4 },
       },
-      fmtDuree(dureeVivante(s)),
+      formatDuration(liveDuration(s)),
     );
-    // Même règle que majSession (db.js) : le temps de pause déjà décompté sur
-    // la session d'origine est conservé, la durée enregistrée = bloc - pauses.
-    const pausesOrigine =
-      s.statut === 'terminee' && s.debut != null && s.fin != null
-        ? Math.max(0, s.fin - s.debut - (s.duree || 0))
+    // Same rule as updateSession (core/sessions.js): the break time already deducted from
+    // the original session is kept, the recorded duration = block - breaks.
+    const originalPauses =
+      s.status === 'done' && s.start != null && s.end != null
+        ? Math.max(0, s.end - s.start - (s.duration || 0))
         : 0;
-    function libellePause(ms) {
+    function pauseLabel(ms) {
       const min = Math.max(1, Math.round(ms / 60000));
       const h = Math.floor(min / 60);
       return h > 0 ? `${h} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
     }
-    const pausesNote =
-      pausesOrigine > 0
+    const breaksNote =
+      originalPauses > 0
         ? el(
             'div',
             {
               class: 'ch-legende',
               style: { marginTop: 4 },
             },
-            `dont ${libellePause(pausesOrigine)} de pause déduites`,
+            `dont ${pauseLabel(originalPauses)} de pause déduites`,
           )
         : null;
-    function recalcDuree() {
-      if (s.statut !== 'terminee') return;
-      const d = localVersTs(debutW.input.value);
-      const f = localVersTs(finW.input.value);
+    function recomputeDuration() {
+      if (s.status !== 'done') return;
+      const d = localToTimestamp(startW.input.value);
+      const f = localToTimestamp(endW.input.value);
       if (d != null && f != null && f >= d)
-        dureeAffichee.textContent = fmtDuree(Math.max(0, f - d - pausesOrigine));
+        displayedDuration.textContent = formatDuration(Math.max(0, f - d - originalPauses));
     }
-    debutW.input.addEventListener('input', recalcDuree);
-    if (finW) finW.input.addEventListener('input', recalcDuree);
+    startW.input.addEventListener('input', recomputeDuration);
+    if (endW) endW.input.addEventListener('input', recomputeDuration);
 
-    function enregistrer() {
+    function save() {
       const patch = {
-        projetId: projW.input.value,
+        projectId: projectW.input.value,
         description: descW.input.value.trim(),
       };
-      const debut = localVersTs(debutW.input.value);
-      if (debut != null) patch.debut = debut;
-      if (finW) {
-        const fin = localVersTs(finW.input.value);
-        if (fin != null) patch.fin = fin;
-        if (patch.debut != null && patch.fin != null && patch.fin < patch.debut) {
+      const start = localToTimestamp(startW.input.value);
+      if (start != null) patch.start = start;
+      if (endW) {
+        const end = localToTimestamp(endW.input.value);
+        if (end != null) patch.end = end;
+        if (patch.start != null && patch.end != null && patch.end < patch.start) {
           alert('La fin doit être après le début.');
           return;
         }
       }
-      store.actions.majSession(s.id, patch);
+      store.actions.updateSession(s.id, patch);
       modal.close();
     }
 
-    function supprimer() {
-      store.actions.supprimerSession(s.id);
+    function originalDelete() {
+      store.actions.deleteSession(s.id);
       modal.close();
     }
 
@@ -193,15 +193,15 @@ export function createTimeline(store, opts) {
       body: el(
         'div',
         { class: 'ch-pile ch-g12' },
-        projW,
+        projectW,
         descW,
         el(
           'div',
           { class: 'ch-flex ch-g10' },
-          el('div', { style: { flex: 1 } }, debutW),
-          finW ? el('div', { style: { flex: 1 } }, finW) : null,
+          el('div', { style: { flex: 1 } }, startW),
+          endW ? el('div', { style: { flex: 1 } }, endW) : null,
         ),
-        s.statut === 'terminee'
+        s.status === 'done'
           ? el(
               'div',
               null,
@@ -217,8 +217,8 @@ export function createTimeline(store, opts) {
                 },
                 'Durée calculée',
               ),
-              dureeAffichee,
-              pausesNote,
+              displayedDuration,
+              breaksNote,
             )
           : el(
               'div',
@@ -240,7 +240,7 @@ export function createTimeline(store, opts) {
           variant: 'destructive',
           icon: 'trash',
           children: 'Supprimer',
-          onclick: supprimer,
+          onclick: originalDelete,
           style: { marginRight: 'auto' },
         }),
         UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
@@ -248,49 +248,50 @@ export function createTimeline(store, opts) {
           variant: 'primary',
           icon: 'check',
           children: 'Enregistrer',
-          onclick: enregistrer,
+          onclick: save,
         }),
       ],
     });
   }
 
   /* ----------------- TimelineChart ----------------- */
-  function timelineChart(jourDebut, sessionsJ, pointageJ, projets, isToday) {
-    const totalHours = HEURE_FIN - HEURE_DEBUT;
-    const widthPx = totalHours * PX_PAR_HEURE;
-    const msToPx = (ms) => (ms / 3600_000) * PX_PAR_HEURE;
+  function timelineChart(dayStart, daySessions, dayAttendance, projects, isToday) {
+    const totalHours = END_HOUR - START_HOUR;
+    const widthPx = totalHours * PX_PER_HOUR;
+    const msToPx = (ms) => (ms / 3600_000) * PX_PER_HOUR;
 
-    // segments présence
+    // presence segments
     const presenceSegs = [];
-    let enPresence = null;
-    for (const e of pointageJ) {
-      if ((e.type === 'arrivee' || e.type === 'pause_fin') && enPresence == null) enPresence = e.at;
-      else if ((e.type === 'pause_debut' || e.type === 'depart') && enPresence != null) {
-        presenceSegs.push({ debut: enPresence, fin: e.at });
-        enPresence = null;
+    let presentSince = null;
+    for (const e of dayAttendance) {
+      if ((e.type === 'arrival' || e.type === 'break_end') && presentSince == null)
+        presentSince = e.at;
+      else if ((e.type === 'break_start' || e.type === 'departure') && presentSince != null) {
+        presenceSegs.push({ start: presentSince, end: e.at });
+        presentSince = null;
       }
     }
-    if (enPresence != null)
+    if (presentSince != null)
       presenceSegs.push({
-        debut: enPresence,
-        fin: isToday ? Date.now() : jourDebut + 86400000,
+        start: presentSince,
+        end: isToday ? Date.now() : dayStart + 86400000,
         ongoing: true,
       });
 
-    // pauses
+    // breaks
     const pauseSegs = [];
-    let enPause = null;
-    for (const e of pointageJ) {
-      if (e.type === 'pause_debut') enPause = e.at;
-      else if (e.type === 'pause_fin' && enPause != null) {
-        pauseSegs.push({ debut: enPause, fin: e.at });
-        enPause = null;
+    let breakStartedAt = null;
+    for (const e of dayAttendance) {
+      if (e.type === 'break_start') breakStartedAt = e.at;
+      else if (e.type === 'break_end' && breakStartedAt != null) {
+        pauseSegs.push({ start: breakStartedAt, end: e.at });
+        breakStartedAt = null;
       }
     }
-    if (enPause != null)
+    if (breakStartedAt != null)
       pauseSegs.push({
-        debut: enPause,
-        fin: isToday ? Date.now() : jourDebut + 86400000,
+        start: breakStartedAt,
+        end: isToday ? Date.now() : dayStart + 86400000,
         ongoing: true,
       });
 
@@ -298,7 +299,7 @@ export function createTimeline(store, opts) {
 
     const rule = el('div', { style: { position: 'relative', height: 22, width: widthPx } });
     for (let i = 0; i <= totalHours; i++) {
-      const h = HEURE_DEBUT + i;
+      const h = START_HOUR + i;
       rule.appendChild(
         el(
           'div',
@@ -320,30 +321,30 @@ export function createTimeline(store, opts) {
       style: { position: 'relative', height: 140, width: widthPx, marginTop: 6 },
     });
 
-    // grilles
+    // grids
     for (let i = 0; i <= totalHours; i++) {
       line.appendChild(
         el('div', {
           style: {
             position: 'absolute',
-            left: hourToPx(HEURE_DEBUT + i),
+            left: hourToPx(START_HOUR + i),
             top: 0,
             bottom: 0,
-            borderLeft: `1px ${(HEURE_DEBUT + i) % 2 === 0 ? 'solid' : 'dashed'} var(--cv-border)`,
+            borderLeft: `1px ${(START_HOUR + i) % 2 === 0 ? 'solid' : 'dashed'} var(--cv-border)`,
           },
         }),
       );
     }
 
-    // bandes présence
+    // presence bands
     for (const seg of presenceSegs) {
       line.appendChild(
         el('div', {
-          title: `Présence : ${fmtHeure(seg.debut)} → ${seg.ongoing ? 'en cours' : fmtHeure(seg.fin)}`,
+          title: `Présence : ${formatTime(seg.start)} → ${seg.ongoing ? 'en cours' : formatTime(seg.end)}`,
           style: {
             position: 'absolute',
-            left: tsToPx(seg.debut),
-            width: Math.max(2, tsToPx(seg.fin) - tsToPx(seg.debut)),
+            left: tsToPx(seg.start),
+            width: Math.max(2, tsToPx(seg.end) - tsToPx(seg.start)),
             top: 0,
             bottom: 0,
             background: 'var(--cv-success-50)',
@@ -354,15 +355,15 @@ export function createTimeline(store, opts) {
         }),
       );
     }
-    // bandes pauses
+    // break bands
     for (const seg of pauseSegs) {
       line.appendChild(
         el('div', {
-          title: `Pause : ${fmtHeure(seg.debut)} → ${seg.ongoing ? 'en cours' : fmtHeure(seg.fin)}`,
+          title: `Pause : ${formatTime(seg.start)} → ${seg.ongoing ? 'en cours' : formatTime(seg.end)}`,
           style: {
             position: 'absolute',
-            left: tsToPx(seg.debut),
-            width: Math.max(2, tsToPx(seg.fin) - tsToPx(seg.debut)),
+            left: tsToPx(seg.start),
+            width: Math.max(2, tsToPx(seg.end) - tsToPx(seg.start)),
             top: 0,
             bottom: 0,
             background:
@@ -374,32 +375,32 @@ export function createTimeline(store, opts) {
       );
     }
 
-    // sessions — placement en « voies » (swim lanes) pour gérer les chronos
-    // en PARALLÈLE. La hauteur de la bande reste CONSTANTE : on divise la zone
-    // verticale réservée aux sessions par le nombre de voies nécessaires ce
-    // jour-là (chevauchement maximal). Une seule session => 1 voie pleine ;
-    // plusieurs en parallèle => voies empilées, sans changer la hauteur totale.
-    // Insets symétriques (16 px en haut / en bas du tracé de 140 px) pour que
-    // les sessions restent centrées dans le « canal » de présence, qu'il y ait
-    // une seule voie (bloc plein, centré) ou plusieurs voies empilées.
+    // sessions: placement in "lanes" (swim lanes) to handle
+    // PARALLEL timers. The height of the band stays CONSTANT: the vertical
+    // area reserved for the sessions is divided by the number of lanes needed
+    // that day (maximum overlap). A single session => 1 full lane;
+    // several in parallel => stacked lanes, without changing the total height.
+    // Symmetric insets (16 px at the top / bottom of the 140 px plot) so that
+    // the sessions stay centred in the presence "channel", whether there is
+    // a single lane (full block, centred) or several stacked lanes.
     const SESSION_ZONE_TOP = 16;
     const SESSION_ZONE_H = 108;
     const LANE_GAP = 4;
 
-    // Étendue visuelle de chaque session : [debut, debut + durée affichée].
-    const placed = sessionsJ
+    // Visual extent of each session: [start, start + displayed duration].
+    const placed = daySessions
       .map((s) => {
-        const dureeMs = dureeVivante(s);
-        return { s, dureeMs, start: s.debut, end: s.debut + Math.max(dureeMs, 60_000) };
+        const durationMs = liveDuration(s);
+        return { s, durationMs, start: s.start, end: s.start + Math.max(durationMs, 60_000) };
       })
       .sort((a, b) => a.start - b.start);
 
-    // Regroupement en « grappes » de sessions qui se chevauchent (composantes
-    // connexes), puis répartition en colonnes À L'INTÉRIEUR de chaque grappe.
-    // Conséquence : une session SANS chevauchement occupe toute la hauteur de la
-    // zone (donc centrée, marges égales en haut et en bas), tandis que des
-    // chronos réellement en parallèle se partagent la hauteur — sans jamais
-    // changer la hauteur totale de la bande, qui reste constante.
+    // Grouping into "clusters" of overlapping sessions (connected
+    // components), then distribution into columns INSIDE each cluster.
+    // Consequence: a session WITHOUT overlap takes the full height of the
+    // area (so it is centred, equal margins at the top and bottom), while
+    // really parallel timers share the height, without ever
+    // changing the total height of the band, which stays constant.
     const clusters = [];
     let cur = null;
     for (const item of placed) {
@@ -424,11 +425,11 @@ export function createTimeline(store, opts) {
         item.col = col;
       }
       const cols = Math.max(1, colEnds.length);
-      // Expansion type « agenda » : chaque bloc s'étale sur les voies libres
-      // situées à côté (vers le bas) tant qu'AUCUN autre bloc ne le chevauche
-      // réellement dans le temps. L'espace vertical est donc toujours rempli :
-      // un bloc sans voisin instantané prend toute la hauteur restante, et les
-      // marges haut/bas demeurent cohérentes entre solo et multi.
+      // "Agenda"-style expansion: each block spreads over the free lanes
+      // next to it (downwards) as long as NO other block really
+      // overlaps it in time. The vertical space is thus always filled:
+      // a block with no instantaneous neighbour takes all the remaining height, and the
+      // top/bottom margins stay consistent between solo and multi.
       for (const item of cl.items) {
         let span = 1;
         for (let c = item.col + 1; c < cols; c++) {
@@ -442,27 +443,27 @@ export function createTimeline(store, opts) {
 
     for (const item of placed) {
       const s = item.s;
-      const proj = projets.find((p) => p.id === s.projetId);
-      const dureeMs = item.dureeMs;
-      const left = tsToPx(s.debut);
-      const width = Math.max(10, msToPx(dureeMs));
-      const isActive = s.statut !== 'terminee';
-      const enCours = s.statut === 'en_cours';
+      const project = projects.find((p) => p.id === s.projectId);
+      const durationMs = item.durationMs;
+      const left = tsToPx(s.start);
+      const width = Math.max(10, msToPx(durationMs));
+      const isActive = s.status !== 'done';
+      const isRunning = s.status === 'running';
       const laneH = (SESSION_ZONE_H - LANE_GAP * (item.cols - 1)) / item.cols;
       const blockH = laneH * item.colSpan + LANE_GAP * (item.colSpan - 1);
       const compact = blockH < 46;
       const top = SESSION_ZONE_TOP + item.col * (laneH + LANE_GAP);
       const block = el('div', {
-        dataset: { focusKey: `session-bloc:${s.id}` },
-        title: `${proj?.nom || 'Sans projet'} · ${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'} · ${fmtDuree(dureeMs)}`,
-        onclick: () => ouvrirEditionSession(s),
+        dataset: { focusKey: `session-block:${s.id}` },
+        title: `${project?.name || 'Sans projet'} · ${formatTime(s.start)} → ${s.status === 'done' ? formatTime(s.end) : 'en cours'} · ${formatDuration(durationMs)}`,
+        onclick: () => openSessionEditor(s),
         style: {
           position: 'absolute',
           left,
           width,
           top,
           height: blockH,
-          background: proj?.couleur || 'var(--cv-neutral-500)',
+          background: project?.color || 'var(--cv-neutral-500)',
           borderRadius: 6,
           boxShadow: isActive
             ? '0 0 0 2px rgba(234,88,12,0.30), var(--cv-shadow-md)'
@@ -476,10 +477,10 @@ export function createTimeline(store, opts) {
           alignItems: compact ? 'center' : 'stretch',
           justifyContent: 'space-between',
           gap: compact ? 8 : 0,
-          outline: enCours ? '2px solid var(--cv-accent-500)' : 'none',
+          outline: isRunning ? '2px solid var(--cv-accent-500)' : 'none',
         },
       });
-      const titre = el(
+      const title = el(
         'div',
         { class: 'ch-souple', style: { overflow: 'hidden' } },
         el(
@@ -488,7 +489,7 @@ export function createTimeline(store, opts) {
             class: 'ch-ellipse',
             style: { font: '500 11px/1.2 var(--cv-font-sans)', opacity: 0.85 },
           },
-          proj?.nom || 'Sans projet',
+          project?.name || 'Sans projet',
         ),
         !compact && s.description && width > 80
           ? el(
@@ -501,25 +502,25 @@ export function createTimeline(store, opts) {
             )
           : null,
       );
-      const dureeLine = el(
+      const durationLine = el(
         'div',
         {
           class: 'ch-flex-c',
           style: { font: '500 11px/1 var(--cv-font-mono)', opacity: 0.95, gap: 5, flexShrink: 0 },
         },
-        el('span', null, fmtDuree(dureeMs)),
-        enCours
+        el('span', null, formatDuration(durationMs)),
+        isRunning
           ? el('span', {
               class: 'ch-point',
               style: { background: '#fff', animation: 'cv-pulse 1.2s infinite' },
             })
           : null,
       );
-      block.append(titre, dureeLine);
+      block.append(title, durationLine);
       line.appendChild(block);
     }
 
-    // Curseur "maintenant"
+    // "now" cursor
     if (isToday) {
       line.appendChild(
         el(
@@ -562,7 +563,7 @@ export function createTimeline(store, opts) {
                 whiteSpace: 'nowrap',
               },
             },
-            fmtHeure(now),
+            formatTime(now),
           ),
         ),
       );
@@ -571,7 +572,7 @@ export function createTimeline(store, opts) {
     return el(
       'div',
       {
-        dataset: { role: 'timeline-scroll', jour: String(jourDebut) },
+        dataset: { role: 'timeline-scroll', day: String(dayStart) },
         style: { overflowX: 'auto', overflowY: 'hidden', padding: '16px 0 12px' },
       },
       el(
@@ -590,33 +591,33 @@ export function createTimeline(store, opts) {
     );
   }
 
-  /* ----------------- Liste sessions ----------------- */
-  function sessionsListe(sessionsJ, projets) {
+  /* ----------------- Sessions list ----------------- */
+  function sessionsList(daySessions, projects) {
     const list =
-      sessionsJ.length === 0
+      daySessions.length === 0
         ? el(
             'div',
             { class: 'ch-vide' },
             icon('hourglass-low', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
             el('div', { style: { marginTop: 6 } }, 'Aucune session pour ce jour.'),
-            cle(
+            withFocusKey(
               UI.Button({
                 variant: 'primary',
                 size: 'sm',
                 icon: 'play',
                 children: 'Démarrer un chrono',
                 style: { marginTop: 12 },
-                onclick: opts.onOuvrirQuickAdd,
+                onclick: opts.onOpenQuickAdd,
               }),
-              'sessions-vide:demarrer',
+              'sessions-empty:start',
             ),
           )
         : el(
             'div',
             null,
-            sessionsJ.map((s) => {
-              const proj = projets.find((p) => p.id === s.projetId);
-              const isActive = s.statut !== 'terminee';
+            daySessions.map((s) => {
+              const project = projects.find((p) => p.id === s.projectId);
+              const isActive = s.status !== 'done';
               const row = el(
                 'div',
                 {
@@ -625,9 +626,9 @@ export function createTimeline(store, opts) {
                     : 'ch-ligne ch-flex-c ch-g12',
                   style: { padding: '10px 16px', cursor: 'pointer' },
                   onclick: (e) => {
-                    // Évite d'ouvrir l'édition quand on clique sur un bouton dans la ligne.
+                    // Avoids opening the editor when a button in the row is clicked.
                     if (e.target.closest('button')) return;
-                    ouvrirEditionSession(s);
+                    openSessionEditor(s);
                   },
                 },
                 el('div', {
@@ -635,7 +636,7 @@ export function createTimeline(store, opts) {
                     width: 4,
                     alignSelf: 'stretch',
                     borderRadius: 2,
-                    background: proj?.couleur || 'var(--cv-neutral-400)',
+                    background: project?.color || 'var(--cv-neutral-400)',
                     flexShrink: 0,
                   },
                 }),
@@ -657,12 +658,12 @@ export function createTimeline(store, opts) {
                   el(
                     'div',
                     { class: 'ch-legende ch-flex ch-g10', style: { marginTop: 2 } },
-                    el('span', null, proj?.nom || 'Sans projet'),
+                    el('span', null, project?.name || 'Sans projet'),
                     el('span', null, '·'),
                     el(
                       'span',
                       { style: { fontFamily: 'var(--cv-font-mono)' } },
-                      `${fmtHeure(s.debut)} → ${s.statut === 'terminee' ? fmtHeure(s.fin) : 'en cours'}`,
+                      `${formatTime(s.start)} → ${s.status === 'done' ? formatTime(s.end) : 'en cours'}`,
                     ),
                   ),
                 ),
@@ -676,52 +677,52 @@ export function createTimeline(store, opts) {
                       textAlign: 'right',
                     },
                   },
-                  fmtDuree(dureeVivante(s)),
+                  formatDuration(liveDuration(s)),
                 ),
-                isActive && s.statut === 'en_cours'
+                isActive && s.status === 'running'
                   ? el(
                       'div',
                       { class: 'ch-flex-c ch-g6', style: { flexShrink: 0 } },
                       UI.Badge({ variant: 'accent', dot: true, children: 'en cours' }),
-                      cle(
+                      withFocusKey(
                         UI.IconButton({
                           icon: 'pause',
                           label: 'Mettre en pause',
                           size: 'sm',
-                          onclick: () => store.actions.pauserSession(s.id),
+                          onclick: () => store.actions.pauseSession(s.id),
                         }),
                         `session:${s.id}:pause`,
                       ),
-                      cle(
+                      withFocusKey(
                         UI.IconButton({
                           icon: 'stop',
                           label: 'Arrêter',
                           size: 'sm',
-                          onclick: () => store.actions.arreterSession(s.id),
+                          onclick: () => store.actions.stopSession(s.id),
                         }),
                         `session:${s.id}:stop`,
                       ),
                     )
-                  : isActive && s.statut === 'en_pause'
+                  : isActive && s.status === 'paused'
                     ? el(
                         'div',
                         { class: 'ch-flex-c ch-g6', style: { flexShrink: 0 } },
                         UI.Badge({ variant: 'warning', dot: true, children: 'pause' }),
-                        cle(
+                        withFocusKey(
                           UI.IconButton({
                             icon: 'play',
                             label: 'Reprendre',
                             size: 'sm',
-                            onclick: () => store.actions.reprendreSession(s.id),
+                            onclick: () => store.actions.resumeSession(s.id),
                           }),
                           `session:${s.id}:reprendre`,
                         ),
-                        cle(
+                        withFocusKey(
                           UI.IconButton({
                             icon: 'stop',
                             label: 'Arrêter',
                             size: 'sm',
-                            onclick: () => store.actions.arreterSession(s.id),
+                            onclick: () => store.actions.stopSession(s.id),
                           }),
                           `session:${s.id}:stop`,
                         ),
@@ -729,30 +730,30 @@ export function createTimeline(store, opts) {
                     : el(
                         'div',
                         { class: 'ch-flex ch-g2', style: { flexShrink: 0 } },
-                        cle(
+                        withFocusKey(
                           UI.IconButton({
                             icon: 'play',
                             label: 'Reprendre ce projet',
                             title: 'Redémarrer un chrono sur ce projet',
-                            onclick: () => opts.onDemarrerSurProjet(s.projetId, s.description),
+                            onclick: () => opts.onStartOnProject(s.projectId, s.description),
                           }),
                           `session:${s.id}:redemarrer`,
                         ),
-                        cle(
+                        withFocusKey(
                           UI.IconButton({
                             icon: 'pencil-simple',
                             label: 'Modifier',
                             size: 'sm',
-                            onclick: () => ouvrirEditionSession(s),
+                            onclick: () => openSessionEditor(s),
                           }),
                           `session:${s.id}:modifier`,
                         ),
-                        cle(
+                        withFocusKey(
                           UI.IconButton({
                             icon: 'trash',
                             label: 'Supprimer',
                             size: 'sm',
-                            onclick: () => store.actions.supprimerSession(s.id),
+                            onclick: () => store.actions.deleteSession(s.id),
                           }),
                           `session:${s.id}:supprimer`,
                         ),
@@ -774,14 +775,14 @@ export function createTimeline(store, opts) {
         el(
           'div',
           { style: { marginLeft: 'auto' } },
-          cle(
+          withFocusKey(
             UI.Button({
               size: 'sm',
               icon: 'plus',
               children: 'Nouvelle',
-              onclick: opts.onOuvrirQuickAdd,
+              onclick: opts.onOpenQuickAdd,
             }),
-            'sessions:nouvelle',
+            'sessions:new',
           ),
         ),
       ),
@@ -789,17 +790,17 @@ export function createTimeline(store, opts) {
     );
   }
 
-  /* ----------------- Répartition ----------------- */
-  function repartition(sessionsJ, projets) {
-    const total = sessionsJ.reduce((s, x) => s + dureeVivante(x), 0);
-    const parProjet = {};
-    for (const s of sessionsJ) {
-      parProjet[s.projetId] = (parProjet[s.projetId] || 0) + dureeVivante(s);
+  /* ----------------- Distribution ----------------- */
+  function distribution(daySessions, projects) {
+    const total = daySessions.reduce((s, x) => s + liveDuration(x), 0);
+    const byProject = {};
+    for (const s of daySessions) {
+      byProject[s.projectId] = (byProject[s.projectId] || 0) + liveDuration(s);
     }
-    const liste = Object.entries(parProjet)
-      .map(([id, d]) => ({ id, duree: d, projet: projets.find((p) => p.id === id) }))
-      .filter((x) => x.projet)
-      .sort((a, b) => b.duree - a.duree);
+    const listEl = Object.entries(byProject)
+      .map(([id, d]) => ({ id, duration: d, project: projects.find((p) => p.id === id) }))
+      .filter((x) => x.project)
+      .sort((a, b) => b.duration - a.duration);
 
     return el(
       'section',
@@ -812,18 +813,18 @@ export function createTimeline(store, opts) {
         el('div', { class: 'ch-titre-carte' }, 'Répartition par projet'),
         el('div', { class: 'ch-legende', style: { marginTop: 2 } }, 'Clique pour relancer'),
       ),
-      liste.length === 0
+      listEl.length === 0
         ? el('div', { class: 'ch-vide' }, 'Rien à afficher — lance un chrono.')
         : el(
             'div',
             { style: { padding: '8px 0' } },
-            liste.map(({ id, duree, projet }) => {
-              const pct = total > 0 ? (duree / total) * 100 : 0;
+            listEl.map(({ id, duration, project }) => {
+              const pct = total > 0 ? (duration / total) * 100 : 0;
               return el(
                 'button',
                 {
-                  dataset: { focusKey: `repartition:${id}` },
-                  onclick: () => opts.onDemarrerSurProjet(id),
+                  dataset: { focusKey: `distribution:${id}` },
+                  onclick: () => opts.onStartOnProject(id),
                   class: 'ch-ligne-bouton ch-flex-c ch-g12',
                 },
                 el(
@@ -834,7 +835,7 @@ export function createTimeline(store, opts) {
                     { class: 'ch-flex-c ch-g8', style: { marginBottom: 4 } },
                     el('span', {
                       class: 'ch-pastille',
-                      style: { background: projet.couleur, flexShrink: 0 },
+                      style: { background: project.color, flexShrink: 0 },
                     }),
                     el(
                       'span',
@@ -842,7 +843,7 @@ export function createTimeline(store, opts) {
                         class: 'ch-ellipse',
                         style: { font: '500 13px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)' },
                       },
-                      projet.nom,
+                      project.name,
                     ),
                     el(
                       'span',
@@ -853,7 +854,7 @@ export function createTimeline(store, opts) {
                           color: 'var(--cv-fg)',
                         },
                       },
-                      fmtDuree(duree),
+                      formatDuration(duration),
                     ),
                   ),
                   el(
@@ -870,7 +871,7 @@ export function createTimeline(store, opts) {
                       style: {
                         width: `${pct}%`,
                         height: '100%',
-                        background: projet.couleur,
+                        background: project.color,
                         borderRadius: 3,
                         transition: 'width 300ms',
                       },
@@ -884,50 +885,50 @@ export function createTimeline(store, opts) {
     );
   }
 
-  /* ----------------- Pointages (édition) ----------------- */
+  /* ----------------- Attendance (editing) ----------------- */
 
-  function tsVersLocal(ts) {
+  function timestampToLocal(ts) {
     const d = new Date(ts);
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
-  function localVersTs(v) {
+  function localToTimestamp(v) {
     const t = new Date(v).getTime();
     return isNaN(t) ? null : t;
   }
 
-  function ouvrirEditionPointage(p, jourDebut) {
+  function openAttendanceEditor(p, dayStart) {
     const isNew = !p;
     let modal;
-    const tsInitial = p?.at ?? jourDebut + 9 * 3600_000;
+    const tsInitial = p?.at ?? dayStart + 9 * 3600_000;
 
     const typeW = UI.Select({
       label: 'Type',
-      value: p?.type || 'arrivee',
-      options: POINTAGE_TYPES.map((t) => ({ value: t.value, label: t.label })),
+      value: p?.type || 'arrival',
+      options: ATTENDANCE_TYPES.map((t) => ({ value: t.value, label: t.label })),
     });
     const timeW = UI.Input({
       label: 'Heure',
       type: 'datetime-local',
-      value: tsVersLocal(tsInitial),
+      value: timestampToLocal(tsInitial),
       autoFocus: true,
     });
 
-    function enregistrer() {
-      const t = localVersTs(timeW.input.value);
+    function save() {
+      const t = localToTimestamp(timeW.input.value);
       if (t == null) return;
       const type = typeW.input.value;
-      if (isNew) store.actions.ajouterPointage(type, t);
-      else store.actions.majPointage(p.id, { type, at: t });
+      if (isNew) store.actions.addAttendance(type, t);
+      else store.actions.updateAttendance(p.id, { type, at: t });
       modal.close();
     }
-    function supprimer() {
+    function originalDelete() {
       if (!p) return;
-      store.actions.supprimerPointage(p.id);
+      store.actions.deleteAttendance(p.id);
       modal.close();
     }
     timeW.input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') enregistrer();
+      if (e.key === 'Enter') save();
     });
 
     const footer = [];
@@ -937,7 +938,7 @@ export function createTimeline(store, opts) {
           variant: 'destructive',
           icon: 'trash',
           children: 'Supprimer',
-          onclick: supprimer,
+          onclick: originalDelete,
           style: { marginRight: 'auto' },
         }),
       );
@@ -947,7 +948,7 @@ export function createTimeline(store, opts) {
         variant: 'primary',
         icon: 'check',
         children: 'Enregistrer',
-        onclick: enregistrer,
+        onclick: save,
       }),
     );
 
@@ -959,12 +960,12 @@ export function createTimeline(store, opts) {
     });
   }
 
-  function pointageSection(pointageJ, jourDebut, isToday) {
-    const ordres = pointageJ.slice().sort((a, b) => a.at - b.at);
-    const aArrivee = pointageJ.some((e) => e.type === 'arrivee');
-    const nowBoundary = isToday ? Date.now() : jourDebut + 86400000;
-    const presence = aArrivee ? UI.dureePresence(pointageJ, nowBoundary) : 0;
-    const estParti = pointageJ.some((e) => e.type === 'depart');
+  function attendanceSection(dayAttendance, dayStart, isToday) {
+    const orders = dayAttendance.slice().sort((a, b) => a.at - b.at);
+    const hasArrival = dayAttendance.some((e) => e.type === 'arrival');
+    const nowBoundary = isToday ? Date.now() : dayStart + 86400000;
+    const presence = hasArrival ? UI.presenceDuration(dayAttendance, nowBoundary) : 0;
+    const hasLeft = dayAttendance.some((e) => e.type === 'departure');
     return el(
       'section',
       {
@@ -983,7 +984,7 @@ export function createTimeline(store, opts) {
             'Arrivée, pauses, départ — clique pour corriger une heure.',
           ),
         ),
-        aArrivee
+        hasArrival
           ? el(
               'div',
               { style: { marginLeft: 'auto', textAlign: 'right' } },
@@ -991,7 +992,7 @@ export function createTimeline(store, opts) {
               el(
                 'div',
                 { class: 'ch-flex-c', style: { gap: 5, justifyContent: 'flex-end', marginTop: 4 } },
-                isToday && !estParti
+                isToday && !hasLeft
                   ? el('span', {
                       class: 'ch-point',
                       style: {
@@ -1009,26 +1010,26 @@ export function createTimeline(store, opts) {
                       letterSpacing: '-0.01em',
                     },
                   },
-                  fmtDuree(presence),
+                  formatDuration(presence),
                 ),
               ),
             )
           : null,
         el(
           'div',
-          { style: { marginLeft: aArrivee ? 0 : 'auto' } },
-          cle(
+          { style: { marginLeft: hasArrival ? 0 : 'auto' } },
+          withFocusKey(
             UI.Button({
               size: 'sm',
               icon: 'plus',
               children: 'Ajouter',
-              onclick: () => ouvrirEditionPointage(null, jourDebut),
+              onclick: () => openAttendanceEditor(null, dayStart),
             }),
-            'pointage:ajouter',
+            'attendance:add',
           ),
         ),
       ),
-      ordres.length === 0
+      orders.length === 0
         ? el(
             'div',
             {
@@ -1046,13 +1047,13 @@ export function createTimeline(store, opts) {
         : el(
             'div',
             { class: 'ch-flex ch-g8', style: { flexWrap: 'wrap', padding: 12 } },
-            ordres.map((p) => {
-              const meta = POINTAGE_META[p.type] || POINTAGE_META.arrivee;
+            orders.map((p) => {
+              const meta = ATTENDANCE_META[p.type] || ATTENDANCE_META.arrival;
               return el(
                 'button',
                 {
-                  dataset: { focusKey: `pointage:${p.id ?? `${p.type}-${p.at}`}` },
-                  onclick: () => ouvrirEditionPointage(p, jourDebut),
+                  dataset: { focusKey: `attendance:${p.id ?? `${p.type}-${p.at}`}` },
+                  onclick: () => openAttendanceEditor(p, dayStart),
                   title: 'Modifier ou supprimer ce pointage',
                   class: 'ch-chip ch-chip--teinte',
                   style: {
@@ -1076,7 +1077,7 @@ export function createTimeline(store, opts) {
                   el(
                     'div',
                     { style: { font: '500 13px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' } },
-                    fmtHeure(p.at),
+                    formatTime(p.at),
                   ),
                 ),
               );
@@ -1086,67 +1087,67 @@ export function createTimeline(store, opts) {
   }
 
   /* ----------------- Render principal ----------------- */
-  // Défilement horizontal du graphique, mémorisé par jour affiché (clé = début du jour).
-  const scrollParJour = new Map();
+  // Horizontal scroll of the chart, remembered per displayed day (key = start of the day).
+  const scrollByDay = new Map();
 
   function render() {
-    // Avant de reconstruire : mémorise le défilement du graphique (pour le jour qu'il affiche)
-    // et l'élément focalisé. Un conteneur non affiché (scrollLeft forcé à 0) n'est pas mémorisé.
-    const ancienScroll = host.querySelector('[data-role="timeline-scroll"]');
-    // On ne mémorise qu'un conteneur déjà positionné : le tout premier rendu a lieu avant
-    // l'insertion dans le document (clientWidth = 0), et son scrollLeft de 0 écraserait
-    // sinon le centrage initial sur l'heure actuelle.
-    if (ancienScroll && ancienScroll.clientWidth > 0 && ancienScroll.dataset.positionne) {
-      scrollParJour.set(ancienScroll.dataset.jour, ancienScroll.scrollLeft);
+    // Before rebuilding: remember the scroll of the chart (for the day it shows)
+    // and the focused element. A container that is not displayed (scrollLeft forced to 0) is not remembered.
+    const previousScroll = host.querySelector('[data-role="timeline-scroll"]');
+    // Only a container that is already positioned is remembered: the very first render happens before
+    // insertion in the document (clientWidth = 0), and its scrollLeft of 0 would otherwise overwrite
+    // the initial centring on the current time.
+    if (previousScroll && previousScroll.clientWidth > 0 && previousScroll.dataset.positioned) {
+      scrollByDay.set(previousScroll.dataset.day, previousScroll.scrollLeft);
     }
     const focusKey = host.contains(document.activeElement)
       ? document.activeElement.closest('[data-focus-key]')?.dataset.focusKey
       : null;
 
     const s = store.state;
-    const dbase = new Date();
-    dbase.setHours(0, 0, 0, 0);
-    dbase.setDate(dbase.getDate() + dateOffset);
-    const jourDebut = dbase.getTime();
-    const jourFin = jourDebut + 86400000;
+    const baseDate = new Date();
+    baseDate.setHours(0, 0, 0, 0);
+    baseDate.setDate(baseDate.getDate() + dateOffset);
+    const dayStart = baseDate.getTime();
+    const dayEnd = dayStart + 86400000;
     const isToday = dateOffset === 0;
 
-    const sessionsJ = s.sessions
-      .filter((x) => x.debut >= jourDebut && x.debut < jourFin)
-      .sort((a, b) => a.debut - b.debut);
-    const pointageJ = s.pointage
-      .filter((p) => p.at >= jourDebut && p.at < jourFin)
+    const daySessions = s.sessions
+      .filter((x) => x.start >= dayStart && x.start < dayEnd)
+      .sort((a, b) => a.start - b.start);
+    const dayAttendance = s.attendance
+      .filter((p) => p.at >= dayStart && p.at < dayEnd)
       .sort((a, b) => a.at - b.at);
 
-    const totalTravaille = sessionsJ.reduce((acc, x) => acc + dureeVivante(x), 0);
-    const arrivee = pointageJ.find((p) => p.type === 'arrivee');
-    const dernierDepart = [...pointageJ].reverse().find((p) => p.type === 'depart');
+    const totalWorked = daySessions.reduce((acc, x) => acc + liveDuration(x), 0);
+    const arrival = dayAttendance.find((p) => p.type === 'arrival');
+    const lastDeparture = [...dayAttendance].reverse().find((p) => p.type === 'departure');
 
-    const jourLabel =
+    const dayLabel =
       dateOffset === 0
         ? "Aujourd'hui"
         : dateOffset === -1
           ? 'Hier'
-          : new Date(jourDebut).toLocaleDateString('fr-FR', {
+          : new Date(dayStart).toLocaleDateString('fr-FR', {
               weekday: 'long',
               day: 'numeric',
               month: 'long',
             });
-    const jourLabelDate = new Date(jourDebut).toLocaleDateString('fr-FR', {
+    const dayLabelDate = new Date(dayStart).toLocaleDateString('fr-FR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
     });
 
     host.replaceChildren(
-      // Bandeau date + stats
+      // Date banner + stats
       el(
         'div',
         { class: 'ch-flex', style: { alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' } },
         el(
           'div',
           { class: 'ch-flex-c ch-g8' },
-          cle(
+          withFocusKey(
             UI.IconButton({
               icon: 'caret-left',
               label: 'Jour précédent',
@@ -1160,18 +1161,14 @@ export function createTimeline(store, opts) {
           el(
             'div',
             null,
-            el(
-              'div',
-              { class: 'ch-titre-page', style: { textTransform: 'capitalize' } },
-              jourLabel,
-            ),
+            el('div', { class: 'ch-titre-page', style: { textTransform: 'capitalize' } }, dayLabel),
             el(
               'div',
               { class: 'ch-meta', style: { textTransform: 'capitalize', marginTop: 2 } },
-              jourLabelDate,
+              dayLabelDate,
             ),
           ),
-          cle(
+          withFocusKey(
             UI.IconButton({
               icon: 'caret-right',
               label: 'Jour suivant',
@@ -1184,7 +1181,7 @@ export function createTimeline(store, opts) {
             'nav:suivant',
           ),
           dateOffset !== 0
-            ? cle(
+            ? withFocusKey(
                 UI.Button({
                   size: 'sm',
                   variant: 'ghost',
@@ -1202,17 +1199,17 @@ export function createTimeline(store, opts) {
         el(
           'div',
           { class: 'ch-flex', style: { gap: 28 } },
-          statBloc(
+          statBlock(
             'Temps travaillé',
-            fmtDuree(totalTravaille),
-            `${sessionsJ.length} session${sessionsJ.length > 1 ? 's' : ''}`,
+            formatDuration(totalWorked),
+            `${daySessions.length} session${daySessions.length > 1 ? 's' : ''}`,
           ),
-          statBloc(
+          statBlock(
             'Amplitude',
-            arrivee
-              ? `${fmtHeure(arrivee.at)} → ${dernierDepart ? fmtHeure(dernierDepart.at) : '···'}`
+            arrival
+              ? `${formatTime(arrival.at)} → ${lastDeparture ? formatTime(lastDeparture.at) : '···'}`
               : '—',
-            arrivee ? (dernierDepart ? 'journée clôturée' : 'en cours') : 'pas encore arrivé',
+            arrival ? (lastDeparture ? 'journée clôturée' : 'en cours') : 'pas encore arrivé',
             { mono: false },
           ),
         ),
@@ -1245,55 +1242,55 @@ export function createTimeline(store, opts) {
                 color: 'var(--cv-fg-muted)',
               },
             },
-            legendeItem('var(--cv-success-500)', 'Présence'),
-            legendeItem('var(--cv-warning-400)', 'Pause', true),
-            legendeItem('var(--cv-fg)', 'Session'),
+            legendItem('var(--cv-success-500)', 'Présence'),
+            legendItem('var(--cv-warning-400)', 'Pause', true),
+            legendItem('var(--cv-fg)', 'Session'),
           ),
         ),
-        timelineChart(jourDebut, sessionsJ, pointageJ, s.projets, isToday),
+        timelineChart(dayStart, daySessions, dayAttendance, s.projects, isToday),
       ),
 
-      // Bas : sessions + répartition
+      // Bottom: sessions + distribution
       el(
         'div',
         { style: { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 } },
-        sessionsListe(sessionsJ, s.projets),
+        sessionsList(daySessions, s.projects),
         el(
           'div',
           { class: 'ch-pile ch-g20' },
-          pointageSection(pointageJ, jourDebut, isToday),
-          repartition(sessionsJ, s.projets),
+          attendanceSection(dayAttendance, dayStart, isToday),
+          distribution(daySessions, s.projects),
         ),
       ),
     );
 
-    // Restaure le défilement du graphique.
+    // Restores the scroll of the chart.
     const scroller = host.querySelector('[data-role="timeline-scroll"]');
     if (scroller && scroller.clientWidth > 0) {
-      const memo = scrollParJour.get(String(jourDebut));
-      if (memo != null) {
-        scroller.scrollLeft = memo;
+      const remembered = scrollByDay.get(String(dayStart));
+      if (remembered != null) {
+        scroller.scrollLeft = remembered;
       } else if (isToday && scroller.scrollWidth > scroller.clientWidth) {
-        // Premier affichage du jour courant : l'heure actuelle visible, vers les 2/3 de la largeur.
+        // First display of the current day: the current time visible, around 2/3 of the width.
         scroller.scrollLeft = Math.max(
           0,
           CHART_PAD_X + tsToPx(Date.now()) - (scroller.clientWidth * 2) / 3,
         );
       }
-      scroller.dataset.positionne = '1';
+      scroller.dataset.positioned = '1';
     } else if (scroller && !scroller.isConnected) {
-      // Pas encore dans le document (premier rendu) : on positionne dès qu'il est affiché.
+      // Not yet in the document (first render): position as soon as it is displayed.
       requestAnimationFrame(() => {
-        if (scroller.isConnected && !scroller.dataset.positionne) render();
+        if (scroller.isConnected && !scroller.dataset.positioned) render();
       });
     }
 
-    // Restaure le focus clavier.
+    // Restores the keyboard focus.
     if (focusKey) {
-      const cible = [...host.querySelectorAll('[data-focus-key]')].find(
+      const targetId = [...host.querySelectorAll('[data-focus-key]')].find(
         (n) => n.dataset.focusKey === focusKey,
       );
-      if (cible) cible.focus({ preventScroll: true });
+      if (targetId) targetId.focus({ preventScroll: true });
     }
   }
 

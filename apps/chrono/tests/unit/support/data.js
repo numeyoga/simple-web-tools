@@ -1,6 +1,6 @@
 // Small builders shared by the unit tests.
 
-/** @typedef {import('../../../src/types.js').Donnees} Donnees */
+/** @typedef {import('../../../src/types.js').ChronoData} ChronoData */
 /** @typedef {import('../../../src/types.js').Session} Session */
 
 export const H = 3600_000;
@@ -12,17 +12,17 @@ export const H = 3600_000;
  */
 export const h = (hh, mm = 0) => new Date(2026, 10, 18, hh, mm).getTime();
 
-/** @returns {Donnees} */
-export const vide = () => ({ projets: [], todos: [], sessions: [], pointage: [] });
+/** @returns {ChronoData} */
+export const emptyData = () => ({ projects: [], todos: [], sessions: [], attendance: [] });
 
 /**
- * @param {Donnees} data
+ * @param {ChronoData} data
  * @param {string} id
  * @returns {Session}
  */
 export function session(data, id) {
   const s = data.sessions.find((x) => x.id === id);
-  if (!s) throw new Error(`session ${id} introuvable`);
+  if (!s) throw new Error(`session ${id} not found`);
   return s;
 }
 
@@ -31,14 +31,14 @@ export function session(data, id) {
  * @param {Partial<Session>} [extra]
  * @returns {Session}
  */
-export const terminee = (extra = {}) => ({
+export const finishedSession = (extra = {}) => ({
   id: 's1',
-  projetId: 'p1',
+  projectId: 'p1',
   description: '',
-  debut: h(9),
-  dernierDebut: null,
-  fin: h(17),
-  duree: 7 * H,
-  statut: 'terminee',
+  start: h(9),
+  lastStart: null,
+  end: h(17),
+  duration: 7 * H,
+  status: 'done',
   ...extra,
 });

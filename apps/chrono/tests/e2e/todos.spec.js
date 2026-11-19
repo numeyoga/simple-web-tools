@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { ouvrirApp } from './support.js';
+import { openApp } from './support.js';
 
-test('todo : ajout puis marquage comme terminé', async ({ page }) => {
-  const { erreurs } = await ouvrirApp(page, { horloge: true });
+test('todo: add, then mark as done', async ({ page }) => {
+  const { errors } = await openApp(page, { clock: true });
   await page.getByRole('button', { name: 'Todos' }).click();
   const main = page.getByRole('main');
   await expect(main.getByText('0 en cours · 0 terminées')).toBeVisible();
@@ -18,5 +18,5 @@ test('todo : ajout puis marquage comme terminé', async ({ page }) => {
   await expect(main.getByText('0 en cours · 1 terminées')).toBeVisible();
   await expect(main.getByRole('button', { name: 'Rouvrir' })).toBeVisible();
 
-  expect(erreurs).toEqual([]);
+  expect(errors).toEqual([]);
 });

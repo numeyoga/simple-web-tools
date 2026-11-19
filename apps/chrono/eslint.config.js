@@ -6,8 +6,8 @@ export default [
   browserModule(['src/**/*.js', '*.config.js']),
   nodeGlobals(['vite.config.js', 'vitest.config.js', 'playwright.config.js', 'eslint.config.js']),
   // The views come from the legacy scripts: they declare a variable, then assign it once when
-  // the element is built (`let modal; ... modal = UI.Modal(...)`). They are rewritten with the
-  // English identifiers in the next step, so the rule is relaxed for them only.
+  // the element is built (`let modal; ... modal = UI.Modal(...)`). They are rewritten on the
+  // Covenant components in a later step, so the rule is relaxed for them only.
   { files: ['src/adapters/dom/**/*.js'], rules: { 'prefer-const': 'off' } },
   tests(['tests/**/*.js']),
 ];
