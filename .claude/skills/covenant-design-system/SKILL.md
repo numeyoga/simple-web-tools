@@ -51,7 +51,7 @@ Local adaptation of the published skill, to merge back if it proves useful:
    Set `<html lang="…" data-theme="light|dark">`. New pages start from `templates/page.html`.
 3. **Pick components** from the index below and open each one's reference. Copy its **Anatomy** markup verbatim; change only text, `id`s (keep them unique and keep every `for`, `aria-controls`, `aria-labelledby` and `aria-describedby` pointing at the right `id`) and data.
 4. **Compose** with semantic tokens only. Layout glue may use `display`, `gap` and `grid`, with `var(--cv-space-*)` values. Any colour, radius, shadow or size is a semantic `var(--cv-*)` token that follows the theme.
-5. **Behaviour** comes from `covenant.js`: it starts by itself; call `Covenant.init(element)` after inserting markup; `Covenant.toast({ status, title, text })`, `Covenant.openDialog(id)`, `Covenant.closeDialog(id)`. Listen to `cv:change` (combobox) and `cv:command` (command menu).
+5. **Behaviour** comes from `covenant.js`: it starts by itself; call `Covenant.init(element)` after inserting markup; `Covenant.toast({ status, title, text })`, `Covenant.openDialog(id)`, `Covenant.closeDialog(id)`, `Covenant.setCategory(element, n | hex)`. Listen to `cv:change` (combobox) and `cv:command` (command menu).
 6. **Verify** with `references/checklist.md` plus the checklist of every component used, in both themes. When you can run a browser, run axe-core (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa` tags) in light and dark, tab through every control, open and close every overlay with the keyboard, and check a 320 px wide window. Report what you checked and what you could not.
 7. **Stop and ask** when a design needs something no component or token covers. Never invent a token, a colour, a component or a variant; propose a deliberate extension instead.
 
@@ -62,6 +62,8 @@ Local adaptation of the published skill, to merge back if it proves useful:
 - Everything follows the theme. Use semantic tokens only (`--cv-bg`, `--cv-surface*`, `--cv-fg*`, `--cv-border*`, `--cv-<status>-surface|border`, `--cv-*-fill*`, `--cv-brand-*`). Never use a primitive scale token (`--cv-neutral-*`, `--cv-accent-<n>`, `--cv-<status>-<n>`), a hex, `rgb()` or named colour in component CSS or markup: `grep -nE "var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)"` must return nothing. A missing role is a gap to report, not a primitive to borrow.
 - One accent, orange. Text never sits on `--cv-brand-accent`; fills behind text use `--cv-accent-fill` with `--cv-fg-on-accent`. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`. Invalid fields use `--cv-border-danger`, selection `--cv-border-selected`, inverse bubbles `--cv-surface-inverse` with `--cv-fg-inverse`. On `--cv-surface-3` only `--cv-fg` and `--cv-fg-muted`.
 - Status colours mean status only, and status is always carried by a word or an icon too.
+- Category colours (projects and other user-defined groups) come only from `data-cat="1..16"` or `Covenant.setCategory()`, with the `cv-cat-*` recipes; never a status, never alone (the name is always shown), white labels on fills, markers never on `--cv-surface-3`. See `references/components/CategoryColor.md`.
+- On `--cv-surface-inverse`, captions use `--cv-fg-inverse-muted`, never `--cv-fg-muted` or `--cv-fg-subtle`.
 - Sentence case, no emoji, no exclamation mark. Buttons are verbs; errors say what failed, why, and what to do next.
 - IBM Plex Sans for UI, IBM Plex Mono for numbers, IDs, durations and timestamps. Phosphor 2.1.x icons only (2.1.2 shipped). Fonts and icons are self-hosted: no Google Fonts, no unpkg, no CDN in an application.
 - No gradients, no decorative imagery, no `backdrop-filter`, no bounce. Motion only on overlays and toasts.
@@ -110,6 +112,7 @@ Local adaptation of the published skill, to merge back if it proves useful:
 **Data display**
 - `Avatar` — Avatars show a person as a photo or initials in a circle at 24, 32 or 40 px.
 - `Card` — Cards group the summary of one object: a title, metadata and an optional footer; a card that opens the object is a link.
+- `CategoryColor` — Category colours tell projects apart: 16 hues, each with a marker (stripe, dot, chart segment) and a fill behind a white label. A deliberate extension: a category is never a status and never carries meaning alone.
 - `DataTable` — Data tables list records in 32 px rows with a sentence-case header, mono numbers aligned right, and scroll inside their own region on narrow screens.
 - `Kbd` — Keycaps show a keyboard shortcut in mono, with a thicker bottom border.
 

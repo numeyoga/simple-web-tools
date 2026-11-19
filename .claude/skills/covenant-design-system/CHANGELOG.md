@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-11-19 (3) — category colours, muted text on the inverse surface, corrections
+
+Requested by two applications being converted to Covenant. Nothing was renamed or removed; everything below is an addition, except the two corrections.
+
+### Added: category colours (a deliberate extension)
+- **Tokens**, in `tokens.json` and `covenant-tokens.css`, light and dark, each with a usage note: `--cv-cat-1` … `--cv-cat-16` (marker, light and dark values), `--cv-cat-1-fill` … `--cv-cat-16-fill` (same in both themes), `--cv-fg-on-cat` (white).
+- **CSS** in `covenant.css`, semantic tokens only: `data-cat="1".."16"` (and `"custom"`) sets the local `--cv-cat` and `--cv-cat-fill`; recipes `cv-cat-stripe`, `cv-cat-dot`, `cv-cat-name`, `cv-cat-block`, `cv-cat-segment`, `cv-cat-legend`, `cv-cat-timeline`, `cv-cat-chart` (+ `__rows`, `__row`, `__bar`).
+- **JavaScript**: `Covenant.categoryColors(hex)` and `Covenant.setCategory(element, n | hex)`.
+- **Component page** `CategoryColor` (anatomy, classes, accessibility, usage, checklist) with a project card and table, a day timeline, a stacked bar chart with its legend and the full palette, in both themes side by side. Foundations and checklist updated.
+- **Values**: the suggested values were verified with the WCAG formula and all passed, but neighbours were too close: violet and purple were ΔE2000 3.6 apart (0.4 for protanopia), amber and yellow 1.3 for deuteranopia, blue and indigo 1.3 in dark for deuteranopia. **Adjusted**: hue and saturation kept, lightness set in two tiers that alternate around the wheel. Bright tier (odd numbers): markers at 3.20–3.24:1, fills at 4.60–4.64:1. Deep tier (even numbers): light markers at 4.60–4.64:1, dark markers at 5.21–5.25:1, fills at 6.51–6.57:1. Worst neighbour pair (markers and fills, both themes, wheel neighbours including rose–orange): ΔE2000 9.8 for normal vision (violet–purple, was 3.4) and 4.0 under simulated protanopia, deuteranopia or tritanopia (rose–orange, tritanopia; was 0.4 for violet–purple, protanopia). Simulation: Machado 2009, severity 1.
+- **Status look-alikes: kept.** Green, yellow, amber and rose stay in the palette because the name is always shown and a category never replaces a status badge; they are assigned last by default, with orange (the accent look-alike).
+- **Distinguishability: reordered and limited.** Default assignment order 9, 4, 14, 10, 7, 6, 16, 13, 8, 11, 12, 5, 3, 2, 15, 1. The first six stay apart for everyone, the first eight for most; beyond eight in one view, group the rest as "Other" in charts or rely on direct labels.
+- **Custom colours**: restrict users to the palette (recommended). Fallback: `Covenant.setCategory(element, "#rrggbb")` keeps hue and saturation and picks the lightest light marker and the darkest dark marker at 3:1 on every ground, and the lightest fill at 4.5:1 under white; the grounds are read from the tokens.
+- **Assignment**: store the number, not a hex value; after 16 projects the order starts again.
+
+### Added: nested theme scopes
+- `:where([data-theme])` re-applies `--cv-fg` and `--cv-bg` on any element that carries `data-theme`, so a dark panel inside a light page (or the reverse) gets the right text and ground. Zero specificity: any component rule still wins. Found while testing the side-by-side gallery, where text in the nested dark section inherited the light page colour.
+
+### Added: `--cv-fg-inverse-muted`
+- Captions on `--cv-surface-inverse` (running-timer card): `--cv-neutral-400` `#a1a1aa` in light (6.91:1), `#626877` in dark (5.16:1); `--cv-fg-inverse` is 17.72 / 18.20, so it stays visibly quieter. Documented in foundations, `tokens.json` and the checklist.
+
+### Corrected
+- `--cv-fg-subtle` on `--cv-surface-3` in dark is **4.03:1**, not 4.10 (CHANGELOG and the `tokens.json` usage note).
+- The first entry of 2026-11-19 is annotated: danger hover is `--cv-danger-800` (9.57) and pressed `--cv-danger-900` (12.16) since the second entry.
+- `--cv-radius-full` usage note now lists every pill (status badges, tab counters, avatars, switches, category dots), as the foundations already did.
+
 ## 2026-11-19 (2) — primary and danger told apart
 
 In light, the primary button (`#c2410c`) and the danger button (`#be123c`) had almost the same lightness (luminance ratio 1.21), the same white text and neighbouring hues: they were hard to tell apart.
@@ -36,12 +62,12 @@ An external audit (WCAG 2.2 AA, axe-core in light and dark at 1440 px and 320 px
 - **Selected segment fill**: `--cv-surface-inverse` (was `--cv-fg` used as a fill).
 - **Logo point** (sidebar mark) and **cover artwork**: `--cv-brand-accent`, `--cv-brand-tint`, `--cv-brand-deep`, `--cv-fg-subtle`; identical in light, adapted in dark.
 - **Near-miss `--cv-fg-subtle` on `--cv-surface-2` in dark: fixed.** Dark value `#8a90a0` → `#9096a6`: 4.86 (was 4.5009). Light unchanged (5.02).
-- **`--cv-fg-subtle` on `--cv-surface-3` (4.35 / 4.10): kept, and ruled out.** No component puts it there; the README and the checklist now say that only `--cv-fg` (13.96 / 11.03) and `--cv-fg-muted` (6.09 / 7.03) go on `--cv-surface-3`.
+- **`--cv-fg-subtle` on `--cv-surface-3` (4.35 / 4.03): kept, and ruled out.** No component puts it there; the README and the checklist now say that only `--cv-fg` (13.96 / 11.03) and `--cv-fg-muted` (6.09 / 7.03) go on `--cv-surface-3`.
 
 ### 3. Rules contradicted by the CSS or the docs
 - **Menu and listbox motion: fixed in the CSS.** `.cv-menu` (on `:popover-open`) and `.cv-listbox` fade in over 120 ms with `--cv-duration-fast` and `--cv-ease-emphasize`, which are now used. `prefers-reduced-motion` sets every duration token to `--cv-duration-instant`, which is now used too. No token removed.
 - **Radius full on `.cv-tab__count`: fixed in the doc.** The rule now reads "status badges, tab counters, avatars and switches".
-- **Danger pressed: fixed.** `--cv-danger-fill-pressed` (`--cv-danger-800`, `#881337`; white text 9.57) added to `tokens.json` and the CSS; hover keeps `--cv-danger-fill-hover` (8.02).
+- **Danger pressed: fixed.** `--cv-danger-fill-pressed` (`--cv-danger-800`, `#881337`; white text 9.57) added to `tokens.json` and the CSS; hover keeps `--cv-danger-fill-hover` (8.02). *Superseded by the next entry of the same day: the danger fill moved one step darker, so hover is now `--cv-danger-800` (9.57) and pressed `--cv-danger-900` (12.16).*
 - **Every size in rem: fixed.** Command list `max-height: 320px` → `20rem`. `code, kbd, samp, pre` use `max(0.95em, var(--cv-text-xs))`: 12 px in a 12 px context (was 11.4 px). The `html` font-size rule now says that `covenant.css` sets it and that applications never do.
 - **Top bar: fixed in the CSS.** `.cv-topbar` is `position: sticky; top: 0`, so `scroll-padding-top` now does its job (2.4.11). The TopBar page writes the size in rem.
 - **Drawer at 320 px: fixed in the CSS.** `max-width: 100vw` overrides the user-agent dialog limit: full width (320 px, was 288 px).

@@ -6,7 +6,7 @@ How to test, in order:
 
 1. **Automated**: axe-core with the `wcag2a`, `wcag2aa`, `wcag21aa` and `wcag22aa` tags, in light and in dark, with every overlay open (modal, drawer, menu, command menu, combobox list, tooltip, toast). Zero violations. axe does not measure the contrast of control borders or focus rings: step 3 does.
 2. **Keyboard only**: unplug the mouse. Tab through everything, operate every control, open and close every overlay. Hover a timed toast, leave it, and check that it disappears after the time that was left.
-3. **Theme and non-text contrast**: switch `data-theme` to dark and back. Every colour changes with the theme. Measure the borders of inputs, selects and checkboxes, the invalid border, the selected-tab underline and every focus ring against what touches them: 3:1 or more in both themes (1.4.11). Search the component CSS and markup for primitive tokens: `grep -nE "var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)"` returns nothing.
+3. **Theme and non-text contrast**: switch `data-theme` to dark and back. Every colour changes with the theme (category fills are the same in both themes by design). Measure the borders of inputs, selects and checkboxes, the invalid border, the selected-tab underline and every focus ring against what touches them: 3:1 or more in both themes (1.4.11). Search the component CSS and markup for primitive tokens: `grep -nE "var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)"` returns nothing.
 4. **Zoom and reflow**: 200 % browser zoom, then a 320 px wide window. Nothing is cut off; nothing scrolls sideways except a data table inside its own region.
 5. **Large screen and text size**: a 2560 × 1440 window at 100 % (body text 16.25 px, rows 40 px), then `data-text-size="large"` on a 1280 px window, then the browser's default font size at 20 px. Everything grows together; nothing overlaps, clips or scrolls sideways.
 6. **Text spacing**: apply line height 1.5, paragraph spacing 2, letter spacing 0.12, word spacing 0.16 (a bookmarklet does this). No text is clipped or overlaps.
@@ -17,7 +17,7 @@ How to test, in order:
 ### Tokens and values
 - [ ] Every color, space, radius and shadow is a **semantic** `var(--cv-*)` token that follows the theme. No primitive scale token (`--cv-neutral-*`, `--cv-accent-*`, `--cv-<status>-<number>`), no hex, `rgb()`, named color or raw length in component CSS or markup. A missing role becomes a new semantic token with a light and a dark value.
 - [ ] Only the components stylesheet (`components/bundle.css`) and `tokens.css` style it; no inline style except layout in a demo.
-- [ ] Radii come from the scale: `cv-radius-md` (8 px) on cards, inputs and buttons; `cv-radius-lg` (12 px) on modals, drawers and the command menu; `cv-radius-sm` (4 px) on tags, keycaps and menu items; `cv-radius-full` only on status badges, tab counters, avatars and switches.
+- [ ] Radii come from the scale: `cv-radius-md` (8 px) on cards, inputs and buttons; `cv-radius-lg` (12 px) on modals, drawers and the command menu; `cv-radius-sm` (4 px) on tags, keycaps and menu items; `cv-radius-full` only on status badges, tab counters, avatars, switches and category dots.
 - [ ] Spacing comes from the 4 px scale (`cv-space-*`).
 - [ ] Controls use `min-height`, never a fixed `height`.
 - [ ] Every size is in `rem` (text, spacing, row heights, icons, widths of panels). Only borders, outlines, shadows and radii are in px. The application never sets `font-size` on `<html>` (`covenant.css` sets it for the text scale).
@@ -30,6 +30,8 @@ How to test, in order:
 - [ ] Text and icons on a coloured fill (accent or danger) are white, in both themes; a primary and a danger button side by side are told apart at a glance.
 - [ ] Form-control boundaries use `cv-border-control`, invalid controls `cv-border-danger`, selection `cv-border-selected`; focus uses `cv-border-focus` (or `cv-fg-inverse` on `cv-surface-inverse`).
 - [ ] On `cv-surface-3` only `cv-fg` and `cv-fg-muted`; `cv-fg-subtle` never sits on it.
+- [ ] On `cv-surface-inverse` only `cv-fg-inverse` and, for captions, `cv-fg-inverse-muted`; never `cv-fg-muted` or `cv-fg-subtle`.
+- [ ] Category colours (`data-cat`, `cv-cat-*`) only for user-defined groups such as projects, never as a status and never alone: the name is next to every marker and inside every block, charts have a legend or direct labels. Markers sit on `cv-bg`, `cv-surface`, `cv-surface-2` or `cv-surface-raised`, never on `cv-surface-3`; labels on category fills are white (`cv-fg-on-cat`).
 - [ ] No gradient, no texture, no `backdrop-filter`. The only transparency is the `cv-overlay` scrim.
 
 ### States
