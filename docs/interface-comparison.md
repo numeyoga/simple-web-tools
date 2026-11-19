@@ -6,238 +6,309 @@
 > is not ticked. Every recommendation is for the maintainer to accept, change or reject.
 > This replaces the comparison of 2026-11-18, which was written against the old French skill.
 
-Date: 2026-11-19. The skill (`.claude/skills/covenant-design-system/`) is now the normative
-target for `packages/covenant`. Chrono's interface stays the visual reference.
+Date: 2026-11-19. The skill (`.claude/skills/covenant-design-system/`) is the normative target for
+`packages/covenant`. Chrono's interface stays the visual reference.
+
+**Skill version checked: commit `185c9b1`** (`CHANGELOG.md`, entries "2026-11-19" and "2026-11-19 (2)").
+This is the second pass: commit `3f27774` audited the previous version, the maintainer sent that audit
+to Claude Design, and `185c9b1` is the answer. Every claim of the new `CHANGELOG.md` was rechecked, not
+trusted.
 
 ## Summary
 
-1. **The skill's WCAG 2.2 AA claim holds for what it documents.** axe-core (wcag2a, wcag2aa,
-   wcag21aa, wcag22aa) reported **0 violations in 28 runs** (its page template and a gallery of 32
-   components, light and dark, 1440 and 320 px, plus every overlay open). No horizontal scroll at
-   320 px. Of 206 computed contrast pairs, every pair the skill documents passes. Computing
-   the rest found **two real sub-3:1 states in dark mode** and one behaviour bug (below).
-2. **Locavern already is the skill.** Its vendored `covenant-tokens.css` is byte-identical to the
-   skill's, and `covenant.css` differs only by the removed Google Fonts `@import`.
-   Locavern's gap is app code (chips, actions, nesting, headings), not the design system.
-3. **Chrono is far from the skill, and the distance is where its charm comes from.** Its neutral and
-   accent scales match the skill's, but it uses them differently. Thirteen Chrono traits conflict
-   with the skill; the ones that matter are hover motion and press scale, sub-12 px text, project
-   colours, the ink card, looping pulses and the brightest orange fill. I recommend following the
-   skill for eleven, extending it for one (project colour) and leaving shortcuts to question H.
-4. **Eight of the 11 old questions are answered** by the skill, one in part (4) and two stay open
-   (3 and 8). Eight decisions remain (section
-   [Remaining open questions](#remaining-open-questions)); the one that changes how the apps look
-   is **project colour** (question C): the skill has no categorical palette.
-5. **Skill defects to fix once, in `packages/covenant`** (three, listed in
-   [Skill against itself](#the-skill-against-itself)): dark invalid border 2.59:1, dark focus ring
-   on a selected segment 2.09:1, toast timer that never resumes after hover.
+1. **The skill update does what it says, with one wrong figure and no new failure.** axe-core (wcag2a,
+   wcag2aa, wcag21aa, wcag22aa) reported **0 violations in 28 runs** (page template and a gallery of 34
+   Anatomy blocks, light and dark, 1440 and 320 px, plus every overlay open). The three audited WCAG
+   failures (invalid border, focus ring on the checked segment, toast timer) are fixed and measured.
+   The other audited items are fixed too (table in [Item by item](#item-by-item-verdict)).
+2. **The page makes zero external requests.** 28 runs recorded, every non-local request blocked and
+   counted: 0. IBM Plex and Phosphor load from the skill's own files, no fallback font is rendered, icons are
+   visible.
+3. **Defects found in the update itself, all small:** `fg-subtle` on `surface-3` in dark is
+   **4.03:1, not the 4.10 stated** (`CHANGELOG.md` and `tokens.json:394`); the first CHANGELOG entry is
+   stale on danger hover and pressed (the second entry and the CSS agree with each other);
+   in dark, primary against danger is now 1.72:1 in lightness (it was 2.78:1); the primary hover step is
+   1.11:1. None fails a criterion. No primitive scale token remains in component CSS or markup.
+4. **Locavern's vendored files were identical to the previous skill, so it is now behind by 41 + 50 + 39
+   lines** (tokens, CSS, JS). Its own toast fix is replaced by the skill's equivalent. Its app CSS still
+   has 28 primitive references plus one in `index.html`, of which the tooltip is a real dark-mode defect.
+   See [What Locavern must take](#what-locavern-must-take-from-the-new-skill).
+5. **The update settles two of the old questions and narrows a third.** Accent fill (A) is decided by the
+   skill: `#cb4a00`, 4.65:1, close to Chrono's `#ea580c`. The skill defects (E) are fixed. The ink card
+   (D) now has `--cv-surface-inverse`; only a muted caption role is still missing. Six questions stay open
+   (B, C, D, F, G, H); the one that changes how the apps look is still **project colour** (C).
+6. **Chrono is still far from the skill, and the distance is where its charm comes from.** Thirteen
+   Chrono traits conflict; the accent fill is now the smallest of them. I recommend following the skill
+   for eleven, extending it for one (project colour) and leaving shortcuts to question H.
 
 ## How this was done
 
-- Read: `CLAUDE.md`, roadmap steps 3 and 4, the previous comparison, the whole skill
-  (SKILL.md including "In this repository", foundations, checklist, the component pages the apps'
-  screens need, tokens, CSS, JS, template), Chrono `public/assets/*.css` and `public/js/*.js`, Locavern
-  `public/vendor/covenant/*`, `src/styles/app.css`, `src/adapters/dom/*`.
+- Read: `CLAUDE.md`, the previous comparison, the new `CHANGELOG.md`, the diff of the skill between
+  `3f27774` and `185c9b1` (tokens, CSS, JS, template, every changed reference page), `tokens.json`,
+  Locavern's vendored files and app CSS. The earlier Chrono and Locavern reading (`public/assets/*.css`,
+  `js/*.js`, `src/styles/app.css`) was reused, with every skill line number remapped to the new files.
 - Contrast: a Node script resolves the `var()` chains of `covenant-tokens.css` and applies the WCAG
-  relative-luminance formula, compositing translucent colours over the real surface (206 pairs,
-  both themes). Scripts and results stay in the session scratchpad, not in the repository.
-- Browser: Chromium through Playwright. The skill's directory was served statically; the page
-  template and a scratch gallery (Anatomy markup copied from each component page) were tested
-  with axe, keyboard tabbing, 320 px reflow, `data-text-size="large"` at 1280 px, 2560 px
-  (body 16.25 px, rows 40 px) and every dialog, the menu, toasts and tooltips open.
-- The previous screenshots of the two apps were reused; skill screenshots were added.
-  None is committed.
+  relative-luminance formula, compositing translucent colours over the real surface (230 pairs, both
+  themes, plus a script that recomputes every number stated in the CHANGELOG). Scripts and results stay in
+  the session scratchpad, not in the repository.
+- Browser: Chromium through Playwright. The skill's `assets/` and `templates/` were served as one flat
+  folder (the layout the skill's workflow asks for: assets next to the page). The page template and a
+  gallery rebuilt from the Anatomy markup of every component page (34 blocks) were tested with axe,
+  keyboard tabbing, 320 px reflow, `data-text-size`, every dialog, the menu, the combobox, toasts and
+  tooltips. All network requests were recorded and non-local ones aborted.
+- Screenshots in the scratchpad, none committed: `skill-v2-*` (see [Three-way comparison](#three-way-comparison)).
 - Abbreviations. Skill: **S** `SKILL.md`, **F** `references/foundations.md`, **K**
-  `assets/covenant.css`, **T** `assets/covenant-tokens.css`, **J** `assets/covenant.js`.
-  Chrono: **CC** `apps/chrono/public/assets/covenant.css`, **CA** `…/app.css`, **UI**
+  `assets/covenant.css`, **T** `assets/covenant-tokens.css`, **J** `assets/covenant.js`, all as of
+  `185c9b1`. Chrono: **CC** `apps/chrono/public/assets/covenant.css`, **CA** `…/app.css`, **UI**
   `…/js/ui.js`, other `js/*.js` by name. Locavern: **LT** and **LC**
   `apps/locavern/public/vendor/covenant/covenant-tokens.css` and `covenant.css`, **LA**
   `apps/locavern/src/styles/app.css`.
 
-## WCAG 2.2 AA verification of the skill
+## Verification of the updated skill (commit 185c9b1)
 
 ### Verdict
 
-The claim holds for the documented pairings, the page template and every component tested, with
-the exceptions below. They are small, all in dark mode or in a rarely used state, and each has
-a one-line fix.
+The claim holds. Every audited item is fixed in the CSS, the JS or the docs, and each fix was measured in
+the browser. One figure in the CHANGELOG is wrong, one entry is stale, and a few thin margins or trade-offs
+come from the second change (orange fill and darker danger). There is no regression of a WCAG criterion.
+
+### Network, fonts, icons
+
+| Check                                                                                            | Result                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Non-local requests (Playwright `route`, page and gallery, 4 combinations, plus all overlay runs) | **0**. No `@import` in K (header comment only), no `<script src>` in the template, no 4xx                                                                                                                                                                                 |
+| Fonts                                                                                            | `fonts/covenant-fonts.css` resolves; loaded: IBM Plex Sans 400, 500, 600, Mono 400, 500, Phosphor (Bold on use). `Plex` text measures 361 px against 351 px for the fallback at 40 px: Plex is rendered. Sans 700 and Mono 600 files exist and are not needed by the page |
+| Icons                                                                                            | 31 visible `.ph` elements in the gallery, none zero-width; 9 more sit in closed dialogs. Logo: the light lockup shows in light, the dark lockup in dark (`cv-logo`)                                                                                                       |
+| Paths                                                                                            | `phosphor/*/style.css` and `fonts/*.woff2` resolve. `phosphor/*/style.css` also lists `.woff`, `.ttf` and `.svg` fallbacks that are not shipped; Chromium never asks for them (woff2 is first), only very old browsers would get a 404                                    |
+| The skill folder as shipped                                                                      | `templates/page.html` does not open correctly in place (`fonts/`, `covenant.css` live in `../assets/`); this is as documented (workflow step 2: copy `assets/` next to the page) and was the same before                                                                  |
 
 ### axe-core
 
 | Scope                                                                                      | Runs | Violations |
 | ------------------------------------------------------------------------------------------ | ---- | ---------- |
 | `templates/page.html`: light and dark, 1440x900 and 320x800                                | 4    | 0          |
-| Gallery (32 components): same four combinations                                            | 4    | 0          |
+| Gallery (34 Anatomy blocks): same four combinations                                        | 4    | 0          |
 | Gallery with Modal, Drawer, CommandMenu, Menu open, then four toasts plus tooltips visible | 20   | 0          |
 
-axe "incomplete" results, checked by hand: the `⌘` keycap (non-BMP glyph, axe cannot read it;
-`fg-muted` on `surface` is 7.73:1) and four elements of the narrow modal that axe called overlapped
-(`elementFromPoint` returns the element itself, and the pairs are the documented ones).
-Inline links 17 to 20 px high are exempt from 2.5.8 (inline in a sentence); every other
-interactive element is 24 px or more.
+axe "incomplete": only the `⌘` keycap (non-BMP glyph, axe cannot read it; `fg-muted` on `surface` is
+7.73:1), as before. The four "overlapped" elements of the narrow modal reported last time no longer appear.
+No horizontal scroll at 320 px (`scrollWidth` 320 in both themes, page and gallery; also with
+`data-text-size="large"` at 320 and 1280 px; 2560 px: body 16.25 px, rows 40 px, sidebar 290 px). Smallest
+computed text: 12 px. Smallest targets: 28 px controls; inline links 17 to 20 px (exempt, inline in a
+sentence).
 
-### Keyboard, reflow, text size
+### Behaviour
 
-- Tab order on the template: skip link, sidebar items, search (desktop); skip link, menu button,
-  search (320 px). Every stop shows a 2 px outline, `#c2410c` light and `#fb923c` dark, 2 px
-  offset, inside the viewport.
-- 320 px: `scrollWidth` 320 in both themes, page and gallery. At 320 px with `data-text-size="large"`,
-  nothing but data tables overflows. At 1280 px with `large`: no horizontal scroll.
-- Off-canvas nav: opens, focus moves to its first link, Escape closes it and returns focus to the
-  menu button. Dialogs opened from their buttons close on Escape and return focus to the opener.
-- 2560x1440: body 16.25 px, nav items 40 px, sidebar 290 px: as stated by F:104.
+| Check                                                                  | Result                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Toast pause and resume (J:211-240)                                     | A 2 s toast hovered at 0.5 s, held 3 s (past its timeout): still there, removed **1460 ms** after the pointer left (expected 1500). Hovered at 1.2 s: **807 ms** (800). Enter, leave, enter: **1304 ms** (1300). Focus on the dismiss button: stays, removed **1519 ms** after blur. Hover plus focus: stays until both end. Warning and danger stay 7 s+; default success leaves at 6 s; dismiss works |
+| Segmented control, keyboard focus, dark                                | Ring `#0a0b0e` on `#f5f6f8` (K:320), 18.20:1; light `#ffffff` on `#18181b`, 17.72:1 (`skill-v2-focus-segmented-dark.png`, `-light.png`)                                                                                                                                                                                                                                                                 |
+| Menu (K:532) and listbox (K:327)                                       | Both run `cv-pop-in`, 120 ms (opacity 0.15 at 30 ms, 1 after 300 ms). Closing is instant (the doc says "fade in"). Escape and outside click close the menu and return focus to its button; Escape closes the combobox list. With `prefers-reduced-motion: reduce`: duration tokens compute to 0 ms, no animation is created, opacity 1; toast animation is 0.01 ms                                      |
+| Top bar (K:590)                                                        | `position: sticky; top: 0; z-index: 100`, 48 px; still at `top: 0` after scrolling 1500 px. With 45 extra rows and 70 Tab and Shift+Tab stops, the focused element never came closer than **7.4 px** below the bar at 1440 px and **7.3 px** at 320 px (the ring needs 4 px). Anchor jump lands flush under the bar (2.4.11)                                                                            |
+| Drawer at 320 px (K:514)                                               | Width 320 (was 288), left 0, `scrollWidth` 320. 420 px at 420 and at 1440 px                                                                                                                                                                                                                                                                                                                            |
+| Alert anatomy (`Alert.md`)                                             | success `role="status"`, warning `role="status"`, danger `role="alert"`, info no role. Toasts: success `status`, warning `alert` (unchanged)                                                                                                                                                                                                                                                            |
+| `code`, `kbd`, `samp`, `pre` (K:99)                                    | Minimum 12 px at auto and standard scale, including inside a 12 px and a 10 px parent; 15 px at `large`                                                                                                                                                                                                                                                                                                 |
+| Primary against danger (`skill-v2-primary-vs-danger-{light,dark}.png`) | `#cb4a00` and `#9f1239`, luminance ratio **1.72** in both themes, hue 21.9° against 343.4°. Visibly different side by side, on `bg` and on `surface-2`. Hover `#c2410c` and `#881337`, pressed `#9a3412` and `#6b0f2a` measured on the buttons                                                                                                                                                          |
 
-### Computed contrast (ratios, WCAG formula)
+### Computed contrast
 
-Light / dark. "Needs" is 4.5 for text, 3 for components and focus.
+Light / dark. "Needs" is 4.5 for text, 3 for components and focus. 230 pairs were computed; every pair a
+component uses passes. The 18 pairs under their threshold are explained: pressed-only surfaces
+(`fg-subtle` and `fg-accent` on `surface-3`, `accent-fill` on `surface-3` in dark), hairlines and button or
+keycap borders the label identifies, `fg-disabled` (exempt), and the focus ring against the fill it is
+offset from.
 
-| Pairing                                                              | Light                      | Dark                      | Result                                        |
-| -------------------------------------------------------------------- | -------------------------- | ------------------------- | --------------------------------------------- |
-| `fg` on bg / surface / surface-2                                     | 16.97 / 17.72 / 16.12      | 16.58 / 15.08 / 13.29     | pass                                          |
-| `fg-muted` on bg / surface / surface-2                               | 7.41 / 7.73 / 7.03         | 10.57 / 9.61 / 8.47       | pass                                          |
-| `fg-subtle` on bg / surface / surface-2                              | 5.28 / 5.52 / 5.02         | 5.62 / 5.11 / **4.50**    | pass; dark surface-2 has 0.0009 margin        |
-| `fg-subtle` on surface-3                                             | 4.35                       | 3.74                      | fail, but not used (pressed state)            |
-| `fg-accent` (link) on bg / surface / surface-2                       | 4.96 / 5.18 / 4.71         | 7.92 / 7.20 / 6.35        | pass                                          |
-| `fg-success`, `-warning`, `-danger`, `-info` on surface              | 7.13 / 8.67 / 8.02 / 14.63 | 8.67 / 9.99 / 6.46 / 7.95 | pass                                          |
-| `fg-<status>` on its status surface (badge, alert)                   | 6.81 to 13.35              | 6.89 to 9.64              | pass (skill says 6.8 or more: true)           |
-| `fg-accent` on accent tint (accent badge, tab count)                 | 4.88                       | 6.33                      | pass                                          |
-| `fg-on-accent` on accent-fill / hover / pressed                      | 5.18 / 7.31 / 9.37         | 8.70 / 11.67 / 14.54      | pass (skill: 5.18 and 8.7: true)              |
-| `fg-on-danger` on danger-fill / hover                                | 6.29 / 8.02                | 6.29 / 8.02               | pass                                          |
-| Segmented selected, `fg-inverse` on `fg`                             | 17.72                      | 18.20                     | pass                                          |
-| Placeholder (`fg-subtle`) on surface                                 | 5.52                       | 5.11                      | pass                                          |
-| Tooltip `neutral-0` on `neutral-900`                                 | 17.72                      | 17.72                     | pass (skill: 17.7)                            |
-| `fg-disabled` on surface                                             | 2.56                       | 2.66                      | exempt (1.4.3); buttons use opacity 0.5       |
-| `border-control` on bg / surface / surface-2                         | 4.63 / 4.83 / 4.40         | 4.78 / 4.35 / 3.83        | pass                                          |
-| Focus ring `border-focus` on bg / surface / surface-2 / surface-3    | 4.96 / 5.18 / 4.71 / 4.08  | 7.92 / 7.20 / 6.35 / 5.27 | pass (skill: 4:1 or more: true)               |
-| Checked box, switch on, current page: `accent-fill` on surface       | 5.18                       | 7.20                      | pass                                          |
-| Check mark `fg-on-accent` on `accent-fill`                           | 5.18                       | 8.70                      | pass                                          |
-| Tab underline `accent-500` on surface / bg                           | 3.56 / 3.41                | 4.58 / 5.04               | pass (thin in light)                          |
-| Status icons on `surface-raised` (toast)                             | 7.13 to 14.63              | 5.69 to 8.81              | pass                                          |
-| Default button border `border-strong` on surface                     | 1.48                       | 2.04                      | not required: the label identifies the button |
-| **Invalid input border `danger-600` on surface** (K:205)             | 6.29                       | **2.59**                  | **fail 1.4.11 in dark**                       |
-| **Focus ring on a selected segment** (`border-focus` on `fg`, K:306) | 3.42                       | **2.09**                  | **fail 2.4.7 / 1.4.11 in dark**               |
+| Pairing                                                                                              | Light                         | Dark                              | Result                                                                  |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------- | --------------------------------- | ----------------------------------------------------------------------- |
+| `fg` on bg / surface / surface-2 / surface-3                                                         | 16.97 / 17.72 / 16.12 / 13.96 | 16.58 / 15.08 / 13.29 / 11.03     | pass                                                                    |
+| `fg-muted` on bg / surface / surface-2 / surface-3                                                   | 7.41 / 7.73 / 7.03 / 6.09     | 10.57 / 9.61 / 8.47 / 7.03        | pass                                                                    |
+| `fg-subtle` on bg / surface / surface-2                                                              | 5.28 / 5.52 / 5.02            | 6.06 / 5.51 / **4.86**            | pass; the dark near-miss (4.5009) now has a 0.36 margin                 |
+| `fg-subtle` on surface-3                                                                             | 4.35                          | **4.03**                          | fail, ruled out (no component uses it); CHANGELOG says 4.10             |
+| `fg-accent` (link) on bg / surface / surface-2                                                       | 4.96 / 5.18 / 4.71            | 7.92 / 7.20 / 6.35                | pass                                                                    |
+| `fg-success`, `-warning`, `-danger`, `-info` on surface                                              | 7.13 / 8.67 / 8.02 / 14.63    | 8.67 / 9.99 / 6.46 / 7.95         | pass                                                                    |
+| `fg-<status>` on its surface (badge, alert) = badge dot on its tint                                  | 6.81 to 13.35                 | 6.89 to 9.64                      | pass (dot is `currentColor`, same ratio)                                |
+| `fg-accent` on accent tint (accent badge, tab count)                                                 | 4.88                          | 6.33                              | pass                                                                    |
+| `fg-on-accent` (white) on accent-fill / hover / pressed                                              | 4.65 / 5.18 / 7.31            | 4.65 / 5.18 / 7.31                | pass; same in both themes                                               |
+| `fg-on-danger` on danger-fill / hover / pressed                                                      | 8.02 / 9.57 / 12.16           | 8.02 / 9.57 / 12.16               | pass                                                                    |
+| Selected segment and ring on it: `fg-inverse` on `surface-inverse`                                   | 17.72                         | 18.20                             | pass                                                                    |
+| Unselected segment ring and every focus ring: `border-focus` on bg / surface / surface-2 / surface-3 | 4.96 / 5.18 / 4.71 / 4.08     | 7.92 / 7.20 / 6.35 / 5.27         | pass                                                                    |
+| Tooltip text `fg-inverse` on `surface-inverse`                                                       | 17.72                         | 18.20                             | pass                                                                    |
+| Tooltip bubble `surface-inverse` against bg / surface                                                | 16.97 / 17.72                 | 16.58 / 15.08                     | pass (was 1.01 against dark bg)                                         |
+| Avatar `fg` on `surface-3`                                                                           | 13.96                         | 11.03                             | pass                                                                    |
+| Invalid border `border-danger` on surface / surface-2 / surface-raised                               | 8.02 / 7.29 / 8.02            | 6.46 / 5.69 / 5.69                | pass (was 2.59 and 2.29 in dark)                                        |
+| Tab underline `border-selected` on bg / surface / surface-2                                          | 4.96 / 5.18 / 4.71            | 7.92 / 7.20 / 6.35                | pass (was 3.41 in light)                                                |
+| Checked box, switch on, current page: `accent-fill` on bg / surface / surface-2 / surface-raised     | 4.45 / 4.65 / 4.23 / 4.65     | 3.86 / 3.51 / **3.09** / **3.09** | pass; thin in dark on surface-2 and surface-raised (modal, menu, toast) |
+| Check mark and switch thumb `fg-on-accent` on `accent-fill`                                          | 4.65                          | 4.65                              | pass                                                                    |
+| `accent-fill` on `surface-3`                                                                         | 3.66                          | **2.57**                          | no component puts a checked control there; theoretical                  |
+| `fg-disabled` on surface                                                                             | 2.56                          | 2.66                              | exempt (1.4.3); buttons use opacity 0.5                                 |
+| Default button border `border-strong` on surface                                                     | 1.48                          | 2.04                              | not required: the label identifies the button                           |
+| Danger button fill against surface                                                                   | 8.02                          | 2.03                              | not required (white label 8.02:1)                                       |
+| Status icons on `surface-raised` (toast)                                                             | 7.13 to 14.63                 | 5.69 to 8.81                      | pass                                                                    |
 
-The failures, precisely:
+`tokens.json` against `covenant-tokens.css`: **87 colour tokens compared in both themes, 0
+differences**; every CSS token has an entry in `tokens.json`.
 
-1. **Invalid control boundary in dark.** `.cv-input[aria-invalid="true"]` sets
-   `border-color: var(--cv-danger-600)` (K:205). `danger-600` is a primitive that does not
-   change with the theme: `#be123c` on dark `surface` `#1d2027` is **2.59:1** (2.29:1 on
-   surface-2). The boundary identifies the control, so it needs 3:1 (1.4.11). The error
-   text and icon are fine (6.46:1), so the user is not left without information, but the box
-   itself fails. Fix: `var(--cv-fg-danger)` (8.02 light, 6.46 dark), which K:206 already uses for the
-   focused invalid state.
-2. **Focus ring on the selected segment in dark.** `outline-offset: -4px` (K:306) draws the
-   ring over the selected segment, whose fill is `--cv-fg`. In dark, `#fb923c` on `#f5f6f8`
-   is **2.09:1**. Visible to the eye (orange on near-white, `skill-focus-segmented-dark.png`)
-   but below 3:1. Fix: draw the ring in `--cv-fg-inverse` over the selected segment.
-3. **Behaviour, not contrast: a hovered toast never leaves.** J:213-217 clears the timer on
-   `mouseenter` and `focusin` and never restarts it, while `Toast.md` says "paused on hover or
-   focus". Locavern's copy of `covenant.js` already fixes this (pause and resume); the fix must
-   be merged back into the package.
+### CHANGELOG figures, recomputed
 
-Everything else the skill states about contrast was recomputed and is true.
+Every ratio the CHANGELOG states was recomputed from `covenant-tokens.css`: 1.72, 4.65, 5.18, 7.31, 8.02,
+9.57, 12.16, 4.65 / 3.51, 4.23 / 3.09, 8.02 / 6.46, 7.29 / 5.69, 17.72 / 18.20, 5.18 / 7.20, 16.58, 13.96 /
+11.03, all badge dot figures (6.81 / 8.58, 8.38 / 9.64, 7.34 / 6.89, 13.35 / 7.88, 4.88 / 6.33), tab underline
+4.96 / 7.92 and 5.18 / 7.20, `fg-subtle` 5.02 / 4.86, `fg` and `fg-muted` on `surface-3`, and the "was"
+figures (1.85, 2.13, 1.01, 3.41). All match, except:
+
+| Statement                        | Stated | Computed | Where                                                                    |
+| -------------------------------- | ------ | -------- | ------------------------------------------------------------------------ |
+| `fg-subtle` on `surface-3`, dark | 4.10   | **4.03** | `CHANGELOG.md` (entry 1, section 2) and `tokens.json:394` ("4.1:1 dark") |
+
+The two entries disagree on `--cv-danger-fill-pressed`. **The second entry is right**: K:178-179, T:75-76
+and 129-130 and `tokens.json:461-474` use `danger-800` for hover (9.57:1) and `danger-900` for pressed
+(12.16:1), and `Button.md:20` and F:157 say the same. Entry 1 still says "pressed =
+`--cv-danger-800` (9.57)" and "hover keeps `--cv-danger-fill-hover` (8.02)", which was true only before
+entry 2. No doc contradicts the CSS.
+
+Primitive scale tokens in component CSS or markup (the rule "semantic tokens only"): searched
+`covenant.css`, `covenant.js`, `templates/page.html`, every Anatomy block and every other line of
+`references/components/*.md`, `SKILL.md` and the checklist for `--cv-(neutral|accent|success|warning|danger|info)-<n>`,
+hex, `rgb()` and `style=` attributes outside `covenant-tokens.css`. **0 violations.** The only matches are
+prose naming the rule (K:5 comment, `Button.md:37`, S, F, checklist). The checklist's own grep (step 3)
+returns nothing. The logo SVG files in `assets/logos/` carry fixed hex colours; they are artwork, not
+component CSS.
+
+### Item by item verdict
+
+Items are those of the previous audit (this document before this revision), with the CHANGELOG's numbering.
+
+| Item                                                        | Verdict                           | Evidence                                                                                                                                                                                                                                                                 |
+| ----------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.1 Invalid input border, dark (1.4.11)                     | **fixed**                         | K:217-218 use `--cv-border-danger`; 8.02 / 6.46 on surface, 7.29 / 5.69 on surface-2; computed border `rgb(159,18,57)` light, `rgb(255,122,122)` dark                                                                                                                    |
+| 1.2 Focus ring on the checked segment (2.4.7, 1.4.11)       | **fixed**                         | K:317, 320: fill `surface-inverse`, ring `fg-inverse`; 17.72 / 18.20; `skill-v2-focus-segmented-dark.png`. The offset table is in F:158-166                                                                                                                              |
+| 1.3 Toast timer never resumed (2.2.1)                       | **fixed**                         | J:211-240; five timed measurements above, all within 40 ms of the expected remaining time                                                                                                                                                                                |
+| 2 Tooltip on primitives                                     | **fixed**                         | K:424 `surface-inverse` + `fg-inverse`; dark bubble `#f5f6f8`, 16.58 against bg; `skill-v2-gallery-tooltip-dark.png`                                                                                                                                                     |
+| 2 Avatar on primitives                                      | **fixed**                         | K:475 `surface-3` + `fg`; 13.96 / 11.03                                                                                                                                                                                                                                  |
+| 2 Badge dots                                                | **fixed**                         | K:355 `currentColor`; computed dot equals badge text colour in both themes; 4.88 to 13.35 on the tints                                                                                                                                                                   |
+| 2 Tab underline                                             | **fixed**                         | K:626 `border-selected`; 4.96 / 7.92 on bg, minimum 4.71 on surface-2                                                                                                                                                                                                    |
+| 2 Selected segment fill used `--cv-fg`                      | **fixed**                         | K:317 `surface-inverse` (same colour, now a named role)                                                                                                                                                                                                                  |
+| 2 Logo point and cover artwork                              | **fixed** (cover not testable)    | Template, `SidebarNav.md` and `AppShell.md` inline marks use `var(--cv-brand-accent)`; `cv-logo` swaps lockups with the theme (K:131-135, verified). `brand-tint` and `brand-deep` exist in both files but no shipped component uses them: the cover is not in the skill |
+| 2 `fg-subtle` on `surface-2`, dark, 4.5009                  | **fixed**                         | `#9096a6`: 4.86 (T:120)                                                                                                                                                                                                                                                  |
+| 2 `fg-subtle` on `surface-3`                                | **fixed as a rule; figure wrong** | F:110 and checklist:32 forbid it; K uses `fg-subtle` only for `.cv-hint`, placeholder and the breadcrumb chevron. Dark ratio is 4.03, not 4.10                                                                                                                           |
+| 3 Menu and listbox motion                                   | **fixed**                         | K:327, 532, tokens used; 120 ms measured; reduced motion removes it (tokens 0 ms)                                                                                                                                                                                        |
+| 3 Radius `full` on `.cv-tab__count`                         | **fixed** (in the doc)            | F:152 "status badges, tab counters, avatars and switches"; K:628 unchanged                                                                                                                                                                                               |
+| 3 Danger pressed token                                      | **fixed**                         | K:178-179, T:76, `tokens.json:469`; hover 9.57, pressed 12.16 measured on the button. CHANGELOG entry 1 stale (see above)                                                                                                                                                |
+| 3 Every size in rem                                         | **fixed**                         | K:564 `20rem`; K:99 `max(0.95em, var(--cv-text-xs))`, 12 px minimum measured; F:118 says Covenant sets the root size and applications never do. Left on purpose: `--cv-target-min: max(24px, 1.5rem)` (K:61), 8 px keyframe offsets, borders                             |
+| 3 Sticky top bar                                            | **fixed**                         | K:590 sticky; 2.4.11 measured (7.4 px minimum gap, 70 stops); `TopBar.md` writes `3rem`                                                                                                                                                                                  |
+| 3 Drawer below 420 px                                       | **fixed**                         | K:514 `max-width: 100vw`; 320 px wide at 320 px                                                                                                                                                                                                                          |
+| 3 Alert roles                                               | **fixed**                         | `Alert.md` anatomy: status, status, alert, none; text explains the two cases                                                                                                                                                                                             |
+| 3 Focus ring offsets undocumented                           | **fixed**                         | F:158-166 table, matches K:213-215, 318, 542                                                                                                                                                                                                                             |
+| 3 Motion only on overlays and toasts                        | **holds**                         | Computed animations on the gallery: listbox, toasts; menu and dialogs when open; no hover or press transition anywhere                                                                                                                                                   |
+| 3 `tokens.json` equals the CSS                              | **holds**                         | 87 colour tokens, 0 differences, both themes                                                                                                                                                                                                                             |
+| 4 Self-hosting (fonts, Phosphor, no `@import`)              | **fixed**                         | 0 non-local requests in 28 runs; fonts and icons rendered; caveats in [Network, fonts, icons](#network-fonts-icons) (unshipped fallback formats, template not openable in place)                                                                                         |
+| Second entry: primary `#cb4a00`, white label, darker danger | **fixed, with trade-offs**        | Every figure recomputed and right; 1.72 and 22° / 343° confirmed; buttons distinguishable in both themes. Trade-offs below                                                                                                                                               |
+
+### What the CHANGELOG does not say
+
+None of these fails a criterion; they are worth telling Claude Design.
+
+1. **Dark primary against danger is closer than before.** In dark the old pair (`#fb923c` against `#be123c`)
+   differed by 2.78:1 in luminance; the new pair is 1.72:1, the same as light. They are still told apart by
+   hue (orange against crimson), and the CHANGELOG's "was 1.21" is the light figure only.
+2. **The primary hover step is small:** `accent-fill` to `accent-fill-hover` is 1.11:1 (`#cb4a00` to
+   `#c2410c`), pressed 1.57:1 from the fill. Danger steps are 1.19 and 1.27. Hover is visible but faint.
+3. **Checked controls have a thin margin in dark** on `surface-2` and `surface-raised` (3.09:1, 0.09 above
+   the 3:1 limit), which is where a checkbox in a modal, a menu or a hovered row sits. The checked box and
+   switch have no other boundary (their border is the fill).
+4. **The dark theme has one orange fill for both themes.** The accent fill is lower against dark surfaces
+   (3.51 on surface, 3.86 on bg) than the old `#fb923c` (about 7), so a dark primary button stands out less
+   from the page; its white label (4.65:1) is what carries it.
+5. **A dark danger button against the page is 2.03:1**; its label (8.02:1) identifies it, so 1.4.11 does not
+   apply.
+6. **`phosphor/*/style.css` lists fonts that are not shipped** (see above) and `templates/page.html`
+   cannot be opened from its own folder.
 
 ### Not verified
 
-- No screen reader (NVDA, VoiceOver). Not run: the text-spacing bookmarklet (1.4.12), real 200 %
-  and 400 % browser zoom (320 px width and `large` text size were used instead), 2.5.7 dragging
-  (no component drags), tooltip hover and Escape behaviour (1.4.13), Combobox and CommandMenu
-  typing, toast timers (2.2.1).
-- Phosphor was loaded from the repository's npm copy (2.1.2) because unpkg is unreachable
-  from this sandbox. Fonts came from Google Fonts, as the template does.
-  Glyph metrics can differ by a pixel from 2.1.1; nothing measured depends on it.
+- No screen reader (NVDA, VoiceOver). Not run: the text-spacing bookmarklet (1.4.12), real 200 % and
+  400 % browser zoom (320 px width and `large` text size were used instead), 2.5.7 dragging (no component
+  drags), tooltip hover and Escape behaviour (1.4.13), Combobox and CommandMenu typing beyond ArrowDown and
+  Escape.
+- Fonts and Phosphor were the skill's own files this time (no CDN, no npm copy). The design system's
+  published preview pages (which the CHANGELOG says still load Phosphor from unpkg) are not in the skill
+  and were not looked at.
+- The Locavern and Chrono apps were not run with the new skill files; only their code was read.
 - Axe finds about a third of WCAG issues; "0 violations" is not "conformant".
-
-## The skill against itself
-
-Rules in S and F against what K, J and T do. Verified in the browser unless a line is cited.
-
-| Rule                                                                   | What the CSS does                                                                                                                                                                                                                                             | Verdict                         |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| Motion only on overlays and toasts (S:63, F:150)                       | Computed transitions and animations across the page and gallery: only toast entrance, modal and drawer entrance, and the nav drawer slide (K:674,677). No hover or press transition anywhere.                                                                 | holds                           |
-| Menus and dropdowns have transitions (F:151, checklist)                | `.cv-menu` and `.cv-listbox` have none. `--cv-duration-fast` (120 ms) and `--cv-ease-emphasize` are defined and unused.                                                                                                                                       | doc says more than the CSS does |
-| Text floor 12 px (S:65, F:106)                                         | Smallest computed text in page and gallery: 12 px. Every `font-size` is a `--cv-text-*` token. `code, kbd` use `0.95em` (K:98): inside a 12 px context that is 11.4 px.                                                                                       | holds, one latent gap           |
-| Every size in rem; nothing sets `font-size` on `<html>` (S:65)         | `html { font-size: calc(100% * …) }` (K:83) is the scaling mechanism, so the rule means "consumers must not". Raw px remain: `--cv-target-min: max(24px, 1.5rem)` (K:60, deliberate), `max-height: 320px` on the command list (K:552), 8 px keyframe offsets. | wording imprecise, one real px  |
-| Targets 24 px (S:64)                                                   | Smallest controls: 28 px (sm button, page, search), checkbox and switch hit areas 24 px. Verified.                                                                                                                                                            | holds                           |
-| Sidebar 14.5rem, top bar 3rem, container 90rem                         | 232 px, 48 px, 1440 px at standard scale; 290 px sidebar at 2560 px. Verified.                                                                                                                                                                                | holds                           |
-| Sticky top bar never hides focus (TopBar checklist)                    | `scroll-padding-top` is set (K:100) but `.cv-topbar` is not sticky, so the padding does nothing today. `TopBar.md` writes `48px`, the CSS uses `3rem`.                                                                                                        | harmless inconsistency          |
-| Radius `full` only on badges, avatars, switches (F:133, checklist)     | Also `.cv-tab__count` (K:615), which breaks the skill's own checklist line.                                                                                                                                                                                   | inconsistent                    |
-| Pressed moves two steps (F:142)                                        | Danger button: hover and pressed use the same `--cv-danger-fill-hover` (K:167, `Button.md`); no pressed token.                                                                                                                                                | inconsistent                    |
-| Focus ring 2 px offset (F:143)                                         | Inputs offset 0, segmented -4 px, menu items -2 px (K:201-203,306,530). Reasonable, undocumented; the segmented one fails in dark (above).                                                                                                                    | undocumented, one failure       |
-| Every colour is a `--cv-*` token (checklist)                           | True, but several are primitives that do not follow the theme: `danger-600` border (K:205, the dark failure), tooltip and avatar `neutral-*` (K:414,465), badge dots (K:340-350), tab underline `accent-500` (K:613).                                         | the source of failure 1         |
-| Drawer is full width below 420 px (`Drawer.md`)                        | At 320 px the drawer is 288 px wide with a 32 px scrim strip (user-agent `dialog` max-width).                                                                                                                                                                 | doc wrong, no WCAG impact       |
-| Alert roles (`Alert.md`)                                               | `role="alert"` only for errors after an action, but the danger anatomy uses `role="status"`.                                                                                                                                                                  | doc inconsistency               |
-| `tokens.json` equals `covenant-tokens.css`                             | 77 colour tokens compared in both themes: 0 differences.                                                                                                                                                                                                      | holds                           |
-| Setup step loads unpkg and Google Fonts (S workflow, `covenant.css:1`) | Overridden by the "In this repository" section (decision 0003). Locavern's copy already dropped the `@import`.                                                                                                                                                | known, handled                  |
 
 ## Three-way comparison
 
-Screenshots, kept outside the repository in the session scratchpad
-(`…/scratchpad/ui-compare/`): `skill-page-{light,dark}-{desktop,narrow}.png`,
-`skill-page-{light,dark}-narrow-nav-open.png`, `skill-gallery-{light,dark}-{desktop,narrow}.png`
-(full-page), `skill-overlay-{md-delete,dr-entry,cmd}-{light,dark}[-narrow].png`,
-`skill-overlay-{menu,toasts}-{light,dark}.png`, `skill-focus-segmented-{light,dark}.png`,
-`skill-formfield-invalid-{light,dark}.png`; the earlier `chrono-*` and `locavern-*` images (42)
-are in the same folder.
+Screenshots, kept outside the repository in the session scratchpad (`…/scratchpad/ui-compare/`), new
+for skill `185c9b1`: `skill-v2-page-{light,dark}-{desktop,narrow}.png`,
+`skill-v2-page-{light,dark}-narrow-nav-open.png`, `skill-v2-gallery-{light,dark}-{desktop,narrow}.png`
+(full-page), `skill-v2-overlay-{md-delete,dr-entry,cmd,menu,toasts}-{light,dark}.png`,
+`skill-v2-focus-segmented-{light,dark}.png`, `skill-v2-formfield-invalid-{light,dark}.png`, `skill-v2-primary-vs-danger-{light,dark}.png`,
+`skill-v2-gallery-{tooltip,toast,badge,tabs,avatar}-{light,dark}.png`, `skill-v2-topbar-sticky-scrolled.png`,
+`skill-v2-drawer-320.png`. The `skill-*` images of the first pass (old skill) and the `chrono-*` and
+`locavern-*` images (42) are in the same folder.
+
+In the Locavern column, "Skill's" means the previous skill version that Locavern vendors, unless a row says
+otherwise; what differs from `185c9b1` is listed under
+[What Locavern must take](#what-locavern-must-take-from-the-new-skill).
 
 ### Tokens and colour
 
-| Skill                                                                                                                                  | Chrono                                                                                                                                                 | Locavern                                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Zinc neutrals 0 to 1000, one orange accent, four status hues; semantic roles for surfaces, text, borders, fills, status pairs (T:3-87) | Same primitive hex values (CC:19-69); roles for surfaces and text only (CC:72-92). No `accent-fill`, `fg-on-accent`, `border-control`, status surfaces | Identical to the skill (LT = T)                                                  |
-| Accent fill `#c2410c` with white (5.18:1); `accent-500` for graphics only, never behind text (S:59, F:89)                              | Fill `#ea580c`, white label 3.56:1 (CA:99); accent-500 as text and fill throughout                                                                     | Skill's fill (LT:55)                                                             |
-| Status colours mean status only (S:60)                                                                                                 | Used for status; also 16 categorical project hues (`Projets.js:7-10`), including green, yellow, red                                                    | Status only                                                                      |
-| Raw literals forbidden (checklist)                                                                                                     | 53 hex or `rgba(` literals and about 103 primitive references in `js/*.js` and `app.css`                                                               | no hex in `app.css`; 28 primitive references, 12 of them `accent-500` (non-text) |
+| Skill                                                                                                                                                                                                    | Chrono                                                                                                                                                 | Locavern                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| Zinc neutrals 0 to 1000, one orange accent, four status hues; semantic roles for surfaces, text, borders, fills, status pairs, `surface-inverse`, `border-danger`, `border-selected`, `brand-*` (T:3-97) | Same primitive hex values (CC:19-69); roles for surfaces and text only (CC:72-92). No `accent-fill`, `fg-on-accent`, `border-control`, status surfaces | Identical to the previous skill (LT = old T); 41 lines behind the new one                                                  |
+| Accent fill `#cb4a00` with white in both themes (4.65:1), hover `#c2410c`, pressed `#9a3412`; `--cv-brand-accent` (`#ea580c` light, `#fb923c` dark) for graphics only, never behind text (S:63, F:88-93) | Fill `#ea580c`, white label 3.56:1 (CA:99); accent-500 as text and fill throughout                                                                     | Previous skill's fill: `#c2410c` light, `#fb923c` with a dark label in dark (LT:55)                                        |
+| Status colours mean status only (S:64); danger fill is deep crimson `#9f1239` with white text (8.02:1), pressed `#6b0f2a`                                                                                | Used for status; also 16 categorical project hues (`Projets.js:7-10`), including green, yellow, red                                                    | Status only                                                                                                                |
+| Raw literals and primitive scale tokens forbidden in components (checklist, S:62); 0 found in the skill                                                                                                  | 53 hex or `rgba(` literals and about 103 primitive references in `js/*.js` and `app.css`                                                               | No hex in `app.css`; 28 primitive references there, 12 of them `accent-500`, and one in `index.html` (non-text; see below) |
 
 ### Typography and numerals
 
-| Skill                                                                                                                                                   | Chrono                                                                                                                                                            | Locavern                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| IBM Plex Sans and Mono; 13 px body; 12 px floor; every size in rem; headings 600; `cv-num` mono tabular (F:99-106, K:101)                               | Plex via Google Fonts `@import` (CC:12); 10 and 11 px tokens (CC:99-100) and 9 px literal (`App.js:39`); px everywhere; `html, body` forced to 13 px (CC:228-232) | Skill's, fonts bundled with `@fontsource` (`src/main.js:1-6`)                        |
-| Page title is the top bar `h1` at `--cv-text-md` (TopBar.md, K:582); type roles up to `cv-display-lg` 48 px exist for numerals and headings (T:164-176) | 20 px page title in content (CA:46); durations and KPIs in Plex Mono 500 at 15 to 26 px (`Timeline.js:39,412`, `Rapport.js:59`)                                   | Topbar `h1` 14 px plus an `h2` with a class that does not exist (`today-view.js:89`) |
-| Overline 12 px / 600 / 0.08em uppercase (T:176)                                                                                                         | 11 px, 10 px, tracking 0.06em (CA:42-44)                                                                                                                          | Skill's                                                                              |
+| Skill                                                                                                                                                                                                                    | Chrono                                                                                                                                                            | Locavern                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| IBM Plex Sans and Mono, self-hosted in `assets/fonts/` (`covenant-fonts.css`, OFL); 13 px body; 12 px floor, `code` and `kbd` included (K:99); every size in rem; headings 600; `cv-num` mono tabular (F:115-121, K:102) | Plex via Google Fonts `@import` (CC:12); 10 and 11 px tokens (CC:99-100) and 9 px literal (`App.js:39`); px everywhere; `html, body` forced to 13 px (CC:228-232) | Skill's, fonts bundled with `@fontsource` (`src/main.js:1-6`)                        |
+| Page title is the top bar `h1` at `--cv-text-md` (TopBar.md, K:595); type roles up to `cv-display-lg` 48 px exist for numerals and headings (T:181-193)                                                                  | 20 px page title in content (CA:46); durations and KPIs in Plex Mono 500 at 15 to 26 px (`Timeline.js:39,412`, `Rapport.js:59`)                                   | Topbar `h1` 14 px plus an `h2` with a class that does not exist (`today-view.js:89`) |
+| Overline 12 px / 600 / 0.08em uppercase (T:193)                                                                                                                                                                          | 11 px, 10 px, tracking 0.06em (CA:42-44)                                                                                                                          | Skill's                                                                              |
 
 ### Density and sizing
 
 | Skill                                                                                                      | Chrono                                                                                                                                   | Locavern                                                                  |
 | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | Controls and rows 32 px (`--cv-row-md`), small 28 px, tabs 40 px, targets 24 px; padding 8 x 12; 4 px grid | Buttons 28, 32, 36; inputs 32; nav 30; icon buttons 26, 30, 36 (`UI:15,41`, `CA:71-73`); off-grid 6, 7, 10, 11, 14 px gaps (CA:32-36,72) | Skill's; many actions use `cv-btn--sm` (28 px), the skill's default is 32 |
-| Cards 20 px padding (16 compact, 24 prominent); content padding 24 px, max 90rem (K:444-452,656)           | Card header 12 x 16, flush rows 10 x 16 (CA:63); page padding 24 x 32, no max width (`App.js:151`)                                       | Skill's card, plus `surface-2` sub-cards inside (LA:1659-1665)            |
+| Cards 20 px padding (16 compact, 24 prominent); content padding 24 px, max 90rem (K:454-462,669)           | Card header 12 x 16, flush rows 10 x 16 (CA:63); page padding 24 x 32, no max width (`App.js:151`)                                       | Skill's card, plus `surface-2` sub-cards inside (LA:1659-1665)            |
 
 ### Surfaces, radius, elevation
 
-| Skill                                                                                                                                    | Chrono                                                                                                 | Locavern                                                                      |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Flat; card 1 px border, radius 8, `shadow-sm`; radius 12 only for modal, drawer, command menu; never nest cards (F:133-137,170, Card.md) | Card radius 12 (CA:61), panel 10 (off scale, CA:64); hairline rows in one card (CA:145-147)            | Radius 8 (LC:444-449); box in box: cards holding bordered sub-cards and chips |
-| Modal 30rem, footer on `surface-2`; toast on `surface-raised`, themed, `shadow-xl` (K:486-501,386-394)                                   | Modal 460 px, hand-built; toast always `#09090b`, radius 10 (`UI:332,405-423`)                         | Skill's                                                                       |
-| No gradients, no `backdrop-filter`; scrim is the only transparency (F:147)                                                               | None; custom 10 px scrollbars (CA:19-21, not in the skill)                                             | None                                                                          |
-| No inverse surface token; `cv-fg` on `cv-fg-inverse` is the "selected" recipe (SegmentedControl.md)                                      | Near-black "ink" card for running timers, `--cv-fg` used as a background (`PointageWidget.js:100-110`) | none                                                                          |
+| Skill                                                                                                                                                                       | Chrono                                                                                                 | Locavern                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Flat; card 1 px border, radius 8, `shadow-sm`; radius 12 only for modal, drawer, command menu; never nest cards (F:148-153, Card.md)                                        | Card radius 12 (CA:61), panel 10 (off scale, CA:64); hairline rows in one card (CA:145-147)            | Radius 8 (LC:444-449); box in box: cards holding bordered sub-cards and chips                                                                    |
+| Modal 30rem, footer on `surface-2`; toast on `surface-raised`, themed, `shadow-xl` (K:496-511,396-404)                                                                      | Modal 460 px, hand-built; toast always `#09090b`, radius 10 (`UI:332,405-423`)                         | Skill's                                                                                                                                          |
+| No gradients, no `backdrop-filter`; scrim is the only transparency (F:128,169-171)                                                                                          | None; custom 10 px scrollbars (CA:19-21, not in the skill)                                             | None                                                                                                                                             |
+| `--cv-surface-inverse` (`#18181b` light, `#f5f6f8` dark) with `--cv-fg-inverse`, 17.72 / 18.20:1; used by the tooltip and the selected segment. No muted caption role on it | Near-black "ink" card for running timers, `--cv-fg` used as a background (`PointageWidget.js:100-110`) | Pressed toolbar buttons use `--cv-fg` as a fill (LA:508,751); the tooltip uses `neutral-900` (LA:2098), which is invisible against the dark page |
 
 ### Icons
 
-| Skill                                                                                                                                                              | Chrono                                                                                                                        | Locavern                                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Phosphor 2.1.1, regular default, bold for emphasis only; 1rem (`--cv-icon-size`), `aria-hidden`; no icon next to self-explanatory labels (Icons.md, F:ICONOGRAPHY) | Phosphor 2.1.1 vendored; regular plus **fill** for play, timer (`PointageWidget.js`); explicit 12, 14, 15, 16 px (`UI:29,52`) | Phosphor 2.1.2 from npm; regular and bold (`src/main.js:7-8`) |
+| Skill                                                                                                                                                                                                                | Chrono                                                                                                                        | Locavern                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Phosphor 2.1.x self-hosted (2.1.2 shipped in `assets/phosphor/`), regular default, bold for emphasis only; 1rem (`--cv-icon-size`), `aria-hidden`; no icon next to self-explanatory labels (Icons.md, F:ICONOGRAPHY) | Phosphor 2.1.1 vendored; regular plus **fill** for play, timer (`PointageWidget.js`); explicit 12, 14, 15, 16 px (`UI:29,52`) | Phosphor 2.1.2 from npm; regular and bold (`src/main.js:7-8`) |
 
 ### Motion
 
-| Skill                                                                                                                                             | Chrono                                                                                                                                                                                                                                                     | Locavern                          |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| Only overlays and toasts move: 180 ms enter, 280 ms drawers; buttons, inputs, rows instant; no transform on press; no loop (F:150-154, checklist) | 120 ms on 10 interactive classes (CA:76,86,96,108,121,130,139,145,152,162); `scale(0.97)` on press set from JS (`UI:25-27`); infinite pulses (`PointageWidget.js:50,116`, `Timeline.js:342,572`); reduced-motion rule only shortens durations (CC:280-285) | Skill's (LC = K); no hover motion |
+| Skill                                                                                                                                                                                                                                        | Chrono                                                                                                                                                                                                                                                     | Locavern                                                     |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Only overlays and toasts move: 180 ms enter, 280 ms drawers; buttons, inputs, rows instant; no transform on press; no loop; menus and listboxes fade in 120 ms (K:327,532); reduced motion zeroes the duration tokens (F:173-178, checklist) | 120 ms on 10 interactive classes (CA:76,86,96,108,121,130,139,145,152,162); `scale(0.97)` on press set from JS (`UI:25-27`); infinite pulses (`PointageWidget.js:50,116`, `Timeline.js:342,572`); reduced-motion rule only shortens durations (CC:280-285) | Previous skill's (LC = old K): no menu fade; no hover motion |
 
 ### Layout, shell, sidebar, top bar
 
-| Skill                                                                                                                              | Chrono                                                                                                                                           | Locavern                                                                                      |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Grid shell: sidebar 14.5rem, top bar 3rem, content max 90rem; drawer below 1024 px; one column below 768 px; skip link (K:653-688) | Flex shell, sidebar 264 px hard-coded (`App.js:107`), no top bar, no `@media` besides reduced motion; fails reflow (main column 64 px at 320 px) | Skill's shell; page not framed correctly (8 px body margin, 916 px page in a 900 px viewport) |
-| Sidebar: brand logo SVG, icon plus label, overline groups (SidebarNav.md); logos copied, never redrawn                             | 28 px ink square with a white icon; presence widget and timers inside the sidebar (`App.js:113-145`)                                             | Skill's                                                                                       |
+| Skill                                                                                                                                             | Chrono                                                                                                                                           | Locavern                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Grid shell: sidebar 14.5rem, sticky top bar 3rem (K:590), content max 90rem; drawer below 1024 px; one column below 768 px; skip link (K:666-701) | Flex shell, sidebar 264 px hard-coded (`App.js:107`), no top bar, no `@media` besides reduced motion; fails reflow (main column 64 px at 320 px) | Skill's shell; page not framed correctly (8 px body margin, 916 px page in a 900 px viewport) |
+| Sidebar: brand logo SVG, icon plus label, overline groups (SidebarNav.md); logos copied, never redrawn                                            | 28 px ink square with a white icon; presence widget and timers inside the sidebar (`App.js:113-145`)                                             | Skill's                                                                                       |
 
 ### Forms and controls
 
-| Skill                                                                                                                                                                                           | Chrono                                                                                                                                                          | Locavern                                                                                                     |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Input boundary `border-control` (3:1 or more; `#71717a` light, `#7d8494` dark), 2 px focus outline in `border-focus`, native `<select>` in `.cv-select`, 24 px checkbox hit area with 16 px box | Boundary `neutral-300`, 1.48:1 (CA:118); focus by inline JS glow and `outline: none` (CA:119, `UI:73-77`); select has no focus indicator; custom 18 px checkbox | Skill's; some selects in the tasks table lack the `.cv-select` wrapper                                       |
-| SegmentedControl on native radios; `cv-btn--ghost cv-btn--icon` with `aria-label` for icon actions; Tooltip; Menu                                                                               | Pill tabs in the add-timer modal; icon ghost buttons (`UI:39-53`)                                                                                               | Text buttons, four per row (`task-list-view.js:622-654`), seven per project card (`project-view.js:101-125`) |
+| Skill                                                                                                                                                                                                                                         | Chrono                                                                                                                                                          | Locavern                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Input boundary `border-control` (3:1 or more; `#71717a` light, `#7d8494` dark), 2 px focus outline in `border-focus` (`border-danger` when invalid, 8.02 / 6.46:1), native `<select>` in `.cv-select`, 24 px checkbox hit area with 16 px box | Boundary `neutral-300`, 1.48:1 (CA:118); focus by inline JS glow and `outline: none` (CA:119, `UI:73-77`); select has no focus indicator; custom 18 px checkbox | Skill's; some selects in the tasks table lack the `.cv-select` wrapper                                       |
+| SegmentedControl on native radios; `cv-btn--ghost cv-btn--icon` with `aria-label` for icon actions; Tooltip; Menu                                                                                                                             | Pill tabs in the add-timer modal; icon ghost buttons (`UI:39-53`)                                                                                               | Text buttons, four per row (`task-list-view.js:622-654`), seven per project card (`project-view.js:101-125`) |
 
 ### Data display
 
@@ -247,27 +318,27 @@ are in the same folder.
 
 ### Overlays
 
-| Skill                                                                                                                             | Chrono                                                                                       | Locavern                                      |
-| --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Native `<dialog>` with `showModal()` (focus trap, Escape, focus return); popover Menu; Toast with live roles; Tooltip with Escape | Hand-built `div role="dialog"`, Escape only, no focus return (`UI:331-386`); toast dark-only | Skill's, plus a tooltip helper (`tooltip.js`) |
+| Skill                                                                                                                                                                                           | Chrono                                                                                       | Locavern                                                                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Native `<dialog>` with `showModal()` (focus trap, Escape, focus return); popover Menu; Toast with live roles that pauses on hover and focus and resumes with the time left; Tooltip with Escape | Hand-built `div role="dialog"`, Escape only, no focus return (`UI:331-386`); toast dark-only | Previous skill's, plus a tooltip helper (`tooltip.js`) and its own toast pause and resume |
 
 ### Focus and accessibility
 
-| Skill                                                                                                                               | Chrono                                                                                                                         | Locavern                                          |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| 2 px `border-focus` outline, keyboard only, never removed; skip link; landmarks; global shortcuts use a modifier (2.1.4, checklist) | Ring in `accent-500` (3.56:1 on white); no focus on selects; no skip link; single-key shortcuts Space, N, S (`App.js:207-231`) | Skill's; `Ctrl+K` only (`command-palette.js:213`) |
+| Skill                                                                                                                                                                                                      | Chrono                                                                                                                         | Locavern                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| 2 px `border-focus` outline, keyboard only, never removed, offset per component (F:158-166), `fg-inverse` on the checked segment; skip link; landmarks; global shortcuts use a modifier (2.1.4, checklist) | Ring in `accent-500` (3.56:1 on white); no focus on selects; no skip link; single-key shortcuts Space, N, S (`App.js:207-231`) | Skill's; `Ctrl+K` only (`command-palette.js:213`) |
 
 ### Dark mode
 
-| Skill                                                                                                 | Chrono                                                                                                                                          | Locavern                                                                |
-| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `data-theme="dark"` token overrides, all roles, themed status surfaces; same component CSS (T:90-133) | Base overrides exist (CC:193-222), no switch; forced dark breaks the ink card, session rows, tiles (`PointageWidget.js:107,122`, CA:88,141,146) | Complete, OS preference plus switch (`theme-init.js`, `index.html:165`) |
+| Skill                                                                                                                                                                                    | Chrono                                                                                                                                          | Locavern                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `data-theme="dark"` token overrides, all roles, themed status surfaces; same accent fill and white `fg-on-accent` in both themes; tooltip bubble inverts; same component CSS (T:100-150) | Base overrides exist (CC:193-222), no switch; forced dark breaks the ink card, session rows, tiles (`PointageWidget.js:107,122`, CA:88,141,146) | Complete, OS preference plus switch (`theme-init.js`, `index.html:165`) |
 
 ### Text size setting
 
 | Skill                                                                                                                   | Chrono                         | Locavern                                                               |
 | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------- |
-| `data-text-size` standard, comfortable (x1.125), large (x1.25), automatic by width (K:77-83); TextSize control; all rem | None; px, root forced to 13 px | Implemented, stored as `locavern-text-size` (`app-shell.js:9,120-163`) |
+| `data-text-size` standard, comfortable (x1.125), large (x1.25), automatic by width (K:78-84); TextSize control; all rem | None; px, root forced to 13 px | Implemented, stored as `locavern-text-size` (`app-shell.js:9,120-163`) |
 
 ## What it means for the plan
 
@@ -276,9 +347,9 @@ are in the same folder.
 - **Type and numerals:** IBM Plex Sans and Mono, 13 px body, semibold headings, mono tabular
   numbers (`cv-num`), and the larger display roles (`cv-text-2xl` 22 px, `cv-display-sm` 28 px) for KPI
   numerals. Chrono's hierarchy through numerals needs no new token.
-- **Palette and accent:** the zinc neutrals and the single orange, used for the now-line, dots, the
-  tab underline and selection borders (`accent-500` is sanctioned for "active indicators,
-  selection borders").
+- **Palette and accent:** the zinc neutrals and the single orange. Chrono's `#ea580c` is the skill's
+  `--cv-brand-accent` (graphics such as the now-line and dots, never behind text); the tab underline and
+  selection borders use `--cv-border-selected`.
 - **Surfaces:** hairline rows inside one bordered white card with `shadow-sm` (DataTable, Card), page on
   `bg`, selected tint `bg-accent-subtle`.
 - **Quiet chrome:** icon-only ghost buttons with `aria-label`, Tooltip, Menu for the rest, `Kbd` keycaps
@@ -293,29 +364,67 @@ are in the same folder.
 For each: follow the skill (A) or propose a deliberate skill extension (B). The skill says never to
 invent, so B means a documented addition to `packages/covenant`, reviewed like the rest.
 
-| #   | Chrono trait                                                                                       | A. Follow the skill                                                                                      | B. Extension                                                                                                      | Recommendation and WCAG consequence                                                                                                                                                                                                                                                                                                         |
-| --- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 120 ms hover fades (CA:76-162) and press `scale(0.97)` (`UI:25-27`)                                | Instant hover and press; no transform                                                                    | Colour-only fade of `background-color` and `border-color` at `--cv-duration-fast`; no scale                       | **A.** Visible cost is small; the skill gives a reason for no scale (movement reads as latency). No WCAG difference (2.3.3 is AAA); B must keep the reduced-motion rule.                                                                                                                                                                    |
-| 2   | Text at 9, 10, 11 px (CC:99-100, CA:42-54, `Timeline.js:337,340,363`)                              | 12 px floor                                                                                              | none sensible                                                                                                     | **A, no choice.** Not a WCAG criterion, but it fails the skill's floor and 1.4.4 headroom. Timeline blocks, overlines and counters need layout work.                                                                                                                                                                                        |
-| 3   | 16 project hues for stripe, dot, timeline blocks, chart (`Projets.js:7-10`, `Timeline.js:324,400`) | One accent; project shown by name only (the page becomes monochrome)                                     | `--cv-cat-1..16` tokens with light and dark values and a computed on-colour each, always next to the project name | **B**: it is Chrono's strongest trait. Constraints: markers that carry meaning alone need 3:1 on every surface (today 2 of 16 fail in light, 3 in dark); white text on blocks fails 4.5:1 for 8 of 16 hues, so each hue needs a computed on-colour; avoid hues that read as status (green, yellow, red) or accept that the word carries it. |
-| 4   | Near-black "ink" card for running timers, `--cv-fg` as background (`PointageWidget.js:100-110`)    | `cv-fg` fill with `cv-fg-inverse` text, the skill's own selected recipe; in dark it becomes a light card | Tokens `--cv-surface-inverse`, `--cv-fg-on-inverse`, `--cv-fg-on-inverse-muted`, dark in both themes              | **A for now.** It is AA in both themes (17.7 and 18.2:1) but flips in dark and has no muted caption role: `fg-subtle` on `#18181b` is only 3.21:1. Do not copy Chrono's `rgba(255,255,255,.6)` captions (1.05:1 in dark). If the flip is unwelcome, B costs three tokens.                                                                   |
-| 5   | Accent fill `#ea580c` with a white label (CA:99), 3.56:1                                           | `accent-fill` `#c2410c`, white 5.18:1; `accent-500` stays for graphics                                   | `accent-550` `#d0490c`, white 4.53:1 (thin margin), or a dark label on `accent-500` (`#18181b`, 4.98:1)           | **A.** B changes the fill in both apps for a small gain; the dark theme already uses a lighter orange. Revisit after the port if buttons look dull. A fails nothing.                                                                                                                                                                        |
-| 6   | Control border `neutral-300`, 1.48:1 (CA:118)                                                      | `border-control` `#71717a` (4.83:1), heavier outlines                                                    | Lighter 3:1 token (`#8b8b94`, 3.38:1; dark `#6e7584`, 3.52:1)                                                     | **A.** A is the skill's explicit contract (1.4.11). B is AA too but moves Locavern's look, which then needs re-testing on three surfaces (3.07 on surface-2).                                                                                                                                                                               |
-| 7   | Infinite pulses on live indicators (`PointageWidget.js:50,116`, `Timeline.js:342,572`)             | Static indicator plus the word ("en cours")                                                              | Pulse allowed for live state, one iteration under reduced motion, and a way to pause                              | **A.** F bans loops. B needs 2.2.2 handling (a pause control for anything that moves over 5 s).                                                                                                                                                                                                                                             |
-| 8   | Card radius 12, panel 10 (CA:61,64)                                                                | Cards 8; 12 stays on modal, drawer, command menu                                                         | Allow 12 on cards                                                                                                 | **A.** Cosmetic. Never mix radii on adjacent surfaces is a skill rule, so B would change inputs inside cards too.                                                                                                                                                                                                                           |
-| 9   | Sidebar 264 px with the presence widget and timers (`App.js:107`)                                  | 14.5rem; the widget moves to the page header or the top bar                                              | Per-app `--cv-sidebar-w`                                                                                          | **A**, see question F. The skill calls the width fixed. No WCAG difference; B costs reflow work at 400 % zoom.                                                                                                                                                                                                                              |
-| 10  | Icons in `fill` weight (`PointageWidget.js`)                                                       | Regular, bold for emphasis                                                                               | Add fill for the active state of one control per view                                                             | **A.** Use bold for the play and pause emphasis.                                                                                                                                                                                                                                                                                            |
-| 11  | Ink square brand, custom scrollbars (`App.js:113-122`, CA:19-21)                                   | Skill logo SVG; native scrollbars                                                                        | Add to the base styles                                                                                            | **A.** Neither is in the skill, neither carries meaning. Custom scrollbars can hurt usability (1.4.11 for the thumb).                                                                                                                                                                                                                       |
-| 12  | Page title 20 px in content, no top bar (CA:46)                                                    | Title in the top bar `h1`; KPI numerals carry the focal point                                            | `cv-h1` in content, top bar keeps tools                                                                           | **A**, see question G.                                                                                                                                                                                                                                                                                                                      |
-| 13  | Single-key shortcuts Space, N, S (`App.js:207-231`)                                                | Modifier shortcuts only (checklist 2.1.4)                                                                | Keep them with a preference that turns them off                                                                   | See question H. WCAG 2.1.4 is met by either "off switch" or "only on focus".                                                                                                                                                                                                                                                                |
+| #   | Chrono trait                                                                                       | A. Follow the skill                                                                                                    | B. Extension                                                                                                      | Recommendation and WCAG consequence                                                                                                                                                                                                                                                                                                              |
+| --- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 120 ms hover fades (CA:76-162) and press `scale(0.97)` (`UI:25-27`)                                | Instant hover and press; no transform                                                                                  | Colour-only fade of `background-color` and `border-color` at `--cv-duration-fast`; no scale                       | **A.** Visible cost is small; the skill gives a reason for no scale (movement reads as latency). No WCAG difference (2.3.3 is AAA); B must keep the reduced-motion rule.                                                                                                                                                                         |
+| 2   | Text at 9, 10, 11 px (CC:99-100, CA:42-54, `Timeline.js:337,340,363`)                              | 12 px floor                                                                                                            | none sensible                                                                                                     | **A, no choice.** Not a WCAG criterion, but it fails the skill's floor and 1.4.4 headroom. Timeline blocks, overlines and counters need layout work.                                                                                                                                                                                             |
+| 3   | 16 project hues for stripe, dot, timeline blocks, chart (`Projets.js:7-10`, `Timeline.js:324,400`) | One accent; project shown by name only (the page becomes monochrome)                                                   | `--cv-cat-1..16` tokens with light and dark values and a computed on-colour each, always next to the project name | **B**: it is Chrono's strongest trait. Constraints: markers that carry meaning alone need 3:1 on every surface (today 2 of 16 fail in light, 3 in dark); white text on blocks fails 4.5:1 for 8 of 16 hues, so each hue needs a computed on-colour; avoid hues that read as status (green, yellow, red) or accept that the word carries it.      |
+| 4   | Near-black "ink" card for running timers, `--cv-fg` as background (`PointageWidget.js:100-110`)    | `cv-surface-inverse` with `cv-fg-inverse`: `#18181b` in light (Chrono's own value), `#f5f6f8` in dark, 17.72 / 18.20:1 | One more token, `--cv-fg-inverse-muted`, for captions                                                             | **A, now with a named role.** The card becomes `background: var(--cv-surface-inverse)` instead of `--cv-fg`, and the dark flip is the skill's design. Still missing: a muted caption on it (`fg-muted` is 2.29 / 1.57:1 and `fg-subtle` 3.21 / 2.74:1 there). Do not copy Chrono's `rgba(255,255,255,.6)` captions (1.05:1 in dark). Question D. |
+| 5   | Accent fill `#ea580c` with a white label (CA:99), 3.56:1                                           | `accent-fill` `#cb4a00`, white 4.65:1 in both themes; `accent-500` stays for graphics as `brand-accent`                | None left: the skill took the thin-margin option                                                                  | **A, decided by the skill.** `#cb4a00` is the most vivid orange that keeps white at AA, and it is closer to Chrono's `#ea580c` (hue 21.9° against 20.5°) than the old `#c2410c` was. Chrono's label goes from 3.56 to 4.65:1; the focus ring from `accent-500` (3.56:1) to `border-focus` (5.18:1 light).                                        |
+| 6   | Control border `neutral-300`, 1.48:1 (CA:118)                                                      | `border-control` `#71717a` (4.83:1), heavier outlines                                                                  | Lighter 3:1 token (`#8b8b94`, 3.38:1; dark `#6e7584`, 3.52:1)                                                     | **A.** A is the skill's explicit contract (1.4.11). B is AA too but moves Locavern's look, which then needs re-testing on three surfaces (3.07 on surface-2).                                                                                                                                                                                    |
+| 7   | Infinite pulses on live indicators (`PointageWidget.js:50,116`, `Timeline.js:342,572`)             | Static indicator plus the word ("en cours")                                                                            | Pulse allowed for live state, one iteration under reduced motion, and a way to pause                              | **A.** F bans loops. B needs 2.2.2 handling (a pause control for anything that moves over 5 s).                                                                                                                                                                                                                                                  |
+| 8   | Card radius 12, panel 10 (CA:61,64)                                                                | Cards 8; 12 stays on modal, drawer, command menu                                                                       | Allow 12 on cards                                                                                                 | **A.** Cosmetic. Never mix radii on adjacent surfaces is a skill rule, so B would change inputs inside cards too.                                                                                                                                                                                                                                |
+| 9   | Sidebar 264 px with the presence widget and timers (`App.js:107`)                                  | 14.5rem; the widget moves to the page header or the top bar                                                            | Per-app `--cv-sidebar-w`                                                                                          | **A**, see question F. The skill calls the width fixed. No WCAG difference; B costs reflow work at 400 % zoom.                                                                                                                                                                                                                                   |
+| 10  | Icons in `fill` weight (`PointageWidget.js`)                                                       | Regular, bold for emphasis                                                                                             | Add fill for the active state of one control per view                                                             | **A.** Use bold for the play and pause emphasis.                                                                                                                                                                                                                                                                                                 |
+| 11  | Ink square brand, custom scrollbars (`App.js:113-122`, CA:19-21)                                   | Skill logo SVG (`cv-logo` follows the theme); native scrollbars                                                        | Add to the base styles                                                                                            | **A.** Neither is in the skill, neither carries meaning. Custom scrollbars can hurt usability (1.4.11 for the thumb).                                                                                                                                                                                                                            |
+| 12  | Page title 20 px in content, no top bar (CA:46)                                                    | Title in the sticky top bar `h1`; KPI numerals carry the focal point                                                   | `cv-h1` in content, top bar keeps tools                                                                           | **A**, see question G.                                                                                                                                                                                                                                                                                                                           |
+| 13  | Single-key shortcuts Space, N, S (`App.js:207-231`)                                                | Modifier shortcuts only (checklist 2.1.4)                                                                              | Keep them with a preference that turns them off                                                                   | See question H. WCAG 2.1.4 is met by either "off switch" or "only on focus".                                                                                                                                                                                                                                                                     |
 
 ### 3. What Locavern and Chrono must change to conform
 
 Ordered by effort, smallest first. This becomes the port and alignment work.
 
-**Locavern** (the design system is already the skill; the vendored `covenant.js` has one local
-improvement, the toast resume, to merge back):
+#### What Locavern must take from the new skill
 
+Locavern's vendored `covenant-tokens.css` and `covenant.css` were identical to the previous skill (the CSS
+without its Google Fonts `@import`); `covenant.js` was identical but for its own toast fix. They are now
+behind `185c9b1` by 41, 50 and 39 changed lines. This all goes into `packages/covenant` (roadmap step 3),
+not into Locavern's `vendor/` folder.
+
+| File                  | What changes                                                                                                                                                                                                                                                                                                                                                                                                                   | Visible in Locavern                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `covenant-tokens.css` | New primitives `--cv-accent-550`, `--cv-danger-800`, `--cv-danger-900`. Changed: `accent-fill` (550 in both themes), `accent-fill-hover` (600), `accent-fill-pressed` (700), `fg-on-accent` (white in dark), `danger-fill` (700), `danger-fill-hover` (800), dark `fg-subtle` (`#9096a6`). New roles: `surface-inverse`, `danger-fill-pressed`, `border-danger`, `border-selected`, `brand-accent`, `brand-tint`, `brand-deep` | 38 primary buttons become `#cb4a00` with a white label in both themes (dark was light orange with a dark label); 11 danger buttons are darker |
+| `covenant.css`        | `.cv-logo`; danger pressed; invalid border via `border-danger`; checked segment fill and ring; `cv-pop-in` 120 ms on `.cv-menu` and `.cv-listbox`; badge dots in `currentColor`; tooltip on `surface-inverse`, avatar on `surface-3`; drawer `max-width: 100vw`; sticky top bar; tab underline `border-selected`; `code` and `kbd` 12 px floor; command list `20rem`; reduced motion zeroes the duration tokens                | 7 segmented controls, 9 menus, 4 listboxes, 5 badge dots, 13 drawer references, the top bar, `aria-invalid` fields (backup modal)             |
+| `covenant.js`         | The skill's toast pause and resume replaces Locavern's: same behaviour (hover, focus, remaining time), and it also sets `data-cv-wired` on every toast. Nothing local is left to keep                                                                                                                                                                                                                                          | None expected                                                                                                                                 |
+| `logos/`              | Identical. `cv-logo` is new but unused (Locavern inlines the mark in `index.html:38`)                                                                                                                                                                                                                                                                                                                                          | None                                                                                                                                          |
+| Fonts and icons       | No change: `@fontsource/ibm-plex-*` `^5.3.0` (the skill ships 5.3.0) and `@phosphor-icons/web` 2.1.2 (same). The skill's `assets/fonts` and `assets/phosphor` stay the reference copy                                                                                                                                                                                                                                          | None                                                                                                                                          |
+
+Locavern's own code that the new rules touch (not changed here; 28 primitive references in `app.css`, one
+in `index.html`):
+
+1. **Tooltip** (LA:2098-2099): `neutral-900` and `neutral-0` become `surface-inverse` and `fg-inverse`.
+   Today the bubble is dark on the dark page, the 1.01:1 pair the skill fixed in its own tooltip.
+2. **Pressed toolbar buttons** (LA:508, 751): `--cv-fg` as a fill becomes `--cv-surface-inverse` (same
+   value, now named). Optional.
+3. **Selection borders and stripes** (LA:260, 465, 1842, 1854): `accent-500` becomes `--cv-border-selected`
+   (`accent-600` in light, `accent-400` in dark: 5.18 / 7.20:1 against 3.56 / 4.58:1 on `surface`).
+4. **Sidebar mark** (`index.html:38`): `var(--cv-accent-500)` becomes `var(--cv-brand-accent)`, or the
+   `cv-logo` lockup.
+5. **Whiteboard artwork** (LA:682-683, 706-715, 1004-1028; twelve references): `accent-500` strokes can use
+   `brand-accent`; the `accent-800`, `success-700`, `warning-600` and `danger-700` fills have no semantic
+   role. They need a decision when porting (app-level `--lc-wb-*` tokens built from semantic ones).
+6. **Status borders and stripes** (LA:1243, 1251, 1315, 1370, 1437, 1441, 1502, 1506, 1510, 2166; ten
+   references): `--cv-<status>-border` is the nearest role; check it reaches 3:1 where the stripe carries
+   meaning.
+
+Things to recheck in Locavern after taking the files, none run here: the sticky top bar against the
+maximised whiteboard (`LA:1037-1040` offsets it by `--cv-topbar-h`; `app.css` sets no `z-index`, so the bar's
+`z-index: 100` collides with nothing there), the drawer width at 320 px, and axe in both themes.
+
+**Locavern** (the design system is already the skill, one version behind):
+
+0. Take the new skill files through `packages/covenant` (table above) and apply the six code changes
+   above. Hours to a day.
 1. Reset the 8 px `body` margin and fix the missing `cv-heading-2` class (`today-view.js:89`). Hours.
 2. Wrap the table selects in `.cv-select`; make `cv-btn` default size 32 px where `sm` is used
    for the page's main action. Hours.
@@ -324,7 +433,7 @@ improvement, the toast resume, to merge back):
 5. Row actions: icon ghost buttons plus `cv-menu` for archive and delete instead of four or seven text
    buttons (`task-list-view.js:622-654`, `project-view.js:101-125`). A day or two.
 6. Flatten the nested cards on Today and Kanban (hairline rows in one card). A day.
-7. Re-run axe and the checklist after 1 to 6; Locavern was not re-audited here.
+7. Re-run axe and the checklist after 0 to 6; Locavern was not re-audited here.
 8. Adopt whatever project-colour extension is accepted (question C) with a data field, a migration and
    a test that loads the previous format. Later roadmap item.
 
@@ -332,7 +441,7 @@ improvement, the toast resume, to merge back):
 
 1. Delete the hover transitions, press scale, pulses, custom scrollbars, ink square brand. Hours.
 2. Remove `--cv-text-2xs` and `--cv-text-3xs`, move everything to the 12 px floor; fix the `fill` icons. A day.
-3. Replace the 53 literals and 103 primitive references by roles; apply `accent-fill`, `fg-on-accent`,
+3. Replace the 53 literals and 103 primitive references by roles; apply `accent-fill`, `fg-on-accent`, `brand-accent`, `border-selected`, `surface-inverse`,
    `border-control`, `cv-<status>-surface`. Two to three days.
 4. Replace hand-built primitives by Covenant ones: native `<dialog>`, `.cv-select`, `.cv-check`,
    `.cv-badge`, `.cv-btn`, `cv-table`, themed Toast, EmptyState. Three to five days.
@@ -350,26 +459,38 @@ improvement, the toast resume, to merge back):
 
 | #   | Old question                       | Now                                                                                                                                                                                                                                                            |
 | --- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Accent fill `accent-550` or `600`  | **Answered**: `accent-600` fill, `accent-500` graphics only (S:59, F:88-90). `accent-550` would be an extension: kept as optional question A.                                                                                                                  |
-| 2   | Card radius 12 or 8                | **Answered**: 8 on cards, 12 on modal, drawer, command menu (F:133-137).                                                                                                                                                                                       |
+| 1   | Accent fill `accent-550` or `600`  | **Answered**: `accent-550` `#cb4a00` fill with white in both themes (4.65:1); `accent-500` is `--cv-brand-accent`, graphics only (S:63, F:88-93). The optional question A is closed.                                                                           |
+| 2   | Card radius 12 or 8                | **Answered**: 8 on cards, 12 on modal, drawer, command menu (F:148-153).                                                                                                                                                                                       |
 | 3   | Project colour in Covenant or app  | **Open**, now question C: the skill has no categorical palette.                                                                                                                                                                                                |
 | 4   | Icon-only or text row actions      | **Answered in part**: ghost icon buttons with `aria-label`, Tooltip and Menu are components; "skip icons next to self-explanatory text" is the only rule. The app-level guideline (three or more repeated actions) stays a recommendation, no question needed. |
 | 5   | Page title in content or top bar   | **Answered**: top bar `h1` (TopBar.md). Question G keeps the option of a content title.                                                                                                                                                                        |
 | 6   | Sidebar 232 or 264 px              | **Answered**: 14.5rem. How the presence widget fits is question F.                                                                                                                                                                                             |
-| 7   | Control border lighter or skill's  | **Answered**: `border-control` `#71717a` / `#7d8494` (T:53,100). The lighter value is not adopted (conflict 6).                                                                                                                                                |
-| 8   | Inverse "ink" card                 | **Open in a smaller form**: no inverse tokens in the skill; `cv-fg` on `cv-fg-inverse` is available. Question D.                                                                                                                                               |
-| 9   | Hover and focus transitions        | **Answered**: none (F:150-154); an extension is question B.                                                                                                                                                                                                    |
-| 10  | Text below 12 px                   | **Answered**: floor 12 px (S:65).                                                                                                                                                                                                                              |
+| 7   | Control border lighter or skill's  | **Answered**: `border-control` `#71717a` / `#7d8494` (T:56,110). The lighter value is not adopted (conflict 6).                                                                                                                                                |
+| 8   | Inverse "ink" card                 | **Answered in part**: `--cv-surface-inverse` exists (Chrono's ink in light, a light card in dark); there is no muted caption role on it. Question D.                                                                                                           |
+| 9   | Hover and focus transitions        | **Answered**: none (F:173-178); an extension is question B.                                                                                                                                                                                                    |
+| 10  | Text below 12 px                   | **Answered**: floor 12 px (S:69).                                                                                                                                                                                                                              |
 | 11  | Source of truth, skill or `--cv-*` | **Answered**: the skill is normative and now matches the `--cv-*` implementation; the old premise (blue primary, 14 px, Lucide) no longer applies. Phosphor and bundled fonts are confirmed.                                                                   |
 
 ## Remaining open questions
 
-Each is either/or, with a recommendation. Only C changes what the apps look like in a way you will
-notice; the others have a clear default.
+The skill update closed two of the eight questions (A and E) and narrowed a third (D). Six stay open
+(B, C, D, F, G, H). Each is either/or, with a recommendation. Only C changes what the apps look like in a
+way you will notice; the others have a clear default. Letters are kept from the previous version.
 
-**A. Keep the skill's `accent-600` fill, or add `accent-550` (`#d0490c`, 4.53:1)?**
-Recommendation: **keep `accent-600`.** `accent-550` is thin and changes both apps; it is easy to add
-later if the port feels dull.
+**Closed by the skill update**
+
+- **A. Accent fill.** The skill chose `#cb4a00` in both themes with a white label (4.65:1; hover `#c2410c`,
+  pressed `#9a3412`). It is closer to Chrono's `#ea580c` than `#c2410c` was (hue 21.9° against 20.5°), so
+  the port changes the look less. The optional alternative I had listed (`#d0490c`, 4.53:1) is moot.
+  Nothing to decide unless you want another orange; `accent-500` stays as `brand-accent` for graphics.
+- **E. Skill defects.** The invalid border, the focus ring on the checked segment, the toast pause and
+  resume, the radius rule and the menu motion are all fixed in `185c9b1` (see
+  [Item by item](#item-by-item-verdict)). What is left to send back is small: the `4.10` figure
+  (`4.03`; `CHANGELOG.md` and `tokens.json:394`), the stale first CHANGELOG entry on danger pressed, and
+  the optional observations under "What the CHANGELOG does not say". `CLAUDE.md` allows a small local
+  fix noted in the commit if you want the two figures corrected here before they are merged back.
+
+**Still open**
 
 **B. Instant hover and press (skill), or a 120 ms colour fade as an extension?**
 Recommendation: **instant, no press scale.** If you want the fade after seeing the port, add it as one
@@ -383,17 +504,13 @@ only carrier of meaning. Starting points from the previous run: `#ca8a04` to `#c
 passing label colour and needs a darker light variant. Without this, Chrono loses its most distinctive
 trait and Locavern stays monochrome.
 
-**D. Running-timers card: use `cv-fg` / `cv-fg-inverse` now, or add inverse tokens?**
-Recommendation: **use the existing roles**, without muted captions. Add `--cv-surface-inverse`,
-`--cv-fg-on-inverse` and a muted variant only if the dark-mode flip (card turns light) is rejected.
-
-**E. Fix the three skill defects in the local skill copy now, or once in `packages/covenant`?**
-Recommendation: **once, in `packages/covenant`** (roadmap step 3), then copy back to the skill.
-Proposed fixes: invalid border to `var(--cv-fg-danger)`; focus ring on the checked segment in
-`var(--cv-fg-inverse)`; merge Locavern's toast pause and resume from its copy of `covenant.js`. Also
-reconcile the radius rule with `.cv-tab__count`, and add the missing menu transition or drop the claim.
-`CLAUDE.md` allows small local skill fixes noted in the commit; choose that only if you want the skill
-fixed before step 3.
+**D. Running-timers card: `cv-surface-inverse` with `cv-fg-inverse`, or add a muted caption role on it?**
+The skill now has `--cv-surface-inverse` (`#18181b` in light, Chrono's own ink; `#f5f6f8` in dark, where
+Chrono's `--cv-fg` already flips the card). The only text role on it is `--cv-fg-inverse` (17.72 / 18.20:1);
+`fg-muted` (2.29 / 1.57:1) and `fg-subtle` (3.21 / 2.74:1) fail there, so captions have no role.
+Recommendation: **use `surface-inverse` and `fg-inverse` and carry the hierarchy with size and weight.** Add
+`--cv-fg-inverse-muted` (4.5:1 in both themes) only if the captions are needed. The dark flip is now the
+skill's design, not an omission.
 
 **F. Where do Chrono's live timers and presence widget go once the sidebar is 14.5rem?**
 Either the page header of the Timeline view (and the top bar on narrow screens), or a Drawer opened from
@@ -415,12 +532,14 @@ the Google Fonts CDN.
 ## What could not be checked
 
 - Everything under [Not verified](#not-verified) above (screen readers, text spacing, real browser
-  zoom, tooltip and combobox behaviour, toast timers).
-- Locavern was not re-audited against the skill's checklist. Only its vendored files were diffed
-  (identical to the skill apart from the removed `@import` and the toast fix) and its app CSS searched
-  for transitions, px font sizes and hex colours (none).
+  zoom, tooltip hover and Escape, combobox typing).
+- Locavern and Chrono were not run with the new skill files; Locavern was not re-audited against the
+  skill's checklist. Its vendored files were diffed against the old and the new skill, and its app CSS,
+  JS and HTML searched for primitive tokens (28 plus one), `cv-*` class counts and `z-index` (none).
 - Chrono's dark mode is still not reachable in the product; earlier dark renders force `data-theme="dark"`.
   Chrono screens and Locavern views not captured last time are still not captured.
 - Hover and press states of the apps were read from the CSS, not photographed.
 - Single-key shortcuts were found by reading `App.js`; Locavern's whiteboard shortcuts use a modifier
   (`whiteboard-canvas.js:2576-2590`); no other app keyboard handler was audited.
+- The design system's published preview pages and the "cover" artwork behind `brand-tint` and
+  `brand-deep` are not in the skill and were not checked.
