@@ -1,0 +1,39 @@
+{
+  "name": "@simple-web-tools/covenant",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Covenant design system for the Simple Web Tools apps: tokens, component CSS, behaviours, logos, bundled fonts and icons",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/covenant"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./fonts": "./src/fonts.js",
+    "./tokens.css": "./src/covenant-tokens.css",
+    "./covenant.css": "./src/covenant.css",
+    "./covenant.js": "./src/covenant.js",
+    "./logos/*": "./src/logos/*"
+  },
+  "scripts": {
+    "sync": "node scripts/sync.mjs",
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@phosphor-icons/web": "2.1.2"
+  },
+  "devDependencies": {
+    "@simple-web-tools/config": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

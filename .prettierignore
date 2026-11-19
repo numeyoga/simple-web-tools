@@ -10,3 +10,8 @@ apps/*/public/assets/vendor/
 apps/chrono/
 # Project skills, copied from the maintainer's personal skills (see CLAUDE.md).
 .claude/skills/
+# Copies of the skill's assets (packages/covenant/README.md): byte for byte, never reformatted.
+packages/covenant/src/covenant-tokens.css
+packages/covenant/src/covenant.css
+packages/covenant/src/covenant.js
+packages/covenant/src/logos/
