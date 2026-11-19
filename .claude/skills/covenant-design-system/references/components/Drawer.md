@@ -16,7 +16,7 @@ A drawer slides in from the right to show or edit the details of an item without
 
 ## Classes and states
 
-- `dialog.cv-drawer`: right edge, 420 px max, full height, 280 ms slide; same header, body and footer parts as `Modal`.
+- `dialog.cv-drawer`: right edge, 26.25rem (420 px) wide, full height, 280 ms slide; `max-width: 100vw` overrides the browser's dialog limit so it is full width on narrow screens. Same header, body and footer parts as `Modal`.
 
 ## Accessibility and keyboard
 

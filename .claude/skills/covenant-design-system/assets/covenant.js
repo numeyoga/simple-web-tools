@@ -206,15 +206,37 @@
     }
     return r;
   }
+  /* Auto-dismiss pauses while the toast is hovered or holds focus, and resumes
+     with the time that was left (WCAG 2.2.1). timeout 0 = stays until dismissed. */
   function wireToast(el, timeout) {
     var btn = el.querySelector('[data-cv-dismiss]');
-    function remove() { if (el.parentNode) el.parentNode.removeChild(el); }
+    var timer = null, remaining = timeout, startedAt = 0, hovered = false, focused = false;
+    function remove() {
+      clearTimeout(timer); timer = null;
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }
+    function start() {
+      if (timeout <= 0 || timer !== null || hovered || focused || !el.parentNode) return;
+      startedAt = Date.now();
+      timer = setTimeout(remove, Math.max(remaining, 0));
+    }
+    function pause() {
+      if (timer === null) return;
+      clearTimeout(timer); timer = null;
+      remaining -= Date.now() - startedAt;
+    }
     if (btn) btn.addEventListener('click', remove);
     if (timeout > 0) {
-      var t = setTimeout(remove, timeout);
-      el.addEventListener('mouseenter', function () { clearTimeout(t); });
-      el.addEventListener('focusin', function () { clearTimeout(t); });
+      el.addEventListener('mouseenter', function () { hovered = true; pause(); });
+      el.addEventListener('mouseleave', function () { hovered = false; start(); });
+      el.addEventListener('focusin', function () { focused = true; pause(); });
+      el.addEventListener('focusout', function (e) {
+        if (e.relatedTarget && el.contains(e.relatedTarget)) return; /* focus moved inside the toast */
+        focused = false; start();
+      });
+      start();
     }
+    el.dataset.cvWired = '1';
     return el;
   }
   function toast(opts) {

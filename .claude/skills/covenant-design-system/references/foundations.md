@@ -32,7 +32,7 @@ This design system was defined **from scratch** — no existing codebase, Figma,
 | Typography | IBM Plex Sans (UI) + IBM Plex Mono (data) — "engineering" feel; every size in rem, scaled up on large screens |
 | UI density | 32 px default row height at standard scale (2rem: rows grow with the text) |
 | Corner radius | 8 px default |
-| Icons | Phosphor (multi-weight, via CDN) |
+| Icons | Phosphor 2.1.x (multi-weight), self-hosted from the npm package |
 | Motion | Restrained — short functional transitions only, no bounce |
 | Accessibility | WCAG 2.2 AA, keyboard-first, both themes |
 | Sample product | Professional time tracker + todos backoffice |
@@ -85,25 +85,40 @@ Combine into one line if it fits: `Couldn't save entry — session expired. Sign
 A disciplined three-tier system:
 
 1. **Neutrals (zinc scale, 12 steps).** The frame, the text, the dividers. 90% of surface area.
-2. **Single accent — orange (`--cv-accent-500`, `#ea580c`).** Primary actions, focus, selected states, links. **One accent, no exceptions.** If you think you need a second accent, use the neutral scale plus weight / size.
-   - `--cv-accent-500` is the brand orange for graphics only: the logo point, active indicators, chart bars, selection borders. It measures 3.56:1 against white, so text never sits on it.
-   - A fill behind text uses `--cv-accent-fill` with `--cv-fg-on-accent` (`#c2410c` + white in light, 5.18:1; `#fb923c` + near-black in dark, 8.7:1). Hover `--cv-accent-fill-hover`, pressed `--cv-accent-fill-pressed`.
+2. **Single accent — orange (`#ea580c` in light, `#fb923c` in dark).** Primary actions, focus, selected states, links. **One accent, no exceptions.** If you think you need a second accent, use the neutral scale plus weight / size.
+   - Components reach the brand orange through semantic roles only: `--cv-brand-accent` for the logo point and brand artwork (graphic only, never behind text), `--cv-border-selected` for selection indicators such as the selected tab (4.7:1 or more in both themes).
+   - A fill behind text uses `--cv-accent-fill` with `--cv-fg-on-accent`: `#cb4a00` with white text in both themes, 4.65:1, the most vivid orange that keeps white text at AA. Hover `--cv-accent-fill-hover` (`#c2410c`, 5.18:1), pressed `--cv-accent-fill-pressed` (`#9a3412`, 7.31:1).
+   - **Text on coloured fills is white**, in both themes and on every fill (accent and danger). A fill never mixes dark text on one button and white text on another.
    - Accent text uses `--cv-fg-accent`.
-3. **Semantic colors — success (green), warning (yellow), danger (crimson), info (steel).** Reserved for status only. Never decorative. The accent stays warm orange; warning is pure yellow so it never overlaps the accent; danger is crimson `#e11d48`, cooler and pinker than orange, so it reads clearly as "bad" next to warm UI; info is steel `#475569`, a neutral hint that never competes with the accent. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`. Alerts, badges and toasts use the themed `--cv-<status>-surface`, `--cv-<status>-border` and `--cv-fg-<status>`, so they turn dark in the dark theme.
+3. **Semantic colors — success (green), warning (yellow), danger (crimson), info (steel).** Reserved for status only. Never decorative. The accent stays warm orange; warning is pure yellow so it never overlaps the accent; danger is crimson `#e11d48`, cooler and pinker than orange, so it reads clearly as "bad" next to warm UI; info is steel `#475569`, a neutral hint that never competes with the accent. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`: deep crimson `#9f1239` with white text (8.02:1), hover `#881337`, pressed `#6b0f2a`. It stays clearly apart from the accent fill: darker (luminance ratio 1.72) and on the other side of red (hue 343° against 22°), so a primary and a destructive button never look alike. Alerts, badges and toasts use the themed `--cv-<status>-surface`, `--cv-<status>-border` and `--cv-fg-<status>`, so they turn dark in the dark theme.
+
+**Everything follows the theme.** Components use **semantic tokens only**. The primitive scales (`--cv-neutral-*`, `--cv-accent-*`, `--cv-success-*`, `--cv-warning-*`, `--cv-danger-*`, `--cv-info-*`) exist only to define semantic tokens in `tokens.json`; they never appear in component CSS or markup, because a primitive does not change with the theme. When no role fits, add a semantic token with a light and a dark value; never reach for a primitive. The roles:
+
+| Need | Token |
+| --- | --- |
+| Page, panels, wells, pressed | `--cv-bg`, `--cv-surface`, `--cv-surface-2`, `--cv-surface-3`, `--cv-surface-raised` |
+| Inverse fill (tooltip, selected segment) and its ink | `--cv-surface-inverse`, `--cv-fg-inverse` |
+| Text | `--cv-fg`, `--cv-fg-muted`, `--cv-fg-subtle`, `--cv-fg-accent`, `--cv-fg-<status>` |
+| Borders | `--cv-border`, `--cv-border-strong`, `--cv-border-control`, `--cv-border-focus`, `--cv-border-selected`, `--cv-border-danger` |
+| Fills behind text | `--cv-accent-fill` (+ `-hover`, `-pressed`) with `--cv-fg-on-accent`; `--cv-danger-fill` (+ `-hover`, `-pressed`) with `--cv-fg-on-danger` |
+| Status tints | `--cv-<status>-surface`, `--cv-<status>-border`, `--cv-bg-accent-subtle` |
+| Brand artwork | `--cv-brand-accent`, `--cv-brand-tint`, `--cv-brand-deep` |
+| Scrim, shadows | `--cv-overlay`, `--cv-shadow-*` |
 
 All pairings are verified at **WCAG 2.2 AA (4.5:1 for body, 3:1 for large text and UI)** in both light and dark:
-- `--cv-fg`, `--cv-fg-muted`, `--cv-fg-subtle` and the `--cv-fg-<status>` colors (success, warning, danger, info) pass 4.5:1 on `--cv-bg`, `--cv-surface` and `--cv-surface-2` in both themes. `--cv-fg-disabled` is exempt.
-- Status text and icons use `--cv-fg-<status>` on `--cv-<status>-surface` (6.8:1 or more in both themes). Status is never shown by color alone: it always comes with a word or an icon.
+- `--cv-fg`, `--cv-fg-muted`, `--cv-fg-subtle` and the `--cv-fg-<status>` colors (success, warning, danger, info) pass 4.5:1 on `--cv-bg`, `--cv-surface` and `--cv-surface-2` in both themes, with a margin (`--cv-fg-subtle` is 4.86:1 on `--cv-surface-2` in dark). `--cv-fg-disabled` is exempt.
+- On `--cv-surface-3` (pressed and selected states, avatars) only `--cv-fg` and `--cv-fg-muted` are allowed (6.1:1 or more). `--cv-fg-subtle` is never placed on it.
+- Status text, icons and badge dots use `--cv-fg-<status>` on `--cv-<status>-surface` (6.8:1 or more in both themes); a badge dot takes the badge's text colour. Status is never shown by color alone: it always comes with a word or an icon.
 - Boundaries of inputs, selects, segmented controls and checkboxes use `--cv-border-control` (3:1 or more, WCAG 1.4.11).
 
 ### Typography
 - **IBM Plex Sans** for everything UI.
 - **IBM Plex Mono** for numeric data, IDs, durations, timestamps in tables. Mono is a semantic role, not decoration.
 - Default UI text is **13 px / 1.5** at standard scale (`0.8125rem`). Table rows and inputs at 13 px. Page bodies may go up to 14 px.
-- **Every size is in rem** — text, spacing, row heights, icons, panels — so the whole interface follows the browser's font-size setting and scales as one block. Only borders, focus outlines, shadows and radii stay in px.
+- **Every size is in rem** — text, spacing, row heights, icons, panels — so the whole interface follows the browser's font-size setting and scales as one block. Only borders, focus outlines, shadows and radii stay in px. Covenant itself sets the root size (`html { font-size: … }` in `covenant.css`) to apply the text scale; consuming applications never set `font-size` on `<html>`.
 - **Large screens scale up automatically**: ×1.125 from 2000 CSS px wide (QHD at 125 %, 4K at 175 %) and ×1.25 from 2400 CSS px (QHD 27" at 100 %, 4K at 150 %). On a 27" 2560 × 1440 screen at 100 %, body text is 16.25 px and rows are 40 px.
 - **Users can choose**: `data-text-size` on `<html>` set from the user's preference — `standard` (×1), `comfortable` (×1.125), `large` (×1.25); no attribute means automatic. See the TextSize component.
-- **Minimum text size is 12 px** (`--cv-text-xs`, `0.75rem`) at standard scale: overlines, badges, tags, tooltips and counters included.
+- **Minimum text size is 12 px** (`--cv-text-xs`, `0.75rem`) at standard scale: overlines, badges, tags, tooltips, counters, `code` and `kbd` included.
 - Headings are **semibold (600)**, never 700. Tracking is slightly tight (-0.01em) at display sizes, normal below 22 px.
 
 ### Spacing
@@ -118,7 +133,7 @@ A 4 px base scale (0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 px at standard
 - Full-bleed images appear only in user-uploaded content (e.g. attachments). The chrome itself never carries imagery.
 
 ### Borders
-- **1 px, always.** `--cv-border` for default, `--cv-border-strong` for emphasis, `--cv-border-control` for form-control boundaries, `--cv-accent-500` for selection, `--cv-border-focus` for focus.
+- **1 px, always.** `--cv-border` for default, `--cv-border-strong` for emphasis, `--cv-border-control` for form-control boundaries, `--cv-border-danger` for invalid controls, `--cv-border-selected` for selection (2 px for the selected tab), `--cv-border-focus` for focus.
 - Hairlines separate data rows; never use borders + shadows on the same edge.
 
 ### Shadows & elevation
@@ -134,27 +149,37 @@ A 4 px base scale (0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 px at standard
 - **0 / 2 / 4 / 8 / 12 / 16 / full**.
 - Default `--cv-radius-md: 8px` on cards, inputs, buttons.
 - `--cv-radius-lg: 12px` on modals, drawers and the command menu; `--cv-radius-sm: 4px` on tags, keycaps and menu items. No other values.
-- `full` (pill) only on status badges, avatars and switches.
+- `full` (pill) only on status badges, tab counters, avatars and switches.
 - Never mix radii on adjacent surfaces — a card at 8 px contains inputs at 8 px, not 4 px.
 
 ### Hover, press, focus
 - **Hover** — background shifts **one step** on the neutral scale (e.g. `--cv-surface` → `--cv-surface-2`; accent fills: `--cv-accent-fill` → `--cv-accent-fill-hover`). Never opacity. Never "glow".
-- **Press** — background shifts **two steps** (e.g. `--cv-surface` → `--cv-surface-3`; accent fills: `--cv-accent-fill-pressed`). No transform/shrink — users perceive layout movement as latency.
-- **Focus** — 2 px outline in `--cv-border-focus` (`--cv-accent-600` in light, `--cv-accent-400` in dark; 4:1 or more on every surface), 2 px offset, visible **on keyboard only** (`:focus-visible`). The focus ring is sacred — never remove it.
+- **Press** — background shifts **two steps** (e.g. `--cv-surface` → `--cv-surface-3`; accent fills: `--cv-accent-fill-pressed`; danger fills: `--cv-danger-fill-hover` → `--cv-danger-fill-pressed`). No transform/shrink — users perceive layout movement as latency.
+- **Focus** — 2 px outline in `--cv-border-focus` (4:1 or more on every surface in both themes), visible **on keyboard only** (`:focus-visible`). The focus ring is sacred — never remove it. Where the ring sits:
+
+| Component | Offset | Ring colour |
+| --- | --- | --- |
+| Default (buttons, links, tabs, cards, pagination, nav items) | 2 px outside | `--cv-border-focus` on the surrounding surface |
+| Text input, textarea, select | 0, on the border | `--cv-border-focus`; `--cv-border-danger` when invalid |
+| Menu items | 2 px inside | `--cv-border-focus` on `--cv-surface-2` |
+| Segmented control | 4 px inside | `--cv-border-focus` on an unselected segment; `--cv-fg-inverse` on the selected one (where keyboard focus lands), 17:1 or more on `--cv-surface-inverse` |
+| Checkbox, radio, switch | 2 px outside the 24 px target | `--cv-border-focus` |
 - **Disabled** — `opacity: 0.5`, `cursor: not-allowed`, and `aria-disabled="true"`. Never swap the color.
 
 ### Transparency & blur
-- Avoid both. A modal scrim is `rgba(9, 9, 11, 0.45)` — that is the only sanctioned use of transparency.
+- Avoid both. The modal scrim `--cv-overlay` is the only sanctioned use of transparency.
 - Never `backdrop-filter: blur()`. It is expensive and not supported everywhere.
 
 ### Motion
-- **Restrained.** Only modals, drawers, dropdowns, and toasts have transitions. Table rows, inputs, buttons change instantly.
-- **120 ms** for state changes inside overlays. **180 ms** for enter/exit. **280 ms** only for drawers.
-- Easing is `cubic-bezier(0.2, 0, 0, 1)` — Material's "standard." Never spring, never bounce.
-- `@media (prefers-reduced-motion: reduce)` kills all transitions.
+- **Restrained.** Only overlays and toasts move. Table rows, inputs, buttons change instantly.
+- **120 ms** (`--cv-duration-fast`, `--cv-ease-emphasize`): menus and list boxes (combobox, command menu) fade in.
+- **180 ms** (`--cv-duration-base`, `--cv-ease-standard`): modals and toasts enter.
+- **280 ms** (`--cv-duration-slow`): drawers and the small-screen sidebar slide.
+- Easing `--cv-ease-standard` is `cubic-bezier(0.2, 0, 0, 1)` — Material's "standard." Never spring, never bounce.
+- `@media (prefers-reduced-motion: reduce)` sets every duration token to `--cv-duration-instant` (0 ms) and stops all animation.
 
 ### Layout rules
-- **Fixed sidebar (14.5rem, 232 px at standard scale)**, fixed top bar (3rem, 48 px), fluid content area from 1024 px up (the AppShell component). Both grow with the text scale.
+- **Fixed sidebar (14.5rem, 232 px at standard scale)**, sticky top bar (3rem, 48 px: `position: sticky`, and `scroll-padding-top` so it never hides the focused element, WCAG 2.4.11), fluid content area from 1024 px up (the AppShell component). Both grow with the text scale.
 - **Below 1024 px** the sidebar becomes an off-canvas drawer opened from a menu button in the top bar. At 320 px CSS width (400 % zoom) nothing scrolls sideways except a data table inside its own focusable region (WCAG 1.4.10 Reflow).
 - Maximum content width `90rem` (1440 px at standard scale), centered. Wider screens get larger text first, then gutter space, never wider tables.
 - 8-column content grid inside the main area, 16 px gutter; one column below 768 px.
@@ -163,7 +188,7 @@ A 4 px base scale (0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 px at standard
 
 ### Imagery
 The chrome carries no imagery. When user-uploaded images appear (attachments, avatars):
-- Avatars are circles at 24 / 32 / 40 px. Fallback is initials on the neutral-200 background.
+- Avatars are circles at 24 / 32 / 40 px. Fallback is initials in `--cv-fg` on `--cv-surface-3`.
 - Attached images display at their natural ratio inside an 8 px-radius container with a 1 px border.
 - No filters, no grain, no warm/cool treatment.
 
@@ -176,13 +201,16 @@ The chrome carries no imagery. When user-uploaded images appear (attachments, av
 
 ## ICONOGRAPHY
 
-Covenant uses **[Phosphor Icons](https://phosphoricons.com/)** via CDN.
+Covenant uses **[Phosphor Icons](https://phosphoricons.com/)** 2.1.x (any patch version), **self-hosted**: install `@phosphor-icons/web` from npm (or your Nexus mirror), copy `src/regular` and `src/bold` into your app, and link their stylesheets. No CDN request.
 
 ```html
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
-<i class="ph ph-clock"></i>
-<i class="ph-bold ph-check"></i>
+<link rel="stylesheet" href="phosphor/regular/style.css">
+<link rel="stylesheet" href="phosphor/bold/style.css">
+<i class="ph ph-clock" aria-hidden="true"></i>
+<i class="ph-bold ph-check" aria-hidden="true"></i>
 ```
+
+A CDN (`https://unpkg.com/@phosphor-icons/web@2.1.2`) works for prototypes only.
 
 ### Why Phosphor
 - **Multi-weight** (thin / light / regular / bold / fill / duotone) — lets us match the "calm but engineered" feel without swapping libraries.
@@ -208,7 +236,7 @@ Use them:
 - For status indicators where color alone would fail WCAG (`ph-check-circle` + green, `ph-warning` + yellow).
 
 ### Logo
-A simple mark + wordmark lockup, defined in SVG at `assets/covenant-logo.svg`. The mark is a capital C formed by two arcs that meet — a visual pun on "covenant" as an agreement between two parties. The centre point is the orange accent. See the Logo component (`components/Logo/`).
+A simple mark + wordmark lockup, defined in SVG at `assets/covenant-logo.svg`. The mark is a capital C formed by two arcs that meet — a visual pun on "covenant" as an agreement between two parties. The centre point is `--cv-brand-accent`. The `cv-logo` component shows the lockup that matches the theme. See the Logo component (`components/Logo/`).
 
 ---
 
@@ -224,7 +252,7 @@ project/
 │   ├── bundle.css           ← every component as .cv-* classes, base styles, fonts, motion, layout
 │   ├── bundle.js            ← behaviours the platform lacks (window.Covenant), no dependency
 │   └── <Component>/         ← README.md (anatomy, states, accessibility, checklist) + preview.html
-├── fonts/README.md          ← IBM Plex, self-hosting notes
+├── fonts/                   ← IBM Plex, self-hosted: covenant-fonts.css + 7 .woff2 files + OFL.txt (optional)
 └── assets/                  ← logo lockups and mark (SVG)
 ```
 
@@ -234,22 +262,26 @@ Components: **Actions** Button, Link · **Forms** FormField, TextInput, Textarea
 
 Covenant is Vanilla Web: no framework, no build step. It works the same in a static page, a server-rendered app (Phoenix, Spring, Rails…) or inside any framework's templates.
 
-1. Copy `tokens.css`, `components/bundle.css` and `components/bundle.js` into your project (rename them `covenant-tokens.css`, `covenant.css`, `covenant.js` if you like).
-2. Load them once, in this order, with Phosphor:
+1. Copy `tokens.css`, `components/bundle.css` and `components/bundle.js` into your project (rename them `covenant-tokens.css`, `covenant.css`, `covenant.js` if you like). Copy the `fonts/` folder for IBM Plex and Phosphor's `src/regular` and `src/bold` from the `@phosphor-icons/web` npm package (2.1.x).
+2. Load them once, in this order. None of these files makes a third-party request:
 
 ```html
+<link rel="stylesheet" href="fonts/covenant-fonts.css">
 <link rel="stylesheet" href="covenant-tokens.css">
 <link rel="stylesheet" href="covenant.css">
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<link rel="stylesheet" href="phosphor/regular/style.css">
+<link rel="stylesheet" href="phosphor/bold/style.css">
 <script src="covenant.js" defer></script>
 ```
 
-3. Set the theme on the root: `<html lang="en" data-theme="light">` or `data-theme="dark"`. Add `data-text-size="standard|comfortable|large"` from the user's stored preference, or leave it out for automatic scaling. Never set a `font-size` on `<html>` yourself: Covenant scales from it.
+`fonts/covenant-fonts.css` is optional: without it, Covenant falls back to the system UI fonts. You can also install `@fontsource/ibm-plex-sans` and `@fontsource/ibm-plex-mono` and import their weights 400, 500, 600 (and 700 for Sans) instead.
+
+3. Set the theme on the root: `<html lang="en" data-theme="light">` or `data-theme="dark"`. Add `data-text-size="standard|comfortable|large"` from the user's stored preference, or leave it out for automatic scaling. Never set a `font-size` on `<html>` in your application: `covenant.css` sets it to apply the text scale.
 4. Copy the **Anatomy** markup from each component page and keep its classes, roles and ARIA attributes. Never restyle a component locally: extend `bundle.css` deliberately.
-5. Use tokens (`var(--cv-fg)`, `var(--cv-surface)`, `var(--cv-shadow-sm)`, …) for anything you build around the components; never hard-coded values.
+5. Use semantic tokens (`var(--cv-fg)`, `var(--cv-surface)`, `var(--cv-shadow-sm)`, …) for anything you build around the components; never a hard-coded value and never a primitive scale token, so everything follows the theme.
 6. Behaviours start by themselves. For markup added later, call `Covenant.init(element)`. `Covenant.setTextSize(size)` changes the text size and fires `cv:textsize` so the app can save the choice. `Covenant.toast({ status, title, text })` shows a toast; `Covenant.openDialog(id)` and `Covenant.closeDialog(id)` drive dialogs.
 7. Run the **Checklist** before review.
 
 **In an existing app:** align **tokens** first (load `tokens.css` and remap your theme variables onto `--cv-*`), then move components one surface at a time: buttons, forms, navigation, tables.
 
-**When an AI agent implements against Covenant:** it uses the `covenant-design-system` skill, which carries these files, every component page and the checklist. It reads this README, then the component pages it needs, copies their anatomy, uses tokens only, never introduces a second accent, and runs the checklist before calling a component done. If a design calls for something not covered here, it stops and asks.
+**When an AI agent implements against Covenant:** it uses the `covenant-design-system` skill, which carries these files, every component page and the checklist. It reads this README, then the component pages it needs, copies their anatomy, uses semantic tokens only, never introduces a second accent, and runs the checklist before calling a component done. If a design calls for something not covered here, it stops and asks.

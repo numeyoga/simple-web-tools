@@ -6,7 +6,7 @@ The app shell lays out every page: a fixed 14.5rem sidebar and a 3rem top bar fr
 <div class="cv-shell">
   <a class="cv-skip-link" href="#shell-main">Skip to content</a>
   <nav class="cv-sidebar" id="shell-nav" aria-label="Main">
-    <div class="cv-sidebar__brand"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><g transform="translate(2,2)"><path d="M 18 4 A 14 14 0 1 0 18 32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 18 10 A 8 8 0 1 1 18 26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="18" cy="18" r="2" fill="var(--cv-accent-500)"/></g></svg>Covenant</div>
+    <div class="cv-sidebar__brand"><svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><g transform="translate(2,2)"><path d="M 18 4 A 14 14 0 1 0 18 32" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M 18 10 A 8 8 0 1 1 18 26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="18" cy="18" r="2" fill="var(--cv-brand-accent)"/></g></svg>Covenant</div>
     <ul>
     <li><a class="cv-nav-item" href="#"><i class="ph ph-timer cv-icon" aria-hidden="true"></i>Timer</a></li>
     <li><a class="cv-nav-item" href="#"><i class="ph ph-list-checks cv-icon" aria-hidden="true"></i>Today</a></li>

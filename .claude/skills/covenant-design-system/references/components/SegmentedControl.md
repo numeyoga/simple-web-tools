@@ -13,8 +13,8 @@ A segmented control picks one of two to five views; it is a radio group drawn as
 
 ## Classes and states
 
-- `cv-segmented`: 1 px `cv-border-control` frame; the selected segment is `cv-fg` on `cv-fg-inverse`.
-- Focus draws an inset `cv-border-focus` ring on the segment.
+- `cv-segmented`: 1 px `cv-border-control` frame; the selected segment is `cv-fg-inverse` on `cv-surface-inverse`.
+- Focus draws a 2 px ring inset by 4 px inside the segment: `cv-border-focus` on an unselected segment, `cv-fg-inverse` on the selected one (where keyboard focus lands), 17:1 or more in both themes.
 
 ## Accessibility and keyboard
 

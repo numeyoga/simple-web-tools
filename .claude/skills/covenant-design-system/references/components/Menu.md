@@ -21,6 +21,7 @@ A menu lists actions on an item; it opens from a button with the native popover 
 
 - Popover API: Escape and outside click close it (light dismiss); focus returns to the button.
 - Items are `role="menuitem"` buttons.
+- Opens with a 120 ms fade (`cv-duration-fast`, `cv-ease-emphasize`), removed by `prefers-reduced-motion`.
 
 ## Use
 
