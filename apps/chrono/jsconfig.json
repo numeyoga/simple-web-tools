@@ -1,0 +1,5 @@
+{
+  "extends": "@simple-web-tools/config/jsconfig.base.json",
+  "include": ["src/core/**/*.js", "src/types.d.ts", "tests/unit/**/*.js"],
+  "exclude": ["node_modules", "dist"]
+}

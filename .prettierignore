@@ -6,8 +6,6 @@ playwright-report/
 test-results/
 apps/*/public/vendor/
 apps/*/public/assets/vendor/
-# Chrono predates the shared tooling; it joins Prettier when it is ported to ESM (docs/roadmap.md).
-apps/chrono/
 # Project skills, copied from the maintainer's personal skills (see CLAUDE.md).
 .claude/skills/
 # Copies of the skill's assets (packages/covenant/README.md): byte for byte, never reformatted.
