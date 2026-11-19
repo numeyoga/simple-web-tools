@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Chrono · suivi du temps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- TODO (roadmap, étape 4 : « Bundled fonts, strict CSP, PWA ») : ajouter la CSP stricte une
+         fois Google Fonts retiré de covenant.css ; elle le bloquerait aujourd'hui. -->
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="stylesheet" href="./src/styles/covenant.css" />
+    <link rel="stylesheet" href="./src/styles/app.css" />
+    <!-- Phosphor Icons 2.1.1 (MIT), servi localement : regular, fill (play, timer...) et bold (coche des todos) -->
+    <link rel="stylesheet" href="/assets/vendor/phosphor/regular/style.css" />
+    <link rel="stylesheet" href="/assets/vendor/phosphor/fill/style.css" />
+    <link rel="stylesheet" href="/assets/vendor/phosphor/bold/style.css" />
+  </head>
+  <body data-screen-label="Chrono">
+    <div id="root"></div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
