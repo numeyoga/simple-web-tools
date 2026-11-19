@@ -32,16 +32,20 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 ## 4. Port Chrono
 
-- [ ] **Before porting, and before `packages/covenant`, compare the two interfaces.** Chrono's interface is considered more
+- [x] **Before porting, and before `packages/covenant`, compare the two interfaces.** Chrono's interface is considered more
       attractive than Locavern's. List the visual differences (density, typography,
       surfaces, color use, icons, motion, layout) and decide which ones become Covenant
       defaults, so that the port keeps Chrono's look instead of falling back to Locavern's.
-- [ ] IIFE scripts to ES modules with Vite; `src/core` and `src/adapters` split. Chrono drops its own
-      `covenant.css` and Google Fonts import for `@simple-web-tools/covenant` here.
+- [x] IIFE scripts to ES modules with Vite; `src/core` and `src/adapters` split. Chrono still
+      carries its own `covenant.css` and Google Fonts import: both give way to
+      `@simple-web-tools/covenant` when its interface is ported.
 - [ ] English identifiers; English and French interface.
 - [ ] Single-writer multi-tab model; storage on `packages/storage`.
 - [ ] Unit tests moved from `node:test` to Vitest; Playwright and axe journeys added.
-- [ ] Bundled fonts, strict CSP, PWA. Chrono then joins Prettier, ESLint and the typecheck.
+      The move to Vitest is done; Playwright journeys exist (a safety net without axe), the axe
+      assertions come with the Covenant port.
+- [ ] Bundled fonts, strict CSP, PWA. Chrono then joins the typecheck in full (it joined Prettier
+      and ESLint with the move to ES modules; only `src/core` and the storage adapters are typechecked).
 
 ## 5. Translate Locavern
 
