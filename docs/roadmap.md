@@ -20,12 +20,10 @@ Convergence work between the apps, in order. Each step leaves `main` deployable.
 Extracted from Locavern, the reference app ([decision 0004](decisions/0004-reference-architecture.md)):
 
 - [x] `packages/config`: ESLint, Prettier and `jsconfig` bases. Lint `scripts/` too.
-- [ ] `packages/covenant`: a single copy of the design system. Today Locavern and Chrono each
-      carry their own version, and Chrono's loads Google Fonts from a CDN. The
-      `covenant-design-system` skill (`.claude/skills/`) is the reference: it is in English
-      and targets WCAG 2.2 AA.
-      **Do this after the interface comparison of step 4**: extracting Locavern's copy first
-      would make Locavern's look the default, which the comparison exists to avoid.
+- [x] `packages/covenant`: a single copy of the design system, copied byte for byte from the
+      `covenant-design-system` skill (`.claude/skills/`, in English, WCAG 2.2 AA), with a sync
+      script and a test that fails when the two drift. IBM Plex and Phosphor are bundled from
+      npm, never loaded from a CDN. Locavern uses it; Chrono adopts it when it is ported (step 4).
 - [x] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
 - [x] `packages/storage`: IndexedDB opening and migrations, single-writer Web Lock, workspaces,
       JSON export and import, name prefixing.
@@ -38,7 +36,8 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
       attractive than Locavern's. List the visual differences (density, typography,
       surfaces, color use, icons, motion, layout) and decide which ones become Covenant
       defaults, so that the port keeps Chrono's look instead of falling back to Locavern's.
-- [ ] IIFE scripts to ES modules with Vite; `src/core` and `src/adapters` split.
+- [ ] IIFE scripts to ES modules with Vite; `src/core` and `src/adapters` split. Chrono drops its own
+      `covenant.css` and Google Fonts import for `@simple-web-tools/covenant` here.
 - [ ] English identifiers; English and French interface.
 - [ ] Single-writer multi-tab model; storage on `packages/storage`.
 - [ ] Unit tests moved from `node:test` to Vitest; Playwright and axe journeys added.
@@ -51,6 +50,16 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 - [ ] Translate the user documentation, English first.
 
 ## Known issues inherited from the imported apps
+
+- Locavern's `src/styles/app.css` still uses primitive Covenant tokens that have no semantic role
+  (the skill's rule forbids them in component CSS). They need a decision: add roles to the skill,
+  or build app-level tokens from semantic ones.
+  - Whiteboard artwork (12 references): `--lc-wb-*` tokens (lines about 682-715) and the stroke
+    and fill rules (about 1004-1028) use `accent-500`, `accent-800`, `success-700`, `warning-600`
+    and `danger-700`.
+  - Status borders and stripes (10 references): `warning-600`, `info-600`, `danger-500`,
+    `warning-500`, `info-500` (lines about 1243-1510 and 2166). `--cv-<status>-border` is the
+    nearest role; check that it reaches 3:1 where the stripe carries meaning.
 
 - Locavern's main bundle exceeds Vite's chunk size warning; the notes editor is a candidate
   for a lazy import.

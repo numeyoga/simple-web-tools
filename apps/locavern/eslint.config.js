@@ -9,7 +9,7 @@ import {
 
 // Order matters: later entries override the globals and `sourceType` of earlier ones.
 export default [
-  ...base(['dist/**', 'public/vendor/**', 'playwright-report/**', 'test-results/**']),
+  ...base(['dist/**', 'playwright-report/**', 'test-results/**']),
   browserModule(['src/**/*.js', 'public/*.js', '*.config.js']),
   serviceWorker(['public/sw.js']),
   classicScript(['public/theme-init.js']),
