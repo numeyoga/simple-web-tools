@@ -236,6 +236,242 @@ None of these fails a criterion; they are worth telling Claude Design.
 - The Locavern and Chrono apps were not run with the new skill files; only their code was read.
 - Axe finds about a third of WCAG issues; "0 violations" is not "conformant".
 
+## Verification of the category colour export (ce6ed32)
+
+### Verdict
+
+The export holds. Every contrast range and every colour-distance figure in the CHANGELOG entry
+"2026-11-19 (3)" was recomputed and matches. All 16 categories pass in both themes, `tokens.json` equals
+`covenant-tokens.css`, there are no primitive tokens in the new code, nothing external is requested and axe
+finds 0 violations in 28 runs. Decisions C (category colours) and D (`--cv-fg-inverse-muted`) are
+**delivered**. What is left are small defects and limits (see [Open](#open-after-this-check)), none of which
+fails a WCAG criterion. The 16 colours keep Chrono's hues in Chrono's order, but they are not a copy of
+Chrono's colours: five of them moved by more than 10 on the light marker (table below).
+
+Method: contrast with the WCAG formula; ΔE2000 and the colour-vision simulation (Machado 2009, severity
+1.0, applied in linear sRGB) implemented from scratch (the ΔE code reproduces the Sharma test pairs); axe
+with `wcag2a`, `wcag2aa`, `wcag21aa` and `wcag22aa`; Chromium through Playwright; the skill folder served
+flat as before. Scripts stay in the session scratchpad.
+
+### Contrast, recomputed
+
+| Statement                                                   | Stated                      | Computed                                                          |
+| ----------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| Bright tier (odd) markers, worst ground per marker          | 3.20 - 3.24                 | **3.20 - 3.24** (light 3.20 - 3.23, dark 3.20 - 3.24)             |
+| Bright tier fills, white label                              | 4.60 - 4.64                 | **4.60 - 4.64**                                                   |
+| Deep tier (even) markers, light                             | 4.60 - 4.64                 | **4.60 - 4.64**                                                   |
+| Deep tier markers, dark                                     | 5.21 - 5.25                 | **5.21 - 5.25**                                                   |
+| Deep tier fills, white label                                | 6.51 - 6.57                 | **6.51 - 6.57**                                                   |
+| Markers on `surface-3` (forbidden), worst                   | 2.66                        | **2.66** (dark), 2.77 (light)                                     |
+| Dark marker on the highlighted option (`bg-accent-subtle`)  | 2.82                        | **2.82** (category 11 over `surface-2` and `surface-raised`)      |
+| `--cv-fg-inverse-muted` on `--cv-surface-inverse`           | 6.91 / 5.16                 | **6.91 / 5.16** (`#a1a1aa` on `#18181b`, `#626877` on `#f5f6f8`)  |
+| `--cv-fg-inverse` on `--cv-surface-inverse`                 | 17.72 / 18.20               | **17.72 / 18.20**; muted against it 2.56 / 3.53 (visibly quieter) |
+| `--cv-fg-muted` and `--cv-fg-subtle` on the inverse surface | 2.29 / 1.57 and 3.21 / 2.74 | **match** (they stay forbidden there)                             |
+| `--cv-fg-subtle` on `--cv-surface-3`, dark (correction)     | 4.03                        | **4.03**; `tokens.json` now says 4.03, no "4.10" is left          |
+
+All 32 per-token usage notes in `tokens.json` (the ratio of each marker in both themes, the white ratio of
+each fill, the default-order position of each hue) match the computed values: 0 differences. The 16
+markers pass 3:1 against `bg`, `surface`, `surface-2` and `surface-raised` in both themes (lowest 3.20,
+on `surface-2`), and the 16 fills pass 4.5:1 under white (lowest 4.60). `--cv-fg-on-cat` is `#ffffff` in
+both themes. The rendered dot, stripe, segment and block colours equal the tokens for 1 to 16 in both
+themes; without `data-cat`, and with `data-cat="0"`, `"17"` or `"x"`, category 16 (slate) applies, as
+documented.
+
+`tokens.json` against `covenant-tokens.css`: **121 colour tokens compared in both themes, 0
+differences** (every category token and both new text roles included).
+
+Primitive-token rule: searched `covenant.css`, `covenant.js`, `templates/page.html`, every
+`references/components/*.md` (all Anatomy blocks, CategoryColor included), `SKILL.md` and the references
+for `var(--cv-(neutral|accent|success|warning|danger|info)-<n>)`, hex, `rgb()` and colour inline styles.
+**0 violations.** The Anatomy blocks only set the layout properties `--cv-start`, `--cv-span` and
+`--cv-share`. The only literal colours in `covenant.js` are the `#000000` and `#ffffff` search fallbacks.
+
+### Colour distances, recomputed
+
+ΔE2000 of the closest pair. "Wheel neighbours" are the 15 chromatic hues in a ring (including rose to
+orange, the pair the CHANGELOG names) plus slate against rose and orange. Fills are the same in both themes.
+
+| Set                    | Normal vision         | Protanopia             | Deuteranopia      | Tritanopia          |
+| ---------------------- | --------------------- | ---------------------- | ----------------- | ------------------- |
+| Wheel, markers light   | 11.8 violet-purple    | 6.2 yellow-lime        | 8.7 blue-indigo   | 4.3 rose-orange     |
+| Wheel, markers dark    | 14.6 violet-purple    | 11.1 blue-indigo       | 8.9 rose-orange   | **4.0** rose-orange |
+| Wheel, fills           | **9.8** violet-purple | 5.2 purple-fuchsia     | 7.8 blue-indigo   | 5.3 rose-orange     |
+| First 6, markers light | 14.8 blue-indigo      | 9.5 blue-indigo        | 8.7 blue-indigo   | 6.5 blue-cyan       |
+| First 6, markers dark  | 16.1 blue-indigo      | 6.6 pink-cyan          | 6.1 pink-teal     | 8.5 blue-cyan       |
+| First 6, fills         | 13.9 blue-indigo      | 9.3 blue-indigo        | 7.8 blue-indigo   | 8.7 blue-cyan       |
+| First 8, markers light | 12.8 indigo-slate     | 3.9 indigo-fuchsia     | 6.0 blue-fuchsia  | 6.5 blue-cyan       |
+| First 8, markers dark  | 10.5 indigo-slate     | 5.1 pink-slate         | 4.6 teal-slate    | 6.5 indigo-slate    |
+| First 8, fills         | 13.9 blue-indigo      | **3.1** indigo-fuchsia | 5.3 blue-fuchsia  | 7.1 lime-slate      |
+| All 120 pairs, fills   | 8.8 indigo-purple     | 1.4 orange-lime        | 1.9 indigo-purple | 5.1 teal-sky        |
+
+Against the CHANGELOG: worst neighbour, normal vision **9.8** (violet-purple, fills): confirmed. Worst
+neighbour under any of the three simulations **4.0** (rose-orange, tritanopia, dark markers): confirmed
+(4.03). I rebuilt the previous palette from the earlier prompt: violet-purple was 3.4 to 3.6 and 0.44 under
+protanopia, amber-yellow 1.28 under deuteranopia, as the CHANGELOG says. The ordering claims also hold in
+substance: the first six are at least 6.1 apart for everyone; the first eight drop to 3.1 (protanopia,
+indigo against fuchsia, fills), which is why "for most" is the right wording. Past eight, pairs collapse
+(orange and lime are 1.0 apart for protanopia): the "group the rest as Other" rule is needed, not
+decorative.
+
+### Custom colours: `Covenant.categoryColors(hex)` and `setCategory(element, hex)`
+
+Tested in Chromium in both page themes. For every valid input: no exception, derived light marker 3.10 to
+3.14 on all four light grounds, derived dark marker 3.11 to 3.14 on all four dark grounds, fill 4.60 to 4.64
+under white, and the rendered dot, stripe and block equal the derived values in both themes. **0 failures.**
+
+| Input     | Light marker | Dark marker | Fill      | Note                                        |
+| --------- | ------------ | ----------- | --------- | ------------------------------------------- |
+| `#ffffe0` | `#8f8f00`    | `#797900`   | `#797900` | very light yellow becomes olive             |
+| `#ffff00` | `#8f8f00`    | `#797900`   | `#797900` | same result as the pale yellow              |
+| `#000033` | `#7b7bff`    | `#5f5fff`   | `#5e5eff` | very dark navy becomes a lighter periwinkle |
+| `#0a0a2a` | `#8181e1`    | `#6767db`   | `#6767db` |                                             |
+| `#808080` | `#8a8a8a`    | `#757575`   | `#757575` | pure grey                                   |
+| `#ffffff` | `#8a8a8a`    | `#757575`   | `#757575` | identical to grey                           |
+| `#000000` | `#8a8a8a`    | `#757575`   | `#757575` | identical to grey and to white              |
+| `#ff0000` | `#ff4444`    | `#eb0000`   | `#eb0000` | saturated red                               |
+| `#1d4ed8` | `#6386ea`    | `#426de6`   | `#426de6` | close to palette blue (9)                   |
+
+Also accepted: `#f00`, `ff0000` (no hash), upper case, surrounding spaces. Invalid input (`red`, `#12`,
+`xyz`, empty string, `#gggggg`, `#abcd`, `#12345`, `rgb(1,2,3)`, `null`, `undefined`, `{}`, `[]`) returns
+`null` from both functions and never throws; `setCategory(null, 5)` returns `null`.
+
+`setCategory(el, n)`: 1 to 16 (number, `"3"`, `" 7 "`, `[5]`) set `data-cat` and remove any custom
+properties. `0`, `17`, `-1`, `1.5`, `true`, `NaN`, `"17"`, `"#5"` return `null` and leave the element as it
+was (no reset to the default, no error). Edge cases: a digit string that is not a valid category is read as
+a hex colour, so `"123"`, `"012"`, `"1e1"`, `"abc"` and the number `123456` become custom colours
+(`#112233` and so on), where `0` and `17` are refused. The documented form is `#rrggbb`.
+
+What the derivation means in practice (it works as documented: hue and saturation kept, lightness moved):
+colours that differ only in lightness collapse (white, black, grey; pale and pure yellow), a dark colour can
+come out lighter than the input, markers always land at the contrast floor (about 3.1), so custom colours
+never use the deep tier, and nothing keeps a custom colour apart from a palette colour or from another
+custom colour. The recommendation to restrict users to the 16 entries stands.
+
+### Nested `data-theme`
+
+Pages with a dark section in a light page and the reverse (plus a third level), at 1440 and 320 px.
+Measured colours of the section, its text, a muted caption, a button, a badge, an alert, an input, the
+running-timer card on `surface-inverse` and the three levels of nesting: all equal the tokens of the
+section's own theme (0 wrong in 12 checks per page), and `--cv-fg-inverse-muted` renders as `#a1a1aa` in
+a light page's card and `#626877` in a dark page's card. axe: 0 violations on all four pages. No
+horizontal scroll. One defect: with **dark > light > dark** nesting a `data-cat="custom"` element at the
+third level gets the **light** marker (`#6386ea` instead of `#426de6` for `#1d4ed8`), because the rule
+`[data-theme="dark"] [data-theme="light"] [data-cat="custom"]` also matches there and comes after the dark
+rule. Palette categories 1 to 16 are not affected (tokens are redefined per scope). The light marker is
+still above 3:1 on a dark ground, so this is cosmetic.
+
+### Network, axe and regressions
+
+| Check                                                                                                                                                                                      | Result                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Requests not to the local server (Playwright `route`, all runs below)                                                                                                                      | **0**; no 4xx; fonts and Phosphor load                                                                                                                          |
+| `templates/page.html`, gallery of the **35** Anatomy blocks (CategoryColor: card, table, timeline, chart, legend), plus a palette section built here, light and dark, 1440x900 and 320x800 | **0 violations** in 8 runs; no horizontal scroll (`scrollWidth` 1440 and 320)                                                                                   |
+| Gallery with modal, drawer, command menu, menu, four toasts and tooltips                                                                                                                   | **0 violations** in 20 runs                                                                                                                                     |
+| axe "incomplete"                                                                                                                                                                           | only the `⌘` keycap (non-BMP glyph), as before; the 19 category blocks (white on fill) are checked and pass                                                     |
+| Nested-theme pages                                                                                                                                                                         | 0 violations in 4 runs                                                                                                                                          |
+| Focus ring, selected segment                                                                                                                                                               | `#ffffff` on `#18181b` (17.72) light, `#0a0b0e` on `#f5f6f8` (18.20) dark: unchanged                                                                            |
+| Toast pause and resume                                                                                                                                                                     | hover past the timeout: stays, removed 1358 ms after leave (expected about 1360); focus: 1503 ms after blur; warning and danger stay 7 s; success leaves at 6 s |
+| Sticky top bar, 70 tab stops                                                                                                                                                               | `top: 0` after a 1500 px scroll; focused element never closer than 7.39 px (1440) and 7.28 px (320) below it                                                    |
+| Drawer                                                                                                                                                                                     | 320 px at 320, 420 px at 420 and 1440                                                                                                                           |
+| Menu motion, reduced motion, alert roles, `code` floor                                                                                                                                     | unchanged (120 ms, 0 ms with reduce, status/status/alert/none, 12 px)                                                                                           |
+
+Two things looked like regressions and are not. My gallery puts the toast region in the middle of a long
+page, so the toast hover test missed the toast; on `page.html` it passes. The combobox list opens with
+ArrowDown or typing, not with a click, as before. `covenant.js` and `covenant.css` change by additions only
+(the only removed lines are the header comment and the export list in `covenant.js`). One gallery artefact is worth telling Claude
+Design: a `.cv-cat-timeline` inside a flex column with `align-items: flex-start` collapses to 8 px wide
+(its children are absolute and the list has no width), which also made axe report "overlapped" for two
+blocks; with `align-self: stretch` it renders and passes.
+
+### What the colours look like
+
+Screenshots in `scratchpad/ui-compare/`: `skill-v3-palette-{light,dark}.png` (16 swatches, 16 fills, the
+default order as bar charts, legend, timer card), `skill-v3-timeline-{light,dark}.png`,
+`skill-v3-chart-{light,dark}.png`, `skill-v3-card-{light,dark}.png`, `skill-v3-categorycolor-{light,dark}.png`,
+`skill-v3-palette-cvd-{protanopia,deuteranopia,tritanopia}-{light,dark}.png`, the four-row sheets
+`skill-v3-palette-cvd-sheet-{light,dark}.png` and `skill-v3-nested-{light,dark}-{1440,320}.png`.
+
+- **Chrono-like?** In light, yes for the family: same 16 hues in the same order, same saturated look, hue
+  moved by 0.6 degrees at most. But the deep tier makes amber read as brown, lime as olive and teal as dark
+  green, while blue, violet, fuchsia and rose are lighter than Chrono's. The odd and even tiers alternate
+  visibly in the swatch row. In dark, the even tier is the light one (indigo, purple, pink, slate are
+  pastel) and the odd tier is saturated and darker: the dark palette looks quite different from the light
+  one, which Chrono never had (it has no dark mode).
+- **Neighbours, normal vision:** clearly distinguishable, in both themes (closest 9.8 as fills).
+- **Neighbours under simulation:** protanopia and deuteranopia collapse the palette to blue, olive and
+  grey, and the lightness alternation is what keeps neighbours apart; the first six remain separable,
+  the 16-colour chart does not (many segments look alike). Tritanopia keeps teal, red and grey families
+  apart; rose and orange are closest (4.0).
+- **Same project, two colours:** a marker (chart segment, dot) and a fill (timeline block) differ in
+  lightness by design. In light it is a small step. In dark it is large for several hues (lime
+  `#6bad0e` against `#416808`, pink `#e877a9` against `#b11d5f`), so one project looks like two colours
+  when a chart and a timeline share a screen. The name or legend next to each resolves it.
+
+### Chrono drift
+
+ΔE2000 from Chrono's original hex (`Projets.js:7-10`) to the new colour. "Marker" is what a stripe or dot
+uses (light theme); "fill" is what a block with a white label uses. Under 2 is near identical, 2 to 6 is a
+slight shift, 6 to 10 is visible, over 10 is a clearly different colour.
+
+| #   | Hue     | Chrono    | Marker, light | ΔE   | ΔL\*  | Fill      | ΔE   | Reading   |
+| --- | ------- | --------- | ------------- | ---- | ----- | --------- | ---- | --------- |
+| 1   | orange  | `#ea580c` | `#eb580c`     | 0.2  | +0.2  | `#ca4c0a` | 7.5  | same      |
+| 2   | amber   | `#d97706` | `#a75b05`     | 13.3 | -13.3 | `#8d4d04` | 21.0 | different |
+| 3   | yellow  | `#ca8a04` | `#b77d04`     | 5.0  | -5.5  | `#9d6b03` | 12.7 | slight    |
+| 4   | lime    | `#65a30d` | `#4d7b0a`     | 14.1 | -14.1 | `#416808` | 21.9 | different |
+| 5   | green   | `#16a34a` | `#159d48`     | 1.9  | -2.0  | `#12873e` | 9.5  | same      |
+| 6   | teal    | `#0d9488` | `#0b7c72`     | 8.7  | -8.5  | `#096961` | 15.6 | visible   |
+| 7   | cyan    | `#0891b2` | `#0894b6`     | 1.0  | +1.1  | `#077f9c` | 6.6  | same      |
+| 8   | sky     | `#0284c7` | `#0274af`     | 6.2  | -6.1  | `#026396` | 12.6 | visible   |
+| 9   | blue    | `#2563eb` | `#5484ef`     | 11.4 | +10.6 | `#336dec` | 3.4  | different |
+| 10  | indigo  | `#4f46e5` | `#625ae8`     | 5.9  | +5.9  | `#4c42e4` | 1.1  | slight    |
+| 11  | violet  | `#7c3aed` | `#9e6ef2`     | 14.5 | +13.5 | `#8c51ef` | 5.9  | different |
+| 12  | purple  | `#9333ea` | `#973beb`     | 1.7  | +1.6  | `#8318e5` | 4.9  | same      |
+| 13  | fuchsia | `#c026d3` | `#d052e0`     | 8.4  | +8.3  | `#c226d5` | 0.5  | visible   |
+| 14  | pink    | `#db2777` | `#d0236f`     | 2.7  | -2.6  | `#b11d5f` | 9.4  | slight    |
+| 15  | rose    | `#e11d48` | `#e95374`     | 10.3 | +8.1  | `#e2214c` | 0.9  | different |
+| 16  | slate   | `#475569` | `#5d708a`     | 10.0 | +10.9 | `#4f5f75` | 3.6  | visible   |
+
+Mean marker drift 7.2, median 7.3. Four markers are near identical (orange, cyan, green, purple), three
+slight (yellow, indigo, pink), four visible (teal, sky, fuchsia, slate) and five clearly different
+(**amber, lime, violet, blue, rose**). The fills move more than the markers for the deep tier (amber 21.0,
+lime 21.9, teal 15.6, yellow 12.7, sky 12.6) and less for the bright tier (blue 3.4, indigo 1.1, fuchsia
+0.5, rose 0.9). Chrono's stripes and dots were its raw hex in both roles, so every hue now shows two
+related colours. If the port keeps the Chrono look as a goal, amber and lime are the two to look at first:
+they are the ones a Chrono user will call another colour.
+
+### Open after this check
+
+For Claude Design (none blocks adoption):
+
+1. **Nested custom colour** (dark > light > dark): fix the third rule so it only applies when the nearest
+   `data-theme` ancestor is light.
+2. **`tokens.json` usage text** of `cv-fg-inverse-muted` and `cv-fg-on-cat` ends with the boilerplate "Reads
+   on `cv-bg`, `cv-surface` and `cv-surface-2`", which is wrong for both (`fg-inverse-muted` on those
+   grounds is 2.33 to 2.56 in light and 2.58 to 3.22 in dark; white on the light `bg` is about 1.05).
+3. **`setCategory`** with a bare digit string (`"123"`, `"1e1"`) becomes a hex colour, and an invalid
+   value silently keeps the previous category. Accept only `#rgb` and `#rrggbb`, and say what happens on
+   `null`.
+4. **`.cv-cat-timeline`** needs a width (`width: 100%` or `align-self: stretch`) to survive a flex parent.
+5. **The "full palette" and the "both themes side by side" demo** named in the CHANGELOG are not in the
+   skill (the Anatomy has the card, the table, the timeline and the chart only); I built the palette to
+   test. The design system's preview pages are still out of reach.
+6. **Dark palette character:** pastel even tier, and large marker against fill steps in dark (see above).
+   Worth one look by the maintainer; nothing fails.
+
+For the port (not a skill defect): Chrono stores a hex per project. Migration: map each of the 16 original
+hexes to its number, store the number, and decide what happens to custom hexes (keep them as `custom` through
+`setCategory`, or ask the user to pick one of the 16). New projects in either app take the default order,
+starting at blue (9). Decide whether Chrono's native colour picker stays; the skill recommends
+dropping it.
+
+Not verified: real colour-vision users or a hardware simulator (only Machado matrices, my implementation;
+it maps white to white and reproduces the published ΔE test pairs); forced-colors and high-contrast modes
+(markers are backgrounds and a box-shadow, so they probably vanish; the name stays); print; 200 % browser
+zoom and `data-text-size="large"` with the chart and timeline (320 px was used); long names in narrow
+timeline blocks (the ellipsis rule says the full name must be elsewhere); screen readers (the `cv-sr-only`
+time ranges and values were read in the DOM, not heard); the design system's own preview pages.
+
 ## Three-way comparison
 
 Screenshots, kept outside the repository in the session scratchpad (`…/scratchpad/ui-compare/`), new
@@ -476,14 +712,14 @@ maximised whiteboard (`LA:1037-1040` offsets it by `--cv-topbar-h`; `app.css` se
 The maintainer answered the six open questions below. They are binding for `packages/covenant` and the
 Chrono port.
 
-| Question                           | Decision                                                                                                                                                                         |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B. Hover and press                 | **Instant**, no fade and no press scale, as the skill says.                                                                                                                      |
-| C. Project colour                  | **Add to Covenant** as an extension. A prompt for Claude Design proposes categorical tokens (a marker value per theme and a fill value for white labels) for the 16 Chrono hues. |
-| D. Running-timers card             | `--cv-surface-inverse` with `--cv-fg-inverse`, plus a **new `--cv-fg-inverse-muted`** role (4.5:1 or more in both themes) for captions. Requested from Claude Design with C.     |
-| F. Live timers and presence widget | **Page header of the Timeline view**, in the top bar on narrow screens.                                                                                                          |
-| G. Page title                      | **The skill's top bar `h1`.**                                                                                                                                                    |
-| H. Single-key shortcuts            | **Kept, behind a "Single-key shortcuts" preference** that turns them off. They never fire while focus is in a text field.                                                        |
+| Question                           | Decision                                                                                                                                                                                                                                                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| B. Hover and press                 | **Instant**, no fade and no press scale, as the skill says.                                                                                                                                                                                                                                            |
+| C. Project colour                  | **Add to Covenant** as an extension. A prompt for Claude Design proposes categorical tokens (a marker value per theme and a fill value for white labels) for the 16 Chrono hues. **Delivered in `ce6ed32` and verified**, see [the verification](#verification-of-the-category-colour-export-ce6ed32). |
+| D. Running-timers card             | `--cv-surface-inverse` with `--cv-fg-inverse`, plus a **new `--cv-fg-inverse-muted`** role (4.5:1 or more in both themes) for captions. Requested from Claude Design with C. **Delivered in `ce6ed32` and verified** (6.91 and 5.16:1).                                                                |
+| F. Live timers and presence widget | **Page header of the Timeline view**, in the top bar on narrow screens.                                                                                                                                                                                                                                |
+| G. Page title                      | **The skill's top bar `h1`.**                                                                                                                                                                                                                                                                          |
+| H. Single-key shortcuts            | **Kept, behind a "Single-key shortcuts" preference** that turns them off. They never fire while focus is in a text field.                                                                                                                                                                              |
 
 ## Remaining open questions
 
