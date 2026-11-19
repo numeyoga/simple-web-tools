@@ -5,28 +5,29 @@
 // Several tabs may write at the same time (multi-writer model): each tab writes only what it
 // changed and re-reads everything when another tab announces a write.
 
-import { migrerEcheancesTodos } from '../core/echeances.js';
-import { construireExport } from '../core/import-export.js';
-import * as pointage from '../core/pointage.js';
-import * as projets from '../core/projets.js';
+import { migrateRelativeDueDates } from '../core/due-dates.js';
+import * as attendance from '../core/attendance.js';
+import * as projects from '../core/projects.js';
 import { emptyData, seed } from '../core/seed.js';
 import * as sessions from '../core/sessions.js';
 import * as todos from '../core/todos.js';
-import { lsLoad, lsSave } from './fallback.js';
+import { buildExport } from './backup.js';
+import { loadFallback, saveFallback } from './fallback.js';
 import { idbAll, idbBulkPut, idbSync, openDB } from './idb.js';
 import { uid } from './ids.js';
-import { STORE_NAMES, channelNameFor, lsKeyFor, wsActive, wsActiveId } from './workspace-list.js';
+import { channelName, fallbackKey } from './names.js';
+import { STORE_NAMES, isDemoEnabled, wsActiveId } from './workspace-list.js';
 
-/** @typedef {import('../types.js').Donnees} Donnees */
-/** @typedef {import('../types.js').NomCollection} NomCollection */
+/** @typedef {import('../types.js').ChronoData} ChronoData */
+/** @typedef {import('../types.js').CollectionName} CollectionName */
 
 export function createStore() {
   const state = {
     loaded: false,
-    /** @type {Donnees['projets']} */ projets: [],
-    /** @type {Donnees['todos']} */ todos: [],
-    /** @type {Donnees['sessions']} */ sessions: [],
-    /** @type {Donnees['pointage']} */ pointage: [],
+    /** @type {ChronoData['projects']} */ projects: [],
+    /** @type {ChronoData['todos']} */ todos: [],
+    /** @type {ChronoData['sessions']} */ sessions: [],
+    /** @type {ChronoData['attendance']} */ attendance: [],
   };
 
   /** @typedef {(s: typeof state) => void} Listener */
@@ -34,10 +35,10 @@ export function createStore() {
   const stateListeners = new Set();
   /** @type {Set<Listener>} */
   const tickListeners = new Set();
-  let usingIDB = false;
+  let usingIdb = false;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let saveTimer = null;
-  /** @type {Set<NomCollection>} */
+  /** @type {Set<CollectionName>} */
   const dirtyStores = new Set();
 
   /** @param {Listener} fn */
@@ -70,7 +71,7 @@ export function createStore() {
     });
   }
 
-  /** @param {NomCollection} which */
+  /** @param {CollectionName} which */
   function scheduleSave(which) {
     dirtyStores.add(which);
     if (!state.loaded) return;
@@ -79,180 +80,180 @@ export function createStore() {
   }
 
   // Snapshot of what was written or read in IndexedDB: id -> object (reference).
-  /** @type {Record<NomCollection, Map<string, unknown>>} */
-  const persiste = {
-    projets: new Map(),
+  /** @type {Record<CollectionName, Map<string, unknown>>} */
+  const persisted = {
+    projects: new Map(),
     todos: new Map(),
     sessions: new Map(),
-    pointage: new Map(),
+    attendance: new Map(),
   };
-  function resetPersiste() {
-    for (const n of STORE_NAMES) persiste[n] = new Map(state[n].map((it) => [it.id, it]));
+  function resetPersisted() {
+    for (const n of STORE_NAMES) persisted[n] = new Map(state[n].map((it) => [it.id, it]));
   }
 
   /** @type {BroadcastChannel | null} */
-  let canal = null; // BroadcastChannel of the workspace (several tabs, IndexedDB)
+  let channel = null; // BroadcastChannel of the workspace (several tabs, IndexedDB)
 
   async function flush() {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
-    if (usingIDB) {
-      const noms = STORE_NAMES.filter((n) => dirtyStores.has(n));
+    if (usingIdb) {
+      const names = STORE_NAMES.filter((n) => dirtyStores.has(n));
       dirtyStores.clear();
-      let ecrit = false;
+      let written = false;
       await Promise.all(
-        noms.map(async (n) => {
+        names.map(async (n) => {
           const items = state[n];
           try {
-            if (await idbSync(n, items, persiste[n])) ecrit = true;
-            persiste[n] = new Map(items.map((it) => [it.id, it]));
+            if (await idbSync(n, items, persisted[n])) written = true;
+            persisted[n] = new Map(items.map((it) => [it.id, it]));
           } catch (e) {
-            console.warn('[db] écriture échouée (' + n + ')', e);
+            console.warn('[db] write failed (' + n + ')', e);
             dirtyStores.add(n); // to retry on the next flush
           }
         }),
       );
-      if (ecrit && canal) {
+      if (written && channel) {
         try {
-          canal.postMessage('maj');
+          channel.postMessage('update');
         } catch {
           /* ignore */
         }
       }
     } else if (dirtyStores.size) {
       dirtyStores.clear();
-      lsSave(state);
+      saveFallback(state);
     }
   }
 
   // Flushes the pending writes right away (tab closed or hidden).
-  function flushMaintenant() {
+  function flushNow() {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
     if (state.loaded && dirtyStores.size) flush();
   }
-  window.addEventListener('pagehide', flushMaintenant);
+  window.addEventListener('pagehide', flushNow);
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flushMaintenant();
+      if (document.visibilityState === 'hidden') flushNow();
     });
   }
 
   // Another tab wrote: flush our pending writes, re-read everything from the persistence,
   // replace the state and reset the snapshot.
-  async function recharger() {
+  async function reloadFromStorage() {
     if (!state.loaded) return;
-    /** @type {Partial<Donnees> | null} */
-    let lus = null;
-    for (let essai = 0; essai < 3 && !lus; essai++) {
+    /** @type {Partial<ChronoData> | null} */
+    let latest = null;
+    for (let attempt = 0; attempt < 3 && !latest; attempt++) {
       await flush();
-      /** @type {Partial<Donnees> | null} */
-      let relu;
-      if (usingIDB) {
+      /** @type {Partial<ChronoData> | null} */
+      let fresh;
+      if (usingIdb) {
         const r = await Promise.all(STORE_NAMES.map(idbAll));
-        relu = Object.fromEntries(STORE_NAMES.map((n, i) => [n, r[i]]));
+        fresh = Object.fromEntries(STORE_NAMES.map((n, i) => [n, r[i]]));
       } else {
-        relu = lsLoad();
+        fresh = loadFallback();
       }
-      if (!relu) return;
-      if (!dirtyStores.size) lus = relu; // otherwise a local change came in meanwhile: retry
+      if (!fresh) return;
+      if (!dirtyStores.size) latest = fresh; // otherwise a local change came in meanwhile: retry
     }
-    if (!lus) return;
-    const relus = lus;
+    if (!latest) return;
+    const readBack = latest;
     for (const n of STORE_NAMES) {
-      const v = relus[n];
+      const v = readBack[n];
       Object.assign(state, { [n]: Array.isArray(v) ? v : [] });
     }
-    resetPersiste(); // snapshot BEFORE migration: migrated todos are thus rewritten
-    const mig = migrerEcheancesTodos(state.todos, Date.now());
-    state.todos = mig.todos;
+    resetPersisted(); // snapshot BEFORE migration: migrated todos are thus rewritten
+    const migration = migrateRelativeDueDates(state.todos, Date.now());
+    state.todos = migration.todos;
     emitState();
-    if (mig.change) scheduleSave('todos');
+    if (migration.change) scheduleSave('todos');
   }
 
   /* --- initial load --- */
   async function init({ seedIfEmpty = true } = {}) {
     const db = await openDB();
     if (db) {
-      usingIDB = true;
-      const [pr, td, se, pt] = await Promise.all([
-        idbAll('projets'),
+      usingIdb = true;
+      const [storedProjects, storedTodos, storedSessions, storedAttendance] = await Promise.all([
+        idbAll('projects'),
         idbAll('todos'),
         idbAll('sessions'),
-        idbAll('pointage'),
+        idbAll('attendance'),
       ]);
       const isFresh =
-        /** @type {any[]} */ (pr).length === 0 &&
-        /** @type {any[]} */ (td).length === 0 &&
-        /** @type {any[]} */ (se).length === 0 &&
-        /** @type {any[]} */ (pt).length === 0;
-      if (isFresh && seedIfEmpty && wsActive().seedOnInit !== false) {
+        /** @type {any[]} */ (storedProjects).length === 0 &&
+        /** @type {any[]} */ (storedTodos).length === 0 &&
+        /** @type {any[]} */ (storedSessions).length === 0 &&
+        /** @type {any[]} */ (storedAttendance).length === 0;
+      if (isFresh && seedIfEmpty && isDemoEnabled(wsActiveId())) {
         const s = seed(Date.now());
         await Promise.all([
-          idbBulkPut('projets', s.projets),
+          idbBulkPut('projects', s.projects),
           idbBulkPut('todos', s.todos),
           idbBulkPut('sessions', s.sessions),
-          idbBulkPut('pointage', s.pointage),
+          idbBulkPut('attendance', s.attendance),
         ]);
-        state.projets = s.projets;
+        state.projects = s.projects;
         state.todos = s.todos;
         state.sessions = s.sessions;
-        state.pointage = s.pointage;
+        state.attendance = s.attendance;
       } else {
-        state.projets = /** @type {any} */ (pr);
-        state.todos = /** @type {any} */ (td);
-        state.sessions = /** @type {any} */ (se);
-        state.pointage = /** @type {any} */ (pt);
+        state.projects = /** @type {any} */ (storedProjects);
+        state.todos = /** @type {any} */ (storedTodos);
+        state.sessions = /** @type {any} */ (storedSessions);
+        state.attendance = /** @type {any} */ (storedAttendance);
       }
-      resetPersiste();
+      resetPersisted();
       if (typeof BroadcastChannel !== 'undefined') {
-        canal = new BroadcastChannel(channelNameFor(wsActiveId()));
-        canal.onmessage = () => {
-          recharger();
+        channel = new BroadcastChannel(channelName(wsActiveId()));
+        channel.onmessage = () => {
+          reloadFromStorage();
         };
       }
     } else {
-      usingIDB = false;
-      const ls = lsLoad();
+      usingIdb = false;
+      const ls = loadFallback();
       if (ls) {
         Object.assign(state, ls);
-      } else if (seedIfEmpty && wsActive().seedOnInit !== false) {
+      } else if (seedIfEmpty && isDemoEnabled(wsActiveId())) {
         Object.assign(state, seed(Date.now()));
       } else {
         Object.assign(state, emptyData());
       }
       // localStorage fallback: another tab wrote the workspace key.
-      const cle = lsKeyFor(wsActiveId());
+      const key = fallbackKey(wsActiveId());
       window.addEventListener('storage', (e) => {
-        if (e.key == null || e.key === cle) recharger();
+        if (e.key == null || e.key === key) reloadFromStorage();
       });
     }
-    // Old relative due dates -> absolute dates. With IndexedDB, resetPersiste() has already run
+    // Old relative due dates -> absolute dates. With IndexedDB, resetPersisted() has already run
     // on the data read: the migrated todos differ from the snapshot and will be written.
-    const mig = migrerEcheancesTodos(state.todos, Date.now());
-    state.todos = mig.todos;
+    const migration = migrateRelativeDueDates(state.todos, Date.now());
+    state.todos = migration.todos;
     state.loaded = true;
-    if (mig.change) scheduleSave('todos'); // after state.loaded: scheduleSave writes nothing before
+    if (migration.change) scheduleSave('todos'); // after state.loaded: scheduleSave writes nothing before
     emitState();
     setInterval(emitTick, 1000);
   }
 
   /* ============= Actions ============= */
 
-  /** @returns {Donnees} */
-  const donnees = () => ({
-    projets: state.projets,
+  /** @returns {ChronoData} */
+  const currentData = () => ({
+    projects: state.projects,
     todos: state.todos,
     sessions: state.sessions,
-    pointage: state.pointage,
+    attendance: state.attendance,
   });
 
   /**
    * Adopts the data returned by a core function: every collection whose array changed is
    * stored and scheduled for writing, then the listeners are notified.
-   * @param {Donnees} next
+   * @param {ChronoData} next
    */
-  function appliquer(next) {
+  function apply(next) {
     for (const n of STORE_NAMES) {
       if (next[n] !== state[n]) {
         Object.assign(state, { [n]: next[n] });
@@ -264,91 +265,91 @@ export function createStore() {
 
   // SESSIONS
   // Several timers can run IN PARALLEL: starting one never stops the others. The "active"
-  // timers are simply all the sessions whose status is not 'terminee' (running or paused).
-  function sessionsActives() {
-    return sessions.sessionsActives(state.sessions);
+  // timers are simply all the sessions whose status is not 'done' (running or paused).
+  function activeSessions() {
+    return sessions.activeSessions(state.sessions);
   }
 
   /**
-   * @param {string} projetId
+   * @param {string} projectId
    * @param {string} [description]
    */
-  function demarrer(projetId, description = '') {
+  function startSession(projectId, description = '') {
     const newId = uid('s');
-    appliquer(sessions.demarrer(donnees(), { projetId, description }, Date.now(), newId));
+    apply(sessions.startSession(currentData(), { projectId, description }, Date.now(), newId));
     return newId;
   }
 
   // --- Control of ONE timer ---
   /** @param {string} id */
-  function pauserSession(id) {
-    appliquer(sessions.pauserSession(donnees(), { id }, Date.now()));
+  function pauseSession(id) {
+    apply(sessions.pauseSession(currentData(), { id }, Date.now()));
   }
   /** @param {string} id */
-  function reprendreSession(id) {
-    appliquer(sessions.reprendreSession(donnees(), { id }, Date.now()));
+  function resumeSession(id) {
+    apply(sessions.resumeSession(currentData(), { id }, Date.now()));
   }
   /** @param {string} id */
-  function arreterSession(id) {
-    appliquer(sessions.arreterSession(donnees(), { id }, Date.now()));
+  function stopSession(id) {
+    apply(sessions.stopSession(currentData(), { id }, Date.now()));
   }
 
   // --- GROUPED control of all the active timers (1+) ---
   /**
    * Applies a grouped change: nothing happens (no write, no notification) when it changed nothing.
-   * @param {(d: Donnees, now: number) => Donnees} fn
+   * @param {(d: ChronoData, now: number) => ChronoData} fn
    */
-  function groupe(fn) {
-    const avant = donnees();
-    const apres = fn(avant, Date.now());
-    if (apres !== avant) appliquer(apres);
+  function applyToAll(fn) {
+    const before = currentData();
+    const after = fn(before, Date.now());
+    if (after !== before) apply(after);
   }
-  function pauserTout() {
-    groupe(sessions.pauserTout);
+  function pauseAll() {
+    applyToAll(sessions.pauseAll);
   }
-  function reprendreTout() {
-    groupe(sessions.reprendreTout);
+  function resumeAll() {
+    applyToAll(sessions.resumeAll);
   }
-  function arreterTout() {
-    groupe(sessions.arreterTout);
+  function stopAll() {
+    applyToAll(sessions.stopAll);
   }
 
   /** @param {string} id */
-  function supprimerSession(id) {
-    appliquer(sessions.supprimerSession(donnees(), { id }));
+  function deleteSession(id) {
+    apply(sessions.deleteSession(currentData(), { id }));
   }
 
   /**
    * @param {string} id
    * @param {Partial<import('../types.js').Session>} patch
    */
-  function majSession(id, patch) {
-    appliquer(sessions.majSession(donnees(), { id, patch }));
+  function updateSession(id, patch) {
+    apply(sessions.updateSession(currentData(), { id, patch }));
   }
 
   // Manual entry of an already finished session (correction / catch-up).
-  /** @param {{ projetId: string, description?: string, debut: number, fin: number }} entree */
-  function ajouterSessionManuelle(entree) {
-    const avant = donnees();
+  /** @param {{ projectId: string, description?: string, start: number, end: number }} entry */
+  function addManualSession(entry) {
+    const before = currentData();
     const id = uid('s');
-    const apres = sessions.ajouterSessionManuelle(avant, entree, id);
-    if (apres === avant) return null;
-    appliquer(apres);
+    const after = sessions.addManualSession(before, entry, id);
+    if (after === before) return null;
+    apply(after);
     return id;
   }
 
   // TODOS
   /**
-   * @param {string} titre
-   * @param {string | null | undefined} projetId
-   * @param {string | null} [echeance]
+   * @param {string} title
+   * @param {string | null | undefined} projectId
+   * @param {string | null} [dueDate]
    * @param {string} [description]
    */
-  function ajouterTodo(titre, projetId, echeance = null, description = '') {
-    appliquer(
-      todos.ajouterTodo(
-        donnees(),
-        { titre, projetId, echeance, description },
+  function addTodo(title, projectId, dueDate = null, description = '') {
+    apply(
+      todos.addTodo(
+        currentData(),
+        { title, projectId, dueDate, description },
         Date.now(),
         uid('t'),
       ),
@@ -356,79 +357,79 @@ export function createStore() {
   }
   /** @param {string} id */
   function toggleTodo(id) {
-    appliquer(todos.toggleTodo(donnees(), { id }));
+    apply(todos.toggleTodo(currentData(), { id }));
   }
   /** @param {string} id */
-  function supprimerTodo(id) {
-    appliquer(todos.supprimerTodo(donnees(), { id }));
+  function deleteTodo(id) {
+    apply(todos.deleteTodo(currentData(), { id }));
   }
   /**
    * @param {string} id
    * @param {Partial<import('../types.js').Todo>} patch
    */
-  function majTodo(id, patch) {
-    appliquer(todos.majTodo(donnees(), { id, patch }));
+  function updateTodo(id, patch) {
+    apply(todos.updateTodo(currentData(), { id, patch }));
   }
 
-  // PROJETS
+  // PROJECTS
   /**
-   * @param {string} nom
+   * @param {string} name
    * @param {string} [client]
-   * @param {string} [couleur]
+   * @param {string} [color]
    */
-  function ajouterProjet(nom, client = '', couleur = '#2563eb') {
+  function addProject(name, client = '', color = '#2563eb') {
     const id = uid('p');
-    appliquer(projets.ajouterProjet(donnees(), { nom, client, couleur }, id));
+    apply(projects.addProject(currentData(), { name, client, color }, id));
     return id;
   }
   /**
    * @param {string} id
-   * @param {Partial<import('../types.js').Projet>} patch
+   * @param {Partial<import('../types.js').Project>} patch
    */
-  function majProjet(id, patch) {
-    appliquer(projets.majProjet(donnees(), { id, patch }));
+  function updateProject(id, patch) {
+    apply(projects.updateProject(currentData(), { id, patch }));
   }
   /** @param {string} id */
-  function archiverProjet(id) {
-    appliquer(projets.archiverProjet(donnees(), { id }));
+  function toggleProjectArchived(id) {
+    apply(projects.toggleProjectArchived(currentData(), { id }));
   }
   /** @param {string} id */
-  function supprimerProjet(id) {
-    appliquer(projets.supprimerProjet(donnees(), { id }));
+  function deleteProject(id) {
+    apply(projects.deleteProject(currentData(), { id }));
   }
 
-  // POINTAGE
-  function etatPointage() {
-    return pointage.etatPointage(state.pointage, Date.now());
+  // ATTENDANCE
+  function attendanceState() {
+    return attendance.attendanceState(state.attendance, Date.now());
   }
-  /** @param {import('../types.js').TypePointage} type */
-  function pointer(type) {
-    appliquer(pointage.pointer(donnees(), { type }, Date.now(), uid('pt')));
+  /** @param {import('../types.js').AttendanceType} type */
+  function recordAttendance(type) {
+    apply(attendance.recordAttendance(currentData(), { type }, Date.now(), uid('pt')));
   }
   /**
-   * @param {import('../types.js').TypePointage} type
+   * @param {import('../types.js').AttendanceType} type
    * @param {number} at
    */
-  function ajouterPointage(type, at) {
-    appliquer(pointage.ajouterPointage(donnees(), { type, at }, uid('pt')));
+  function addAttendance(type, at) {
+    apply(attendance.addAttendance(currentData(), { type, at }, uid('pt')));
   }
   /**
    * @param {string} id
-   * @param {Partial<import('../types.js').Pointage>} patch
+   * @param {Partial<import('../types.js').AttendanceEvent>} patch
    */
-  function majPointage(id, patch) {
-    appliquer(pointage.majPointage(donnees(), { id, patch }));
+  function updateAttendance(id, patch) {
+    apply(attendance.updateAttendance(currentData(), { id, patch }));
   }
   /** @param {string} id */
-  function supprimerPointage(id) {
-    appliquer(pointage.supprimerPointage(donnees(), { id }));
+  function deleteAttendance(id) {
+    apply(attendance.deleteAttendance(currentData(), { id }));
   }
 
   /* --- export (current workspace) --- */
-  async function exporterJSON() {
+  async function exportJson() {
     // Make sure the pending writes are flushed before the export.
     await flush();
-    return construireExport(donnees(), wsActive(), Date.now());
+    return buildExport(currentData(), Date.now());
   }
 
   return {
@@ -437,33 +438,33 @@ export function createStore() {
     onState,
     onTick,
     actions: {
-      demarrer,
-      pauserSession,
-      reprendreSession,
-      arreterSession,
-      pauserTout,
-      reprendreTout,
-      arreterTout,
-      supprimerSession,
-      majSession,
-      ajouterSessionManuelle,
-      ajouterTodo,
+      startSession,
+      pauseSession,
+      resumeSession,
+      stopSession,
+      pauseAll,
+      resumeAll,
+      stopAll,
+      deleteSession,
+      updateSession,
+      addManualSession,
+      addTodo,
       toggleTodo,
-      supprimerTodo,
-      majTodo,
-      ajouterProjet,
-      majProjet,
-      archiverProjet,
-      supprimerProjet,
-      pointer,
-      ajouterPointage,
-      majPointage,
-      supprimerPointage,
+      deleteTodo,
+      updateTodo,
+      addProject,
+      updateProject,
+      toggleProjectArchived,
+      deleteProject,
+      recordAttendance,
+      addAttendance,
+      updateAttendance,
+      deleteAttendance,
     },
-    etatPointage,
-    sessionsActives,
-    exporterJSON,
+    attendanceState,
+    activeSessions,
+    exportJson,
     flush,
-    recharger,
+    reloadFromStorage,
   };
 }

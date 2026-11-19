@@ -1,10 +1,10 @@
-// vue projets : cartes avec totaux, modal de création.
+// projects view: cards with totals, creation modal.
 import * as UI from './ui.js';
 
-const { el, icon, fmtDuree, dureeVivante } = UI;
+const { el, icon, formatDuration, liveDuration } = UI;
 
-/* Palette curatée (16 teintes bien différenciées). Une couleur perso peut être saisie via le picker natif. */
-const COULEURS = [
+/* Curated palette (16 well-separated hues). A custom colour can be entered with the native picker. */
+const COLORS = [
   '#ea580c',
   '#d97706',
   '#ca8a04',
@@ -24,27 +24,27 @@ const COULEURS = [
 ];
 const norm = (c) => (c || '').trim().toLowerCase();
 
-export function createProjets(store, opts) {
-  let afficherArchive = false;
+export function createProjectsView(store, opts) {
+  let showArchived = false;
 
-  // Préférence : afficher/masquer les temps cumulés + nombre de sessions sur les
-  // cartes. Masqués par défaut (peu utile dans tous les cas, et coûteux visuellement).
-  // Persistée en localStorage. Quand c'est masqué, chaque carte propose un calcul
-  // à la demande, projet par projet.
-  const PREF_TOTAUX = 'chrono.prefs.projetsTotaux';
-  let afficherTotaux = localStorage.getItem(PREF_TOTAUX) === '1';
-  const calcules = new Set(); // projets dont le total a été calculé à la demande
+  // Preference: show or hide the cumulated times and the session count on the
+  // cards. Hidden by default (not useful in every case, and visually costly).
+  // Persisted in localStorage. When hidden, each card offers an on-demand
+  // computation, project by project.
+  const PREF_TOTALS = 'chrono.prefs.projetsTotaux';
+  let showTotals = localStorage.getItem(PREF_TOTALS) === '1';
+  const computed = new Set(); // projects whose total was computed on demand
 
   const host = el('div', { class: 'ch-pile ch-g16' });
 
-  function ouvrirModalProjet(existant = null) {
-    const isEdit = !!existant;
-    const brouillon = existant
-      ? { nom: existant.nom, client: existant.client || '', couleur: existant.couleur }
-      : { nom: '', client: '', couleur: COULEURS[0] };
+  function openProjectModal(existing = null) {
+    const isEdit = !!existing;
+    const draft = existing
+      ? { name: existing.name, client: existing.client || '', color: existing.color }
+      : { name: '', client: '', color: COLORS[0] };
     let modal;
-    let inputNom, inputClient;
-    const couleursRow = el('div', {
+    let inputName, inputClient;
+    const colorsRow = el('div', {
       style: {
         display: 'grid',
         gridTemplateColumns: 'repeat(9, 28px)',
@@ -53,13 +53,13 @@ export function createProjets(store, opts) {
       },
     });
 
-    /* Picker natif caché, déclenché par le bouton "+". */
-    const pickerNatif = el('input', {
+    /* Hidden native picker, triggered by the "+" button. */
+    const nativePicker = el('input', {
       type: 'color',
-      value: COULEURS.includes(norm(brouillon.couleur)) ? COULEURS[0] : brouillon.couleur,
+      value: COLORS.includes(norm(draft.color)) ? COLORS[0] : draft.color,
       oninput: (e) => {
-        brouillon.couleur = e.target.value;
-        paintCouleurs();
+        draft.color = e.target.value;
+        paintColors();
       },
       style: {
         position: 'absolute',
@@ -72,17 +72,17 @@ export function createProjets(store, opts) {
       },
     });
 
-    function paintCouleurs() {
-      const current = norm(brouillon.couleur);
-      const estDansPalette = COULEURS.some((c) => norm(c) === current);
-      couleursRow.replaceChildren(
-        ...COULEURS.map((c) => {
-          const selectionne = norm(c) === current;
+    function paintColors() {
+      const current = norm(draft.color);
+      const isInPalette = COLORS.some((c) => norm(c) === current);
+      colorsRow.replaceChildren(
+        ...COLORS.map((c) => {
+          const isSelected = norm(c) === current;
           return el('button', {
             type: 'button',
             onclick: () => {
-              brouillon.couleur = c;
-              paintCouleurs();
+              draft.color = c;
+              paintColors();
             },
             'aria-label': `Couleur ${c}`,
             title: c,
@@ -90,135 +90,135 @@ export function createProjets(store, opts) {
               width: 28,
               height: 28,
               borderRadius: 8,
-              border: selectionne ? '2px solid var(--cv-fg)' : '2px solid transparent',
+              border: isSelected ? '2px solid var(--cv-fg)' : '2px solid transparent',
               background: c,
               cursor: 'pointer',
               padding: 0,
-              boxShadow: selectionne ? '0 0 0 2px var(--cv-surface) inset' : 'none',
+              boxShadow: isSelected ? '0 0 0 2px var(--cv-surface) inset' : 'none',
             },
           });
         }),
-        /* Bouton "couleur personnalisée" : ouvre le color picker natif.
-             Si une couleur perso est déjà choisie, on l'affiche dans le bouton. */
+        /* "Custom colour" button: opens the native colour picker.
+             If a custom colour is already chosen, it is shown in the button. */
         el(
           'button',
           {
             type: 'button',
-            onclick: () => pickerNatif.click(),
+            onclick: () => nativePicker.click(),
             'aria-label': 'Couleur personnalisée',
-            title: estDansPalette
+            title: isInPalette
               ? 'Couleur personnalisée…'
-              : `Couleur personnalisée : ${brouillon.couleur}`,
+              : `Couleur personnalisée : ${draft.color}`,
             style: {
               width: 28,
               height: 28,
               borderRadius: 8,
               padding: 0,
               cursor: 'pointer',
-              border: !estDansPalette
+              border: !isInPalette
                 ? '2px solid var(--cv-fg)'
                 : '1px dashed var(--cv-border-strong)',
-              background: !estDansPalette
-                ? brouillon.couleur
+              background: !isInPalette
+                ? draft.color
                 : 'conic-gradient(from 180deg, #ef4444, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #ef4444)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#fff',
               textShadow: '0 0 2px rgba(0,0,0,0.4)',
-              boxShadow: !estDansPalette ? '0 0 0 2px var(--cv-surface) inset' : 'none',
+              boxShadow: !isInPalette ? '0 0 0 2px var(--cv-surface) inset' : 'none',
             },
           },
-          !estDansPalette ? '' : icon('plus', { size: 14, style: { color: 'var(--cv-fg)' } }),
+          !isInPalette ? '' : icon('plus', { size: 14, style: { color: 'var(--cv-fg)' } }),
         ),
-        pickerNatif,
+        nativePicker,
       );
     }
-    paintCouleurs();
+    paintColors();
 
-    const nomW = UI.Input({
+    const nameW = UI.Input({
       label: 'Nom du projet',
-      value: brouillon.nom,
+      value: draft.name,
       placeholder: 'Ex. Refonte site — Acme',
       autoFocus: !isEdit,
     });
-    /* Autocomplétion sur les clients déjà connus. L'utilisateur peut aussi taper
-         une nouvelle valeur libre — elle est créée à la volée. */
-    const clientsConnus = Array.from(
+    /* Autocomplete on the clients already known. The user can also type
+         a new free value: it is created on the fly. */
+    const knownClients = Array.from(
       new Set(
-        store.state.projets
-          .filter((p) => p.client && p.id !== existant?.id)
+        store.state.projects
+          .filter((p) => p.client && p.id !== existing?.id)
           .map((p) => p.client.trim())
           .filter(Boolean),
       ),
     );
     const clientW = UI.Autocomplete({
       label: 'Client',
-      value: brouillon.client,
-      options: clientsConnus,
+      value: draft.client,
+      options: knownClients,
       placeholder: 'Ex. Acme SAS (facultatif)',
       hint:
-        clientsConnus.length > 0
-          ? `${clientsConnus.length} client${clientsConnus.length > 1 ? 's' : ''} déjà saisi${clientsConnus.length > 1 ? 's' : ''} — ou tape un nouveau nom`
+        knownClients.length > 0
+          ? `${knownClients.length} client${knownClients.length > 1 ? 's' : ''} déjà saisi${knownClients.length > 1 ? 's' : ''} — ou tape un nouveau nom`
           : null,
     });
-    inputNom = nomW.input;
+    inputName = nameW.input;
     inputClient = clientW.input;
 
     const body = el(
       'div',
       { class: 'ch-pile ch-g12' },
-      nomW,
+      nameW,
       clientW,
       el(
         'div',
         null,
         el('div', { class: 'ch-label', style: { marginBottom: 6 } }, 'Couleur'),
-        couleursRow,
+        colorsRow,
       ),
     );
 
-    function enregistrer() {
-      const nom = inputNom.value.trim();
-      if (!nom) return;
+    function save() {
+      const name = inputName.value.trim();
+      if (!name) return;
       const patch = {
-        nom,
+        name,
         client: inputClient.value.trim(),
-        couleur: brouillon.couleur,
+        color: draft.color,
       };
-      if (isEdit) store.actions.majProjet(existant.id, patch);
-      else store.actions.ajouterProjet(patch.nom, patch.client, patch.couleur);
+      if (isEdit) store.actions.updateProject(existing.id, patch);
+      else store.actions.addProject(patch.name, patch.client, patch.color);
       modal.close();
     }
 
-    function supprimer() {
+    function originalDelete() {
       const { sessions, todos } = store.state;
-      const n = sessions.filter((s) => s.projetId === existant.id).length;
-      const m = todos.filter((t) => t.projetId === existant.id).length;
+      const n = sessions.filter((s) => s.projectId === existing.id).length;
+      const m = todos.filter((t) => t.projectId === existing.id).length;
       const msg =
         n + m > 0
-          ? `Supprimer le projet « ${existant.nom} » ? ${n} session${n > 1 ? 's' : ''} et ${m} tâche${m > 1 ? 's' : ''} seront aussi supprimées.`
-          : `Supprimer le projet « ${existant.nom} » ?`;
+          ? `Supprimer le projet « ${existing.name} » ? ${n} session${n > 1 ? 's' : ''} et ${m} tâche${m > 1 ? 's' : ''} seront aussi supprimées.`
+          : `Supprimer le projet « ${existing.name} » ?`;
       if (!confirm(msg)) return;
-      store.actions.supprimerProjet(existant.id);
+      store.actions.deleteProject(existing.id);
       modal.close();
     }
 
-    const btnEnregistrer = UI.Button({
+    const saveButton = UI.Button({
       variant: 'primary',
       icon: 'check',
       children: isEdit ? 'Enregistrer' : 'Créer',
-      onclick: enregistrer,
+      onclick: save,
     });
     const updateDisabled = () => {
-      btnEnregistrer.disabled = !inputNom.value.trim();
-      btnEnregistrer.style.opacity = btnEnregistrer.disabled ? 0.5 : 1;
-      btnEnregistrer.style.cursor = btnEnregistrer.disabled ? 'not-allowed' : 'pointer';
+      saveButton.disabled = !inputName.value.trim();
+      saveButton.style.opacity = saveButton.disabled ? 0.5 : 1;
+      saveButton.style.cursor = saveButton.disabled ? 'not-allowed' : 'pointer';
     };
-    inputNom.addEventListener('input', updateDisabled);
+    inputName.addEventListener('input', updateDisabled);
     updateDisabled();
-    inputNom.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') enregistrer();
+    inputName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') save();
     });
 
     const footer = [];
@@ -228,12 +228,12 @@ export function createProjets(store, opts) {
           variant: 'destructive',
           icon: 'trash',
           children: 'Supprimer',
-          onclick: supprimer,
+          onclick: originalDelete,
           style: { marginRight: 'auto' },
         }),
       );
     footer.push(UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }));
-    footer.push(btnEnregistrer);
+    footer.push(saveButton);
 
     modal = UI.Modal({
       title: isEdit ? 'Modifier le projet' : 'Nouveau projet',
@@ -243,25 +243,25 @@ export function createProjets(store, opts) {
     });
   }
 
-  function ouvrirModalCreation() {
-    ouvrirModalProjet(null);
+  function openCreationModal() {
+    openProjectModal(null);
   }
 
   function render() {
-    const { projets, sessions, todos } = store.state;
-    const liste = projets.filter((p) => (afficherArchive ? p.archive : !p.archive));
+    const { projects, sessions, todos } = store.state;
+    const listEl = projects.filter((p) => (showArchived ? p.archived : !p.archived));
 
-    const totaux = {};
+    const totals = {};
     for (const s of sessions) {
-      if (!totaux[s.projetId]) totaux[s.projetId] = { duree: 0, count: 0 };
-      totaux[s.projetId].duree += dureeVivante(s);
-      totaux[s.projetId].count += 1;
+      if (!totals[s.projectId]) totals[s.projectId] = { duration: 0, count: 0 };
+      totals[s.projectId].duration += liveDuration(s);
+      totals[s.projectId].count += 1;
     }
-    const todosParProjet = {};
+    const todosByProject = {};
     for (const t of todos) {
-      if (!todosParProjet[t.projetId]) todosParProjet[t.projetId] = { open: 0, done: 0 };
-      if (t.fait) todosParProjet[t.projetId].done += 1;
-      else todosParProjet[t.projetId].open += 1;
+      if (!todosByProject[t.projectId]) todosByProject[t.projectId] = { open: 0, done: 0 };
+      if (t.done) todosByProject[t.projectId].done += 1;
+      else todosByProject[t.projectId].open += 1;
     }
 
     host.replaceChildren(
@@ -276,31 +276,31 @@ export function createProjets(store, opts) {
           el(
             'div',
             { class: 'ch-meta', style: { marginTop: 4 } },
-            `${projets.filter((p) => !p.archive).length} actifs · ${projets.filter((p) => p.archive).length} archivés`,
+            `${projects.filter((p) => !p.archived).length} actifs · ${projects.filter((p) => p.archived).length} archivés`,
           ),
         ),
         el(
           'div',
           { class: 'ch-flex ch-g8', style: { marginLeft: 'auto' } },
           UI.Button({
-            variant: afficherTotaux ? 'primary' : 'secondary',
-            icon: afficherTotaux ? 'clock' : 'clock-countdown',
-            children: afficherTotaux ? 'Totaux affichés' : 'Totaux masqués',
+            variant: showTotals ? 'primary' : 'secondary',
+            icon: showTotals ? 'clock' : 'clock-countdown',
+            children: showTotals ? 'Totaux affichés' : 'Totaux masqués',
             title:
               'Afficher ou masquer les temps cumulés et le nombre de sessions sur toutes les cartes',
             onclick: () => {
-              afficherTotaux = !afficherTotaux;
-              localStorage.setItem(PREF_TOTAUX, afficherTotaux ? '1' : '0');
-              calcules.clear();
+              showTotals = !showTotals;
+              localStorage.setItem(PREF_TOTALS, showTotals ? '1' : '0');
+              computed.clear();
               render();
             },
           }),
           UI.Button({
-            variant: afficherArchive ? 'primary' : 'secondary',
+            variant: showArchived ? 'primary' : 'secondary',
             icon: 'archive',
-            children: afficherArchive ? 'Archivés' : 'Actifs',
+            children: showArchived ? 'Archivés' : 'Actifs',
             onclick: () => {
-              afficherArchive = !afficherArchive;
+              showArchived = !showArchived;
               render();
             },
           }),
@@ -308,13 +308,13 @@ export function createProjets(store, opts) {
             variant: 'primary',
             icon: 'plus',
             children: 'Nouveau projet',
-            onclick: ouvrirModalCreation,
+            onclick: openCreationModal,
           }),
         ),
       ),
 
-      // Grille
-      liste.length === 0
+      // Grid
+      listEl.length === 0
         ? el(
             'div',
             {
@@ -331,7 +331,7 @@ export function createProjets(store, opts) {
             el(
               'div',
               { style: { marginTop: 8 } },
-              `Aucun projet ${afficherArchive ? 'archivé' : 'actif'}.`,
+              `Aucun projet ${showArchived ? 'archivé' : 'actif'}.`,
             ),
           )
         : el(
@@ -343,18 +343,18 @@ export function createProjets(store, opts) {
                 gap: 12,
               },
             },
-            liste.map((p) =>
-              carteProjet(
+            listEl.map((p) =>
+              projectCard(
                 p,
-                totaux[p.id] || { duree: 0, count: 0 },
-                todosParProjet[p.id] || { open: 0, done: 0 },
+                totals[p.id] || { duration: 0, count: 0 },
+                todosByProject[p.id] || { open: 0, done: 0 },
               ),
             ),
           ),
     );
   }
 
-  function carteProjet(p, t, td) {
+  function projectCard(p, t, td) {
     return el(
       'article',
       {
@@ -368,7 +368,7 @@ export function createProjets(store, opts) {
           bottom: 0,
           left: 0,
           width: 4,
-          background: p.couleur,
+          background: p.color,
         },
       }),
       el(
@@ -377,12 +377,12 @@ export function createProjets(store, opts) {
         el(
           'div',
           { style: { font: '600 14px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } },
-          p.nom,
+          p.name,
         ),
         el('div', { class: 'ch-meta', style: { marginTop: 2 } }, p.client || '—'),
       ),
 
-      afficherTotaux || calcules.has(p.id)
+      showTotals || computed.has(p.id)
         ? el(
             'div',
             { style: { paddingLeft: 6 } },
@@ -397,7 +397,7 @@ export function createProjets(store, opts) {
                   letterSpacing: '-0.01em',
                 },
               },
-              fmtDuree(t.duree),
+              formatDuration(t.duration),
             ),
             el(
               'div',
@@ -418,7 +418,7 @@ export function createProjets(store, opts) {
               'button',
               {
                 onclick: () => {
-                  calcules.add(p.id);
+                  computed.add(p.id);
                   render();
                 },
                 title: 'Calculer le temps cumulé et le nombre de sessions de ce projet',
@@ -439,14 +439,14 @@ export function createProjets(store, opts) {
       el(
         'div',
         { class: 'ch-flex ch-g6', style: { marginTop: 'auto', paddingLeft: 6 } },
-        !p.archive
+        !p.archived
           ? [
               UI.Button({
                 size: 'sm',
                 variant: 'primary',
                 icon: 'play',
                 children: 'Démarrer',
-                onclick: () => opts.onDemarrerSurProjet(p.id),
+                onclick: () => opts.onStartOnProject(p.id),
                 style: { flex: 1 },
               }),
               UI.IconButton({
@@ -454,14 +454,14 @@ export function createProjets(store, opts) {
                 label: 'Modifier',
                 variant: 'secondary',
                 size: 'sm',
-                onclick: () => ouvrirModalProjet(p),
+                onclick: () => openProjectModal(p),
               }),
               UI.IconButton({
                 icon: 'archive',
                 label: 'Archiver',
                 variant: 'secondary',
                 size: 'sm',
-                onclick: () => store.actions.archiverProjet(p.id),
+                onclick: () => store.actions.toggleProjectArchived(p.id),
               }),
             ]
           : [
@@ -470,7 +470,7 @@ export function createProjets(store, opts) {
                 variant: 'secondary',
                 icon: 'arrow-counter-clockwise',
                 children: 'Désarchiver',
-                onclick: () => store.actions.archiverProjet(p.id),
+                onclick: () => store.actions.toggleProjectArchived(p.id),
                 style: { flex: 1 },
               }),
               UI.IconButton({
@@ -478,7 +478,7 @@ export function createProjets(store, opts) {
                 label: 'Modifier',
                 variant: 'secondary',
                 size: 'sm',
-                onclick: () => ouvrirModalProjet(p),
+                onclick: () => openProjectModal(p),
               }),
             ],
       ),

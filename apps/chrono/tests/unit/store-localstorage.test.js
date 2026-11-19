@@ -5,22 +5,23 @@ import { createStore } from '../../src/adapters/store.js';
 import { h } from './support/data.js';
 import { installBrowser, uninstallBrowser } from './support/browser.js';
 
-const KEY = 'chrono.fallback.default.v1';
+const KEY = 'chrono-fallback-default-v2';
+const LEGACY_KEY = 'chrono.fallback.default.v1';
 // Wednesday 2026-11-18, 10:00.
 const NOW = new Date(2026, 10, 18, 10, 0).getTime();
-const hier = new Date(2026, 10, 17, 9, 0).getTime();
+const yesterday = new Date(2026, 10, 17, 9, 0).getTime();
 /**
  * @param {string} id
- * @param {string | null} echeance
- * @param {number} [creeLe]
+ * @param {string | null} dueDate
+ * @param {number} [createdAt]
  */
-const t = (id, echeance, creeLe = NOW) => ({
+const t = (id, dueDate, createdAt = NOW) => ({
   id,
-  titre: id,
-  fait: false,
-  projetId: null,
-  echeance,
-  creeLe,
+  title: id,
+  done: false,
+  projectId: null,
+  dueDate,
+  createdAt,
 });
 
 /** @type {ReturnType<typeof installBrowser>} */
@@ -30,89 +31,89 @@ beforeEach(() => {
 });
 afterEach(uninstallBrowser);
 
-const lu = () => JSON.parse(nav.localStorage.getItem(KEY) || 'null');
-async function nouveauStore() {
+const readStored = () => JSON.parse(nav.localStorage.getItem(KEY) || 'null');
+async function newStore() {
   const store = createStore();
   await store.init({ seedIfEmpty: false });
   return store;
 }
 
-describe('démarrage', () => {
-  test('le store se charge et démarre un chrono', async () => {
+describe('start', () => {
+  test('the store loads and starts a timer', async () => {
     nav.setNow(NOW);
-    const store = await nouveauStore();
+    const store = await newStore();
 
-    const id = store.actions.demarrer('p1', 'x');
+    const id = store.actions.startSession('p1', 'x');
 
-    expect(store.sessionsActives()).toHaveLength(1);
-    expect(store.sessionsActives()[0]?.id).toBe(id);
+    expect(store.activeSessions()).toHaveLength(1);
+    expect(store.activeSessions()[0]?.id).toBe(id);
   });
 });
 
-describe('sauvegarde', () => {
-  test('pagehide : flush immédiat, sans attendre les 80 ms', async () => {
-    const store = await nouveauStore();
+describe('saving', () => {
+  test('pagehide: immediate flush, without waiting for the 80 ms', async () => {
+    const store = await newStore();
 
-    store.actions.ajouterProjet('Alpha');
-    expect(lu()).toBeNull(); // pas encore écrit
+    store.actions.addProject('Alpha');
+    expect(readStored()).toBeNull(); // not written yet
     nav.fire('pagehide');
 
-    expect(lu().projets).toHaveLength(1);
-    expect(lu().projets[0].nom).toBe('Alpha');
+    expect(readStored().projects).toHaveLength(1);
+    expect(readStored().projects[0].name).toBe('Alpha');
   });
 
-  test("pagehide sans modification : n'écrit rien", async () => {
-    await nouveauStore();
+  test('pagehide without a change: writes nothing', async () => {
+    await newStore();
 
     nav.fire('pagehide');
 
-    expect(lu()).toBeNull();
+    expect(readStored()).toBeNull();
   });
 });
 
-describe("rechargement sur l'événement storage", () => {
-  test("l'état est rechargé depuis localStorage, sans perdre les ajouts", async () => {
-    const A = await nouveauStore();
-    const B = await nouveauStore();
-    B.actions.ajouterProjet('Beta');
+describe('reload on the storage event', () => {
+  test('the state is reloaded from localStorage, without losing the additions', async () => {
+    const A = await newStore();
+    const B = await newStore();
+    B.actions.addProject('Beta');
     await B.flush();
 
     nav.fire('storage');
-    await vi.waitFor(() => expect(A.state.projets.map((p) => p.nom)).toEqual(['Beta']));
+    await vi.waitFor(() => expect(A.state.projects.map((p) => p.name)).toEqual(['Beta']));
 
-    A.actions.ajouterProjet('Alpha');
+    A.actions.addProject('Alpha');
     await A.flush();
-    expect(lu().projets.map((/** @type {{ nom: string }} */ p) => p.nom)).toEqual([
+    expect(readStored().projects.map((/** @type {{ name: string }} */ p) => p.name)).toEqual([
       'Beta',
       'Alpha',
     ]);
   });
 
-  test("émet l'état après rechargement", async () => {
-    const A = await nouveauStore();
-    const B = await nouveauStore();
-    B.actions.ajouterProjet('Beta');
+  test('emits the state after a reload', async () => {
+    const A = await newStore();
+    const B = await newStore();
+    B.actions.addProject('Beta');
     await B.flush();
     let n = 0;
     A.onState(() => n++);
 
-    await A.recharger();
+    await A.reloadFromStorage();
 
     expect(n).toBe(1);
   });
 });
 
-describe('migration des échéances', () => {
-  test('init : un ancien format est migré en mémoire ET réécrit', async () => {
+describe('due-date migration', () => {
+  test('init: an old format is migrated in memory AND rewritten', async () => {
     nav.setNow(NOW);
     nav.localStorage.setItem(
       KEY,
       JSON.stringify({
-        projets: [],
+        projects: [],
         sessions: [],
-        pointage: [],
+        attendance: [],
         todos: [
-          t('a', 'today', hier),
+          t('a', 'today', yesterday),
           t('b', 'fri', NOW),
           t('c', '2026-12-01'),
           t('d', null),
@@ -121,71 +122,125 @@ describe('migration des échéances', () => {
       }),
     );
 
-    const store = await nouveauStore();
+    const store = await newStore();
 
-    expect(store.state.todos.map((x) => x.echeance)).toEqual([
+    expect(store.state.todos.map((x) => x.dueDate)).toEqual([
       '2026-11-17',
       '2026-11-20',
       '2026-12-01',
       null,
       null,
     ]);
-    await store.flush(); // scheduleSave('todos') a été appelé après state.loaded = true
-    expect(lu().todos.map((/** @type {{ echeance: string | null }} */ x) => x.echeance)).toEqual([
-      '2026-11-17',
-      '2026-11-20',
-      '2026-12-01',
-      null,
-      null,
-    ]);
+    await store.flush(); // scheduleSave('todos') was called after state.loaded = true
+    expect(
+      readStored().todos.map((/** @type {{ dueDate: string | null }} */ x) => x.dueDate),
+    ).toEqual(['2026-11-17', '2026-11-20', '2026-12-01', null, null]);
   });
 
-  test('init : données déjà migrées => aucune réécriture', async () => {
+  test('init: already migrated data => no rewrite', async () => {
     nav.setNow(NOW);
-    const brut = JSON.stringify({
-      projets: [],
+    const raw = JSON.stringify({
+      projects: [],
       sessions: [],
-      pointage: [],
+      attendance: [],
       todos: [t('a', '2026-11-18'), t('b', null)],
     });
-    nav.localStorage.setItem(KEY, brut);
-    const store = await nouveauStore();
+    nav.localStorage.setItem(KEY, raw);
+    const store = await newStore();
 
     await store.flush();
 
-    expect(nav.localStorage.getItem(KEY)).toBe(brut);
+    expect(nav.localStorage.getItem(KEY)).toBe(raw);
   });
 
-  test('recharger : relit et migre', async () => {
+  test('reloadFromStorage: re-reads and migrates', async () => {
     nav.setNow(NOW);
-    const store = await nouveauStore();
+    const store = await newStore();
     nav.localStorage.setItem(
       KEY,
       JSON.stringify({
-        projets: [],
+        projects: [],
         sessions: [],
-        pointage: [],
-        todos: [t('a', 'tomorrow', hier)],
+        attendance: [],
+        todos: [t('a', 'tomorrow', yesterday)],
       }),
     );
 
-    await store.recharger();
+    await store.reloadFromStorage();
 
-    expect(store.state.todos[0]?.echeance).toBe('2026-11-18');
+    expect(store.state.todos[0]?.dueDate).toBe('2026-11-18');
     await store.flush();
-    expect(lu().todos[0].echeance).toBe('2026-11-18');
+    expect(readStored().todos[0].dueDate).toBe('2026-11-18');
   });
 });
 
-describe('données de démonstration', () => {
-  test('le premier démarrage sans données les crée, avec des échéances AAAA-MM-JJ', async () => {
+describe('demo data', () => {
+  test('the first start without data creates it, with YYYY-MM-DD due dates', async () => {
     nav.setNow(NOW);
     const store = createStore();
 
     await store.init();
 
-    expect(store.state.projets).toHaveLength(6);
-    expect(store.state.todos.find((x) => x.id === 't5')?.echeance).toBe('2026-11-18');
-    expect(store.sessionsActives().map((s) => s.id)).toEqual(['s14', 's15']);
+    expect(store.state.projects).toHaveLength(6);
+    expect(store.state.todos.find((x) => x.id === 't5')?.dueDate).toBe('2026-11-18');
+    expect(store.activeSessions().map((s) => s.id)).toEqual(['s14', 's15']);
+  });
+});
+
+describe('fallback written by version 1', () => {
+  /** The former layout: French fields, under the `chrono.fallback.<id>.v1` key. */
+  const legacy = () =>
+    JSON.stringify({
+      projets: [{ id: 'p1', nom: 'Alpha', couleur: '#000', client: '', archive: false }],
+      todos: [
+        { id: 't1', titre: 'x', fait: false, projetId: 'p1', echeance: 'today', creeLe: yesterday },
+      ],
+      sessions: [
+        {
+          id: 's1',
+          projetId: 'p1',
+          description: '',
+          debut: 1,
+          dernierDebut: null,
+          fin: 2,
+          duree: 1,
+          statut: 'terminee',
+        },
+      ],
+      pointage: [{ id: 'a1', type: 'pause_debut', at: 3, sessionSuspendueId: 's1' }],
+    });
+
+  test('is read and converted to version 2, and left untouched', async () => {
+    nav.setNow(NOW);
+    nav.localStorage.setItem(LEGACY_KEY, legacy());
+
+    const store = await newStore();
+
+    expect(store.state.projects).toEqual([
+      { id: 'p1', name: 'Alpha', color: '#000', client: '', archived: false },
+    ]);
+    expect(store.state.todos[0]).toMatchObject({ title: 'x', done: false, dueDate: '2026-11-17' });
+    expect(store.state.sessions[0]).toMatchObject({ projectId: 'p1', status: 'done', start: 1 });
+    expect(store.state.attendance).toEqual([
+      { id: 'a1', type: 'break_start', at: 3, suspendedSessionIds: ['s1'] },
+    ]);
+    await store.flush();
+    expect(nav.localStorage.getItem(LEGACY_KEY)).toBe(legacy());
+  });
+
+  test('the next save writes the version 2 key, and it wins afterwards', async () => {
+    nav.setNow(NOW);
+    nav.localStorage.setItem(LEGACY_KEY, legacy());
+    const store = await newStore();
+
+    store.actions.addProject('Beta');
+    await store.flush();
+
+    expect(readStored().projects.map((/** @type {{ name: string }} */ p) => p.name)).toEqual([
+      'Alpha',
+      'Beta',
+    ]);
+    expect(nav.localStorage.getItem(LEGACY_KEY)).toBe(legacy());
+    expect((await newStore()).state.projects).toHaveLength(2);
   });
 });

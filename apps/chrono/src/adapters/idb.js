@@ -1,158 +1,218 @@
-// IndexedDB helpers. One connection per page, on the active workspace's database.
+// IndexedDB helpers. One connection per page, on the active workspace's database, opened with
+// `openDatabase` of @simple-web-tools/storage.
 //
-// Schema (version 1):
-//   projets  : { id, nom, couleur, client, archive }
-//   todos    : { id, titre, fait, projetId, echeance, creeLe }
-//                echeance: null or local date 'AAAA-MM-JJ' (absolute, independent of creeLe).
-//                Old data: relative labels ('today', 'tomorrow', 'mon'..'sun', 'week')
-//                converted on load by migrerEcheancesTodos().
-//   sessions : { id, projetId, description, debut, dernierDebut, fin, duree, statut }
-//                statut: 'terminee' | 'en_cours' | 'en_pause'
-//   pointage : { id, type, at } with type: 'arrivee' | 'pause_debut' | 'pause_fin' | 'depart'
-//   meta     : { key, value }
+// Schema (version 2, English names; the table of the version 1 fields is in README.md):
+//   projects   : { id, name, color, client, archived }
+//   todos      : { id, title, done, projectId, dueDate, createdAt, description }
+//                  dueDate: null or local date 'YYYY-MM-DD' (absolute, independent of createdAt).
+//                  Old data: relative labels ('today', 'tomorrow', 'mon'..'sun', 'week')
+//                  converted on load by migrateRelativeDueDates().
+//   sessions   : { id, projectId, description, start, lastStart, end, duration, status }
+//                  status: 'done' | 'running' | 'paused'
+//   attendance : { id, type, at, suspendedSessionIds }
+//                  type: 'arrival' | 'break_start' | 'break_end' | 'departure'
+//   meta       : { key, value }
+//
+// Migrations (the database version is the number of steps):
+//   step 0, version 0 -> 1: the version 1 layout, exactly as the legacy `openDB()` created it
+//   step 1, version 1 -> 2: converts the version 1 records (`v1ToV2`) inside the upgrade
+//           transaction: `projets` and `pointage` become `projects` and `attendance`,
+//           `todos` and `sessions` are rewritten in place.
+// A new database runs both steps, so it converges with an existing version 1 database.
 
-import { DB_VERSION, STORE_NAMES, dbNameFor, wsActiveId } from './workspace-list.js';
+import { createStoresIfMissing, deleteDatabase, openDatabase } from '@simple-web-tools/storage';
+import { v1ToV2 } from '../core/migrations.js';
+import { databaseNameFor, wsActiveId } from './workspace-list.js';
 
-/** @type {Promise<IDBDatabase | null> | null} */
-let _dbPromise = null;
+/** @typedef {import('@simple-web-tools/storage').Database} Database */
+/** @typedef {import('@simple-web-tools/storage').Migration} Migration */
+/** @typedef {import('../types.js').ChronoData} ChronoData */
+/** @typedef {import('../types.js').CollectionName} CollectionName */
 
-/** @param {IDBDatabase} db */
-function creerStores(db) {
-  for (const s of STORE_NAMES) {
-    if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' });
-  }
-  if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
-}
+/** The version 1 layout. */
+const V1_STORES = [
+  { name: 'projets', keyPath: 'id' },
+  { name: 'todos', keyPath: 'id' },
+  { name: 'sessions', keyPath: 'id' },
+  { name: 'pointage', keyPath: 'id' },
+  { name: 'meta', keyPath: 'key' },
+];
+const V1_DATA_STORES = ['projets', 'todos', 'sessions', 'pointage'];
+const STORES_V2 = /** @type {const} */ (['projects', 'todos', 'sessions', 'attendance']);
 
 /**
- * Opens (once) the active workspace's database; null when IndexedDB is unusable.
- * @returns {Promise<IDBDatabase | null>}
+ * Step 1: read the version 1 stores, create `projects` and `attendance`, delete `projets` and
+ * `pointage`, rewrite `todos` and `sessions`. It only issues requests of the upgrade
+ * transaction (each `await` below is one of them), so the transaction stays alive until the last
+ * write; a failure aborts it and nothing is half-applied.
+ * @type {Migration}
  */
-export function openDB() {
-  if (_dbPromise) return _dbPromise;
-  const dbName = dbNameFor(wsActiveId());
-  _dbPromise = new Promise((resolve, reject) => {
+function convertToV2(db, tx) {
+  /** @param {string} name */
+  const readAll = (name) =>
+    db.objectStoreNames.contains(name) ? tx.objectStore(name).getAll() : Promise.resolve([]);
+  const convert = async () => {
+    const [projets, todos, sessions, pointage] = await Promise.all(V1_DATA_STORES.map(readAll));
+    const v2 = /** @type {ChronoData} */ (v1ToV2({ projets, todos, sessions, pointage }));
+    for (const name of ['projets', 'pointage']) {
+      if (db.objectStoreNames.contains(name)) db.deleteObjectStore(name);
+    }
+    for (const name of ['projects', 'attendance']) {
+      if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'id' });
+    }
+    /** @type {Promise<unknown>[]} */
+    const writes = [];
+    for (const name of STORES_V2) {
+      const store = tx.objectStore(name);
+      for (const record of v2[name]) writes.push(store.put(record));
+    }
+    await Promise.all(writes);
+  };
+  convert().catch((error) => {
+    console.error('[db] migration to version 2 failed', error);
+    try {
+      tx.abort();
+    } catch {
+      /* the transaction is already aborting */
+    }
+  });
+}
+
+/** @type {readonly Migration[]} */
+export const migrations = [(db) => createStoresIfMissing(db, V1_STORES), convertToV2];
+
+/** @type {Promise<Database | null> | null} */
+let dbPromise = null;
+
+/**
+ * Open the database of a workspace, with the migrations. Rejects when IndexedDB is missing,
+ * when the open is blocked by another connection, or after `timeoutMs` (0: no timeout).
+ * @param {string} name
+ * @param {number} timeoutMs
+ * @returns {Promise<Database>}
+ */
+function openGuarded(name, timeoutMs) {
+  return new Promise((resolve, reject) => {
     if (!('indexedDB' in window)) {
       reject(new Error('no-idb'));
       return;
     }
     let settled = false;
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        console.warn('[db] indexedDB.open timed out, falling back to localStorage');
-        reject(new Error('idb-timeout'));
-      }
-    }, 1500);
-    /** @type {IDBOpenDBRequest} */
-    let req;
-    try {
-      req = indexedDB.open(dbName, DB_VERSION);
-    } catch (e) {
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let timeout;
+    /** @param {(value: never) => void} outcome @param {unknown} value */
+    const settle = (outcome, value) => {
+      if (settled) return;
       settled = true;
       clearTimeout(timeout);
-      reject(e);
+      outcome(/** @type {never} */ (value));
+    };
+    if (timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        console.warn('[db] indexedDB.open timed out, falling back to localStorage');
+        settle(reject, new Error('idb-timeout'));
+      }, timeoutMs);
+    }
+    /** @type {Promise<Database>} */
+    let opening;
+    try {
+      opening = openDatabase({
+        name,
+        migrations,
+        onBlocked: () => settle(reject, new Error('idb-blocked')),
+        // Another tab upgrades or deletes this database: the package closed our connection.
+        onVersionChange: () => {
+          dbPromise = null;
+          location.reload();
+        },
+      });
+    } catch (error) {
+      settle(reject, error);
       return;
     }
-    req.onupgradeneeded = () => creerStores(req.result);
-    req.onsuccess = () => {
-      if (!settled) {
-        settled = true;
-        clearTimeout(timeout);
-        resolve(req.result);
-      }
-    };
-    req.onerror = () => {
-      if (!settled) {
-        settled = true;
-        clearTimeout(timeout);
-        reject(req.error);
-      }
-    };
-    req.onblocked = () => {
-      if (!settled) {
-        settled = true;
-        clearTimeout(timeout);
-        reject(new Error('idb-blocked'));
-      }
-    };
-  }).catch((e) => {
+    opening.then(
+      (db) => {
+        if (settled)
+          db.close(); // the caller gave up (timeout, blocked): do not leak it
+        else settle(resolve, db);
+      },
+      (error) => settle(reject, error),
+    );
+  });
+}
+
+/**
+ * Opens (once) the active workspace's database; null when IndexedDB is unusable.
+ * @returns {Promise<Database | null>}
+ */
+export function openDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = openGuarded(databaseNameFor(wsActiveId()), 1500).catch((e) => {
     console.warn('[db] openDB fallback:', e?.message || e);
     return null;
   });
-  return _dbPromise;
+  return dbPromise;
 }
 
 /**
  * Closes the shared connection (if any) and forgets it, so the next openDB() reopens.
  * @returns {Promise<void>}
  */
-export async function fermerBase() {
-  if (!_dbPromise) return;
-  const db = await _dbPromise.catch(() => null);
+export async function closeDatabase() {
+  if (!dbPromise) return;
+  const db = await dbPromise.catch(() => null);
   if (db) db.close();
-  _dbPromise = null;
+  dbPromise = null;
 }
 
 /**
  * All the records of a store; null when IndexedDB is unavailable.
- * @param {string} store
+ * @param {CollectionName} store
  * @returns {Promise<any[] | null>}
  */
 export async function idbAll(store) {
   const db = await openDB();
   if (!db) return null;
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readonly');
-    const req = tx.objectStore(store).getAll();
-    req.onsuccess = () => res(req.result || []);
-    req.onerror = () => rej(req.error);
-  });
+  return db.getAll(store);
 }
 
 /**
  * Differential write of a store: `put` the objects whose reference differs from the snapshot
- * `vu` (Map id -> object already written or read), `delete` the snapshot ids absent from
+ * `seen` (Map id -> object already written or read), `delete` the snapshot ids absent from
  * `items`. One transaction; does not touch objects added by another tab. Resolves to true
  * when something was written.
- * @param {string} store
+ * @param {CollectionName} store
  * @param {{ id: string }[]} items
- * @param {Map<string, unknown>} vu
+ * @param {Map<string, unknown>} seen
  * @returns {Promise<boolean>}
  */
-export async function idbSync(store, items, vu) {
+export async function idbSync(store, items, seen) {
   const db = await openDB();
   if (!db) return false;
   const ids = new Set(items.map((it) => it.id));
-  const aEcrire = items.filter((it) => vu.get(it.id) !== it);
-  const aSupprimer = [...vu.keys()].filter((id) => !ids.has(id));
-  if (!aEcrire.length && !aSupprimer.length) return false;
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const s = tx.objectStore(store);
-    aEcrire.forEach((it) => s.put(it));
-    aSupprimer.forEach((id) => s.delete(id));
-    tx.oncomplete = () => res(true);
-    tx.onerror = () => rej(tx.error);
-    tx.onabort = () => rej(tx.error || new Error('tx-abort'));
-  });
+  const toWrite = items.filter((it) => seen.get(it.id) !== it);
+  const toDelete = [...seen.keys()].filter((id) => !ids.has(id));
+  if (!toWrite.length && !toDelete.length) return false;
+  const tx = db.transaction(store, 'readwrite');
+  await Promise.all([
+    ...toWrite.map((it) => tx.store.put(it)),
+    ...toDelete.map((id) => tx.store.delete(id)),
+    tx.done,
+  ]);
+  return true;
 }
 
 /**
- * @param {string} store
+ * @param {CollectionName} store
  * @param {{ id: string }[]} items
  * @returns {Promise<boolean>}
  */
 export async function idbBulkPut(store, items) {
   const db = await openDB();
   if (!db) return false;
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const s = tx.objectStore(store);
-    items.forEach((it) => s.put(it));
-    tx.oncomplete = () => res(true);
-    tx.onerror = () => rej(tx.error);
-  });
+  const tx = db.transaction(store, 'readwrite');
+  await Promise.all([...items.map((it) => tx.store.put(it)), tx.done]);
+  return true;
 }
 
 /**
@@ -161,27 +221,15 @@ export async function idbBulkPut(store, items) {
  * @returns {Promise<boolean>}
  */
 export function idbDeleteDatabase(id) {
-  return new Promise((res) => {
-    if (!('indexedDB' in window)) return res(false);
-    const req = indexedDB.deleteDatabase(dbNameFor(id));
-    req.onsuccess = () => res(true);
-    req.onerror = () => res(false);
-    req.onblocked = () => res(false);
-  });
+  return deleteDatabase(databaseNameFor(id));
 }
 
 /**
- * Opens a workspace's database directly (import), creating the stores if needed. Rejects on
- * error or when blocked. The caller closes it.
+ * Opens a workspace's database directly (import), migrating it if needed. Rejects on error
+ * or when blocked. The caller closes it.
  * @param {string} id
- * @returns {Promise<IDBDatabase>}
+ * @returns {Promise<Database>}
  */
-export function ouvrirBaseDe(id) {
-  return new Promise((res, rej) => {
-    const req = indexedDB.open(dbNameFor(id), DB_VERSION);
-    req.onupgradeneeded = () => creerStores(req.result);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
-    req.onblocked = () => rej(new Error('idb-blocked'));
-  });
+export function openWorkspaceDatabase(id) {
+  return openGuarded(databaseNameFor(id), 0);
 }

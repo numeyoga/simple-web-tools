@@ -17,6 +17,10 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
+  "dependencies": {
+    "@simple-web-tools/dates": "*",
+    "@simple-web-tools/storage": "*"
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.65.1",

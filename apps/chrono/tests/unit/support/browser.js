@@ -2,7 +2,7 @@
 // event listeners (`pagehide`, `storage`), `BroadcastChannel`, the clock and the 1 s timer.
 // IndexedDB comes from `@simple-web-tools/test-utils/fake-indexeddb` (see vitest.config.js).
 import { vi } from 'vitest';
-import { fermerBase } from '../../../src/adapters/idb.js';
+import { closeDatabase } from '../../../src/adapters/idb.js';
 
 export function fakeLocalStorage() {
   /** @type {Map<string, string>} */
@@ -23,19 +23,19 @@ export function fakeLocalStorage() {
 /** In-memory BroadcastChannel: a message reaches the other channels of the same name. */
 function fakeBroadcastChannel() {
   /** @type {any[]} */
-  const registre = [];
+  const registry = [];
   return class {
-    /** @param {string} nom */
-    constructor(nom) {
-      this.nom = nom;
+    /** @param {string} name */
+    constructor(name) {
+      this.name = name;
       /** @type {((e: { data: unknown }) => void) | null} */
       this.onmessage = null;
-      registre.push(this);
+      registry.push(this);
     }
     /** @param {unknown} data */
     postMessage(data) {
-      for (const c of registre) {
-        if (c !== this && c.nom === this.nom) setTimeout(() => c.onmessage?.({ data }), 0);
+      for (const c of registry) {
+        if (c !== this && c.name === this.name) setTimeout(() => c.onmessage?.({ data }), 0);
       }
     }
     close() {}
@@ -43,7 +43,7 @@ function fakeBroadcastChannel() {
 }
 
 /** @type {Map<string, PropertyDescriptor | undefined>} */
-const anciens = new Map();
+const previous = new Map();
 
 /**
  * @param {object} [options]
@@ -56,7 +56,7 @@ export function installBrowser({ indexedDB = true, now } = {}) {
   const listeners = new Map();
   vi.stubGlobal('window', globalThis);
   // Not vi.stubGlobal: reading Node's own `localStorage` prints an experimental warning.
-  anciens.set('localStorage', Object.getOwnPropertyDescriptor(globalThis, 'localStorage'));
+  previous.set('localStorage', Object.getOwnPropertyDescriptor(globalThis, 'localStorage'));
   Object.defineProperty(globalThis, 'localStorage', {
     value: localStorage,
     configurable: true,
@@ -83,13 +83,13 @@ export function installBrowser({ indexedDB = true, now } = {}) {
 
 /** Undoes installBrowser() and closes the shared IndexedDB connection of the adapters. */
 export async function uninstallBrowser() {
-  await fermerBase();
+  await closeDatabase();
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
-  for (const [nom, descripteur] of anciens) {
-    if (descripteur) Object.defineProperty(globalThis, nom, descripteur);
-    else delete (/** @type {any} */ (globalThis)[nom]);
+  for (const [name, descriptor] of previous) {
+    if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+    else delete (/** @type {any} */ (globalThis)[name]);
   }
-  anciens.clear();
+  previous.clear();
 }

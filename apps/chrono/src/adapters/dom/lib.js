@@ -1,16 +1,16 @@
-// Petites aides DOM (el, mount, icon) et formatage. Pas de framework, pas de dépendances.
-// Les calculs purs (durées, présence, dates) vivent dans src/core ; ce module ne fait que
-// leur fournir l'heure courante, comme le faisait l'ancien lib.js.
+// Small DOM helpers (el, mount, icon) and formatting. No framework, no dependencies.
+// The pure computations (durations, presence, dates) live in src/core; this module only
+// supplies the current time to them, as the legacy lib.js did.
 
 import {
-  fmtDateISO as coreFmtDateISO,
-  fmtDuree,
+  formatLocalDate as coreFormatLocalDate,
+  formatDuration,
   startOfDay as coreStartOfDay,
 } from '../../core/dates.js';
 import {
-  dureePresence as coreDureePresence,
-  dureeVivante as coreDureeVivante,
-  plagesPresence as corePlagesPresence,
+  presenceDuration as corePresenceDuration,
+  liveDuration as coreLiveDuration,
+  presenceRanges as corePresenceRanges,
 } from '../../core/presence.js';
 import { uid } from '../ids.js';
 
@@ -18,10 +18,10 @@ import { uid } from '../ids.js';
 const HTML_PROPS = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
 
 /* ------------------------------------------------------------------ */
-/* Constructeur d'éléments DOM ergonomique. Utilisation :
+/* Ergonomic DOM element builder. Usage:
      el('div', { class: 'card', style: { padding: 12 }, onclick: fn },
-        el('h2', null, 'Titre'),
-        'texte brut',
+        el('h2', null, 'Title'),
+        'plain text',
         items.map(i => el('li', null, i.label))
      )
 */
@@ -88,12 +88,12 @@ function appendChildren(node, children) {
   }
 }
 
-/* Remplace le contenu d'un noeud par un nouveau noeud (utilisé par les vues). */
+/* Replaces the content of a node with a new node (used by the views). */
 export function mount(host, node) {
   host.replaceChildren(node);
 }
 
-/* Icone Phosphor — raccourci. */
+/* Phosphor icon: shortcut. */
 export function icon(name, opts = {}) {
   const weight = opts.weight ? '-' + opts.weight : '';
   return el('i', {
@@ -104,11 +104,11 @@ export function icon(name, opts = {}) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Formatage durée / heure / jour                                     */
+/* Formatting of durations / times / days                             */
 
-export { fmtDuree };
+export { formatDuration };
 
-export function fmtHeure(ts) {
+export function formatTime(ts) {
   return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -116,24 +116,24 @@ export function startOfDay(d = new Date()) {
   return coreStartOfDay(d);
 }
 
-/* Durée vivante d'une session : ajoute le delta depuis dernierDebut si en cours. */
-export function dureeVivante(session) {
-  return coreDureeVivante(session, Date.now());
+/* Live duration of a session: adds the time since lastStart when it is running. */
+export function liveDuration(session) {
+  return coreLiveDuration(session, Date.now());
 }
 
-/* Plages de présence d'une journée à partir des pointages. */
-export function plagesPresence(events, now = Date.now()) {
-  return corePlagesPresence(events, now);
+/* Presence ranges of a day from its attendance events. */
+export function presenceRanges(events, now = Date.now()) {
+  return corePresenceRanges(events, now);
 }
 
-/* Durée de présence d'une journée. */
-export function dureePresence(events, now = Date.now()) {
-  return coreDureePresence(events, now);
+/* Presence duration of a day. */
+export function presenceDuration(events, now = Date.now()) {
+  return corePresenceDuration(events, now);
 }
 
-/* Date locale au format AAAA-MM-JJ. */
-export function fmtDateISO(d = new Date()) {
-  return coreFmtDateISO(d);
+/* Local date in YYYY-MM-DD format. */
+export function formatLocalDate(d = new Date()) {
+  return coreFormatLocalDate(d);
 }
 
 export { uid };

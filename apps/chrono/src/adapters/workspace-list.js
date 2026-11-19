@@ -1,59 +1,113 @@
-// Backup spaces (workspaces): the list and the active id live in localStorage.
+// Workspaces: the list and the active id live in localStorage, managed by the registry of
+// @simple-web-tools/storage (keys `chrono-workspaces` and `chrono-workspace-active`).
 //
-// Each workspace has its own IndexedDB (`chrono__<id>`) and its own localStorage fallback
-// (`chrono.fallback.<id>.v1`). Switching workspace reloads the page: the store is rebuilt.
-// Every storage name starts with the app name (decision 0005).
+// Each workspace has its own IndexedDB (`chrono__<id>`) and its own localStorage fallback.
+// Switching workspace reloads the page: the store is rebuilt. Every storage name starts with
+// the app name (decision 0005).
 
-import { listeParDefaut } from '../core/workspaces.js';
+import { createWorkspaceRegistry, workspaceDatabaseName } from '@simple-web-tools/storage';
+import { workspaceV1ToV2 } from '../core/migrations.js';
+import {
+  APP,
+  LEGACY_ACTIVE_KEY,
+  LEGACY_WORKSPACES_KEY,
+  noDemoKey,
+  workspaceListKey,
+} from './names.js';
 
-export const DB_VERSION = 1;
-export const STORE_NAMES = /** @type {const} */ (['projets', 'todos', 'sessions', 'pointage']);
+/** @typedef {import('@simple-web-tools/storage').Workspace} Workspace */
 
-const WS_LIST_KEY = 'chrono.workspaces';
-const WS_ACTIVE_KEY = 'chrono.workspace.active';
+/** The four collections of the state, which are four IndexedDB stores. */
+export const STORE_NAMES = /** @type {const} */ (['projects', 'todos', 'sessions', 'attendance']);
 
-/** @returns {import('../types.js').EspaceDeSauvegarde[]} */
-export function wsLoadList() {
+/**
+ * Ids of the workspaces that must not get the demo data on their first start.
+ * @returns {string[]}
+ */
+function readNoDemoIds() {
   try {
-    const raw = localStorage.getItem(WS_LIST_KEY);
-    if (raw) {
-      const list = JSON.parse(raw);
-      if (Array.isArray(list) && list.length > 0) return list;
-    }
+    const parsed = JSON.parse(localStorage.getItem(noDemoKey()) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string') : [];
   } catch {
-    /* ignore */
+    return [];
   }
-  const fresh = listeParDefaut(Date.now());
-  localStorage.setItem(WS_LIST_KEY, JSON.stringify(fresh));
-  return fresh;
 }
 
-/** @param {import('../types.js').EspaceDeSauvegarde[]} list */
-export function wsSaveList(list) {
-  localStorage.setItem(WS_LIST_KEY, JSON.stringify(list));
+/**
+ * @param {string} id
+ * @param {boolean} demo
+ */
+export function setDemoEnabled(id, demo) {
+  const ids = readNoDemoIds().filter((other) => other !== id);
+  if (!demo) ids.push(id);
+  localStorage.setItem(noDemoKey(), JSON.stringify(ids));
 }
+
+/**
+ * Does a fresh workspace start with the demo data? Yes, unless it was created without.
+ * @param {string} id
+ * @returns {boolean}
+ */
+export function isDemoEnabled(id) {
+  return !readNoDemoIds().includes(id);
+}
+
+/**
+ * Once: when the registry has no list yet and the version 1 keys exist, import the version 1
+ * list (same ids, so the database names still match) and the active id. The version 1 keys
+ * are left untouched.
+ * @param {ReturnType<typeof createWorkspaceRegistry>} registry
+ */
+function migrateLegacyRegistry(registry) {
+  if (localStorage.getItem(workspaceListKey()) !== null) return;
+  let legacy;
+  try {
+    legacy = JSON.parse(localStorage.getItem(LEGACY_WORKSPACES_KEY) || 'null');
+  } catch {
+    return;
+  }
+  if (!Array.isArray(legacy)) return;
+  const now = Date.now();
+  const converted = legacy.map((entry) => workspaceV1ToV2(entry, now)).filter((e) => e !== null);
+  const activeId = localStorage.getItem(LEGACY_ACTIVE_KEY);
+  const imported = registry.importWorkspaces(
+    converted.map((entry) => entry.workspace),
+    activeId,
+  );
+  if (!imported) return;
+  const kept = new Set(registry.list().map((w) => w.id));
+  const noDemo = new Set(readNoDemoIds());
+  for (const { workspace, demo } of converted)
+    if (!demo && kept.has(workspace.id)) noDemo.add(workspace.id);
+  if (noDemo.size) localStorage.setItem(noDemoKey(), JSON.stringify([...noDemo]));
+}
+
+/**
+ * The registry over the current `localStorage`. Cheap and stateless: call it where needed.
+ * The first call after an update imports the version 1 list.
+ */
+export function getRegistry() {
+  const registry = createWorkspaceRegistry({
+    app: APP,
+    storage: localStorage,
+    now: () => Date.now(),
+    defaultLabel: 'Espace principal',
+  });
+  migrateLegacyRegistry(registry);
+  return registry;
+}
+
+/** @returns {Workspace[]} */
+export const wsLoadList = () => getRegistry().list();
 
 /** @returns {string} */
-export function wsActiveId() {
-  const id = localStorage.getItem(WS_ACTIVE_KEY);
-  if (id && wsLoadList().some((w) => w.id === id)) return id;
-  return /** @type {import('../types.js').EspaceDeSauvegarde} */ (wsLoadList()[0]).id;
-}
+export const wsActiveId = () => getRegistry().activeId();
+
+/** @returns {Workspace} */
+export const wsActive = () => getRegistry().active();
 
 /** @param {string} id */
-export function wsSetActiveId(id) {
-  localStorage.setItem(WS_ACTIVE_KEY, id);
-}
+export const wsSetActiveId = (id) => getRegistry().setActive(id);
 
-/** @returns {import('../types.js').EspaceDeSauvegarde} */
-export function wsActive() {
-  const id = wsActiveId();
-  return wsLoadList().find((w) => w.id === id) || /** @type {any} */ (wsLoadList()[0]);
-}
-
-/** @param {string} id */
-export const dbNameFor = (id) => `chrono__${id}`;
-/** @param {string} id */
-export const lsKeyFor = (id) => `chrono.fallback.${id}.v1`;
-/** @param {string} id */
-export const channelNameFor = (id) => `chrono:${id}`;
+/** IndexedDB database name of a workspace: `chrono__<id>`. @param {string} id */
+export const databaseNameFor = (id) => workspaceDatabaseName(APP, id);

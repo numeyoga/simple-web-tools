@@ -1,18 +1,17 @@
 // Workspace API (list, create, rename, remove, switch), JSON import and download.
-// The list and the active id are in localStorage; see workspace-list.js.
+// The list and the active id are in localStorage, managed by the registry (workspace-list.js).
 
-import { fmtDateISO } from '../core/dates.js';
-import { validerImport } from '../core/import-export.js';
-import { slugify, uniqueId } from '../core/workspaces.js';
-import { fermerBase, idbDeleteDatabase, ouvrirBaseDe } from './idb.js';
+import { formatLocalDate } from '../core/dates.js';
+import { readExport } from './backup.js';
+import { closeDatabase, idbDeleteDatabase, openWorkspaceDatabase } from './idb.js';
+import { channelName, fallbackKey, legacyFallbackKey } from './names.js';
 import {
   STORE_NAMES,
-  channelNameFor,
-  lsKeyFor,
+  getRegistry,
+  setDemoEnabled,
   wsActive,
   wsActiveId,
   wsLoadList,
-  wsSaveList,
   wsSetActiveId,
 } from './workspace-list.js';
 
@@ -20,55 +19,49 @@ import {
  * Replaces the data of workspace `id` with a validated import. Without IndexedDB (or when it
  * does not open), writes the localStorage fallback instead.
  * @param {string} id
- * @param {unknown} payload an export file, or its `data` part
+ * @param {string | unknown} payload an export file (JSON text or parsed): version 2 envelope,
+ *   or the version 1 file of the former site
  * @returns {Promise<void>}
  */
-async function importerJSONDansWorkspace(id, payload) {
-  const { projets, todos, sessions, pointage } = validerImport(payload, Date.now());
+async function importJsonIntoWorkspace(id, payload) {
+  const imported = readExport(payload, Date.now());
 
   // Importing into the current workspace: close the open connection first.
-  if (id === wsActiveId()) await fermerBase();
+  if (id === wsActiveId()) await closeDatabase();
 
   // Target the right database directly: open it, overwrite every store.
-  /** @type {IDBDatabase | null} */
+  /** @type {import('@simple-web-tools/storage').Database | null} */
   let db = null;
   if ('indexedDB' in window) {
     try {
-      db = await ouvrirBaseDe(id);
+      db = await openWorkspaceDatabase(id);
     } catch (e) {
       console.warn(
-        '[db] import : IndexedDB indisponible, repli localStorage',
+        '[db] import: IndexedDB unavailable, using the localStorage fallback',
         /** @type {Error} */ (e)?.message || e,
       );
     }
   }
   if (!db) {
-    // Same format as lsSave.
-    localStorage.setItem(lsKeyFor(id), JSON.stringify({ projets, todos, sessions, pointage }));
+    // Same format as saveFallback.
+    localStorage.setItem(fallbackKey(id), JSON.stringify(imported));
     return;
   }
-  const base = db;
-  await new Promise((res, rej) => {
-    const tx = base.transaction([...STORE_NAMES, 'meta'], 'readwrite');
-    const put = (/** @type {string} */ name, /** @type {unknown[]} */ items) => {
-      const s = tx.objectStore(name);
-      s.clear();
-      items.forEach((it) => s.put(it));
-    };
-    put('projets', projets);
-    put('todos', todos);
-    put('sessions', sessions);
-    put('pointage', pointage);
-    tx.objectStore('meta').clear();
-    tx.oncomplete = () => res(undefined);
-    tx.onerror = () => rej(tx.error);
-  });
-  base.close();
+  const tx = db.transaction([...STORE_NAMES, 'meta'], 'readwrite');
+  /** @type {Promise<unknown>[]} */
+  const writes = [tx.objectStore('meta').clear()];
+  for (const name of STORE_NAMES) {
+    const store = tx.objectStore(name);
+    writes.push(store.clear());
+    for (const record of imported[name]) writes.push(store.put(record));
+  }
+  await Promise.all([...writes, tx.done]);
+  db.close();
   // Tell the other tabs of this workspace (they re-read the database).
   if (typeof BroadcastChannel !== 'undefined') {
     try {
-      const c = new BroadcastChannel(channelNameFor(id));
-      c.postMessage('maj');
+      const c = new BroadcastChannel(channelName(id));
+      c.postMessage('update');
       c.close();
     } catch {
       /* ignore */
@@ -90,11 +83,8 @@ export const WORKSPACES = {
 
   /** @param {{ label?: string, seedDemo?: boolean }} [options] */
   create({ label, seedDemo = false } = {}) {
-    const list = wsLoadList();
-    const id = uniqueId(slugify(label || 'espace'), list);
-    const ws = { id, label: (label || id).trim(), creeLe: Date.now(), seedOnInit: !!seedDemo };
-    list.push(ws);
-    wsSaveList(list);
+    const ws = getRegistry().create(label?.trim() || 'espace');
+    setDemoEnabled(ws.id, seedDemo);
     return ws;
   },
 
@@ -103,46 +93,42 @@ export const WORKSPACES = {
    * @param {string} label
    */
   rename(id, label) {
-    const list = wsLoadList();
-    const i = list.findIndex((w) => w.id === id);
-    const courant = list[i];
-    if (!courant) throw new Error('workspace inconnu');
-    const renomme = { ...courant, label: String(label).trim() || courant.label };
-    list[i] = renomme;
-    wsSaveList(list);
-    return renomme;
+    const current = wsLoadList().find((w) => w.id === id);
+    if (!current) throw new Error('workspace inconnu');
+    const trimmed = String(label).trim();
+    return trimmed ? getRegistry().rename(id, trimmed) : current;
   },
 
   /** @param {string} id */
   async remove(id) {
-    const list = wsLoadList();
-    if (list.length <= 1) throw new Error('on ne peut pas supprimer le dernier espace');
-    const filtered = list.filter((w) => w.id !== id);
-    wsSaveList(filtered);
-    if (wsActiveId() === id) wsSetActiveId(/** @type {{ id: string }} */ (filtered[0]).id);
+    const registry = getRegistry();
+    if (registry.list().length <= 1) throw new Error('on ne peut pas supprimer le dernier espace');
+    const remaining = registry.remove(id);
+    setDemoEnabled(id, true);
     await idbDeleteDatabase(id);
     try {
-      localStorage.removeItem(lsKeyFor(id));
+      localStorage.removeItem(fallbackKey(id));
+      localStorage.removeItem(legacyFallbackKey(id));
     } catch {
       /* ignore */
     }
-    return filtered;
+    return remaining;
   },
 
-  importJSON: importerJSONDansWorkspace,
+  importJson: importJsonIntoWorkspace,
 
   /**
    * Direct JSON download of the current workspace.
-   * @param {{ exporterJSON: () => Promise<unknown> }} store
+   * @param {{ exportJson: () => Promise<unknown> }} store
    */
-  async downloadCurrentJSON(store) {
-    const payload = await store.exporterJSON();
+  async downloadCurrentJson(store) {
+    const payload = await store.exportJson();
     const ws = wsActive();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chrono-${ws.id}-${fmtDateISO(new Date())}.json`;
+    a.download = `chrono-${ws.id}-${formatLocalDate(new Date())}.json`;
     a.click();
     URL.revokeObjectURL(url);
   },

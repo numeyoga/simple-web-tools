@@ -1,5 +1,7 @@
 // Dates and durations. Pure: nothing here reads the clock, callers pass the date in.
 
+import { toLocalIsoDate } from '@simple-web-tools/dates';
+
 /**
  * Start of the local day (00:00:00.000) as a timestamp.
  * @param {Date | number} d
@@ -12,14 +14,13 @@ export function startOfDay(d) {
 }
 
 /**
- * Local date as `AAAA-MM-JJ`. Never use toISOString(), which converts to UTC: in France,
+ * Local date as `YYYY-MM-DD`. Never use toISOString(), which converts to UTC: in France,
  * Monday 00:00 would become "Sunday".
  * @param {Date | number} d
  * @returns {string}
  */
-export function fmtDateISO(d) {
-  const x = new Date(d);
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+export function formatLocalDate(d) {
+  return toLocalIsoDate(new Date(d));
 }
 
 /**
@@ -28,7 +29,7 @@ export function fmtDateISO(d) {
  * @param {{ withSeconds?: boolean, compact?: boolean }} [opts]
  * @returns {string}
  */
-export function fmtDuree(ms, opts = {}) {
+export function formatDuration(ms, opts = {}) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);

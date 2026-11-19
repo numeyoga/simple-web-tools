@@ -1,114 +1,118 @@
 // Weekly report: aggregation per day and per project, and the CSV text.
 
-import { dureeVivante } from './presence.js';
+import { liveDuration } from './presence.js';
 
 /** @typedef {import('../types.js').Session} Session */
-/** @typedef {import('../types.js').Projet} Projet */
+/** @typedef {import('../types.js').Project} Project */
 
 /**
- * @typedef {object} JourRapport
+ * @typedef {object} ReportDay
  * @property {Date} date
- * @property {Session[]} ss sessions that started that day
- * @property {Record<string, number>} parProjet duration per project id
+ * @property {Session[]} sessions sessions that started that day
+ * @property {Record<string, number>} byProject duration per project id
  * @property {number} total
  */
 
 /**
- * @typedef {object} Semaine
- * @property {Date} lundi
- * @property {Date} dimanche
- * @property {Session[]} sessionsSem sessions that started during the week
- * @property {JourRapport[]} parJour Monday to Sunday
- * @property {number} totalSemaine
- * @property {number} maxJour at least 8 hours
- * @property {number} objectifSem weekly target, in ms
- * @property {number} progObjectif 0..1
- * @property {{ id: string, duree: number, projet: Projet }[]} projetsTri projects of the week, longest first
+ * @typedef {object} WeekReport
+ * @property {Date} monday
+ * @property {Date} sunday
+ * @property {Session[]} weekSessions sessions that started during the week
+ * @property {ReportDay[]} byDay Monday to Sunday
+ * @property {number} weekTotal
+ * @property {number} maxDay at least 8 hours
+ * @property {number} weekTarget weekly target, in ms
+ * @property {number} targetProgress 0..1
+ * @property {{ id: string, duration: number, project: Project }[]} sortedProjects projects of the week, longest first
  * @property {number} totalSessions
- * @property {number} joursActifs
+ * @property {number} activeDays
  */
 
 /**
- * Bounds of the week shifted by `semaineOffset` weeks from `now` (Monday 00:00 to Sunday 23:59:59.999).
+ * Bounds of the week shifted by `weekOffset` weeks from `now` (Monday 00:00 to Sunday 23:59:59.999).
  * Days are added with setDate: a daylight-saving day is not 24 h long.
- * @param {number} semaineOffset
+ * @param {number} weekOffset
  * @param {number} now
- * @returns {{ lundi: Date, dimanche: Date, jours: Date[] }}
+ * @returns {{ monday: Date, sunday: Date, days: Date[] }}
  */
-export function bornesSemaine(semaineOffset, now) {
+export function weekBounds(weekOffset, now) {
   const ref = new Date(now);
-  ref.setDate(ref.getDate() + semaineOffset * 7);
+  ref.setDate(ref.getDate() + weekOffset * 7);
   const dow = (ref.getDay() + 6) % 7; // 0 = Monday
-  const lundi = new Date(ref);
-  lundi.setDate(ref.getDate() - dow);
-  lundi.setHours(0, 0, 0, 0);
-  const dimanche = new Date(lundi);
-  dimanche.setDate(lundi.getDate() + 6);
-  dimanche.setHours(23, 59, 59, 999);
-  const jours = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(lundi);
-    d.setDate(lundi.getDate() + i);
+  const monday = new Date(ref);
+  monday.setDate(ref.getDate() - dow);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
     return d;
   });
-  return { lundi, dimanche, jours };
+  return { monday, sunday, days };
 }
 
 /**
  * Aggregates the sessions of a week.
  * @param {Session[]} sessions
- * @param {Projet[]} projets
- * @param {number} semaineOffset 0 = this week, -1 = last week...
+ * @param {Project[]} projects
+ * @param {number} weekOffset 0 = this week, -1 = last week...
  * @param {number} now
- * @returns {Semaine}
+ * @returns {WeekReport}
  */
-export function agregerSemaine(sessions, projets, semaineOffset, now) {
-  const { lundi, dimanche, jours } = bornesSemaine(semaineOffset, now);
+export function aggregateWeek(sessions, projects, weekOffset, now) {
+  const { monday, sunday, days } = weekBounds(weekOffset, now);
 
-  const sessionsSem = sessions.filter(
-    (s) => s.debut >= lundi.getTime() && s.debut <= dimanche.getTime(),
+  const weekSessions = sessions.filter(
+    (s) => s.start >= monday.getTime() && s.start <= sunday.getTime(),
   );
 
-  const parJour = jours.map((j) => {
+  const byDay = days.map((j) => {
     const dStart = new Date(j);
     dStart.setHours(0, 0, 0, 0);
     const dEnd = new Date(j);
     dEnd.setHours(23, 59, 59, 999);
-    const ss = sessionsSem.filter((s) => s.debut >= dStart.getTime() && s.debut <= dEnd.getTime());
+    const daySessions = weekSessions.filter(
+      (s) => s.start >= dStart.getTime() && s.start <= dEnd.getTime(),
+    );
     /** @type {Record<string, number>} */
-    const parProjet = {};
-    for (const s of ss) parProjet[s.projetId] = (parProjet[s.projetId] || 0) + dureeVivante(s, now);
-    const total = Object.values(parProjet).reduce((a, b) => a + b, 0);
-    return { date: j, ss, parProjet, total };
+    const byProject = {};
+    for (const s of daySessions)
+      byProject[s.projectId] = (byProject[s.projectId] || 0) + liveDuration(s, now);
+    const total = Object.values(byProject).reduce((a, b) => a + b, 0);
+    return { date: j, sessions: daySessions, byProject, total };
   });
 
-  const totalSemaine = parJour.reduce((s, j) => s + j.total, 0);
-  const maxJour = Math.max(...parJour.map((j) => j.total), 8 * 3600_000);
-  const objectifSem = 35 * 3600_000;
-  const progObjectif = Math.min(1, totalSemaine / objectifSem);
+  const weekTotal = byDay.reduce((s, j) => s + j.total, 0);
+  const maxDay = Math.max(...byDay.map((j) => j.total), 8 * 3600_000);
+  const weekTarget = 35 * 3600_000;
+  const targetProgress = Math.min(1, weekTotal / weekTarget);
 
   /** @type {Record<string, number>} */
-  const parProjet = {};
-  for (const s of sessionsSem)
-    parProjet[s.projetId] = (parProjet[s.projetId] || 0) + dureeVivante(s, now);
-  const projetsTri = Object.entries(parProjet)
-    .map(([id, duree]) => ({ id, duree, projet: projets.find((p) => p.id === id) }))
+  const byProject = {};
+  for (const s of weekSessions)
+    byProject[s.projectId] = (byProject[s.projectId] || 0) + liveDuration(s, now);
+  const sortedProjects = Object.entries(byProject)
+    .map(([id, duration]) => ({ id, duration, project: projects.find((p) => p.id === id) }))
     .filter(
-      /** @returns {x is { id: string, duree: number, projet: Projet }} */ (x) => Boolean(x.projet),
+      /** @returns {x is { id: string, duration: number, project: Project }} */ (x) =>
+        Boolean(x.project),
     )
-    .sort((a, b) => b.duree - a.duree);
+    .sort((a, b) => b.duration - a.duration);
 
   return {
-    lundi,
-    dimanche,
-    sessionsSem,
-    parJour,
-    totalSemaine,
-    maxJour,
-    objectifSem,
-    progObjectif,
-    projetsTri,
-    totalSessions: sessionsSem.length,
-    joursActifs: parJour.filter((j) => j.total > 0).length,
+    monday,
+    sunday,
+    weekSessions,
+    byDay,
+    weekTotal,
+    maxDay,
+    weekTarget,
+    targetProgress,
+    sortedProjects,
+    totalSessions: weekSessions.length,
+    activeDays: byDay.filter((j) => j.total > 0).length,
   };
 }
 
@@ -116,14 +120,14 @@ export function agregerSemaine(sessions, projets, semaineOffset, now) {
  * Builds the CSV text of the report, ready for Excel in French: UTF-8 BOM (accents),
  * `;` separator, decimal comma, CRLF line ends.
  * @param {Session[] | null | undefined} sessions
- * @param {Pick<Projet, 'id' | 'nom' | 'client'>[] | null | undefined} projets
+ * @param {Pick<Project, 'id' | 'name' | 'client'>[] | null | undefined} projects
  * @param {number} now end of the running sessions
  * @returns {string}
  */
-export function construireCSVRapport(sessions, projets, now) {
+export function buildReportCsv(sessions, projects, now) {
   // Neutralises formula injection: a text cell starting with = + - @ (or tab / carriage
   // return) would be interpreted as a formula by the spreadsheet.
-  const texte = (/** @type {unknown} */ v) => {
+  const safeText = (/** @type {unknown} */ v) => {
     const t = String(v ?? '');
     return /^[=+\-@\t\r]/.test(t) ? "'" + t : t;
   };
@@ -132,17 +136,17 @@ export function construireCSVRapport(sessions, projets, now) {
     new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)']];
-  for (const s of (sessions || []).slice().sort((a, b) => a.debut - b.debut)) {
-    const p = (projets || []).find((pr) => pr.id === s.projetId);
-    const heures = dureeVivante(s, now) / 3600_000;
+  for (const s of (sessions || []).slice().sort((a, b) => a.start - b.start)) {
+    const p = (projects || []).find((pr) => pr.id === s.projectId);
+    const hours = liveDuration(s, now) / 3600_000;
     rows.push([
-      new Date(s.debut).toLocaleDateString('fr-FR'),
-      texte(p?.nom),
-      texte(p?.client),
-      texte(s.description),
-      hhmm(s.debut),
-      s.fin ? hhmm(s.fin) : '',
-      heures.toFixed(2).replace('.', ','),
+      new Date(s.start).toLocaleDateString('fr-FR'),
+      safeText(p?.name),
+      safeText(p?.client),
+      safeText(s.description),
+      hhmm(s.start),
+      s.end ? hhmm(s.end) : '',
+      hours.toFixed(2).replace('.', ','),
     ]);
   }
   return '﻿' + rows.map((r) => r.map(cell).join(';')).join('\r\n');

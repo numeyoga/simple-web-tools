@@ -1,24 +1,25 @@
-// modal de gestion des espaces de sauvegarde (workspaces IndexedDB).
-// Permet de basculer, créer, renommer, supprimer, exporter ou importer un espace.
+// workspace management modal (IndexedDB workspaces).
+// Lets the user switch, create, rename, delete, export or import a workspace.
+import { importErrorMessage, readExport } from '../backup.js';
 import { WORKSPACES } from '../workspaces.js';
 import * as UI from './ui.js';
 
 const { el, icon } = UI;
 
-/* Petite confirmation modale promisifiée (oui/non).
-     Important : `modal.close()` déclenche `onclose`. On mémorise la réponse
-     avant de fermer pour qu'`onclose` ne resolve pas `false` à notre place. */
-function confirmer({ titre, message, danger }) {
+/* Small promisified confirmation modal (yes/no).
+     Important: `modal.close()` triggers `onclose`. The answer is remembered
+     before closing so that `onclose` does not resolve `false` in our place. */
+function askConfirm({ title, message, danger }) {
   return new Promise((resolve) => {
     let settled = false;
-    const finir = (value) => {
+    const finish = (value) => {
       if (settled) return;
       settled = true;
       resolve(value);
     };
     let modal;
     modal = UI.Modal({
-      title: titre,
+      title: title,
       width: 420,
       body: el(
         'div',
@@ -30,7 +31,7 @@ function confirmer({ titre, message, danger }) {
           variant: 'ghost',
           children: 'Annuler',
           onclick: () => {
-            finir(false);
+            finish(false);
             modal.close();
           },
         }),
@@ -39,17 +40,17 @@ function confirmer({ titre, message, danger }) {
           icon: danger ? 'trash' : 'check',
           children: danger ? 'Supprimer' : 'Confirmer',
           onclick: () => {
-            finir(true);
+            finish(true);
             modal.close();
           },
         }),
       ],
-      onclose: () => finir(false),
+      onclose: () => finish(false),
     });
   });
 }
 
-function lireFichier(file) {
+function readTextFile(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
     r.onload = () => res(String(r.result || ''));
@@ -58,7 +59,7 @@ function lireFichier(file) {
   });
 }
 
-function fmtDate(ts) {
+function formatCreatedDate(ts) {
   if (!ts) return '—';
   return new Date(ts).toLocaleDateString('fr-FR', {
     day: '2-digit',
@@ -67,22 +68,22 @@ function fmtDate(ts) {
   });
 }
 
-export function ouvrirGestionEspaces({ store, toasts } = {}) {
+export function openWorkspaceManager({ store, toasts } = {}) {
   let modal;
 
-  /* État local de l'édition inline d'un libellé. */
+  /* Local state of the inline edit of a label. */
   let editingId = null;
   let pendingLabel = '';
 
-  /* Conteneur unique re-rendu en place pour éviter de fermer/rouvrir la modale. */
+  /* Single container re-rendered in place to avoid closing/reopening the modal. */
   const body = el('div', { class: 'ch-pile ch-g14' });
 
-  function ligneEspace(ws, activeId) {
+  function workspaceRow(ws, activeId) {
     const isActive = ws.id === activeId;
     const isEditing = ws.id === editingId;
 
-    // Vue normale
-    const titre = isEditing
+    // Normal view
+    const title = isEditing
       ? el('input', {
           value: pendingLabel,
           autocomplete: 'off',
@@ -141,8 +142,8 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
               style: { font: '400 11px/1.3 var(--cv-font-mono)', color: 'var(--cv-fg-subtle)' },
             },
             el('span', null, ws.id),
-            ws.creeLe ? el('span', null, '·') : null,
-            ws.creeLe ? el('span', null, `créé ${fmtDate(ws.creeLe)}`) : null,
+            ws.createdAt ? el('span', null, '·') : null,
+            ws.createdAt ? el('span', null, `créé ${formatCreatedDate(ws.createdAt)}`) : null,
           ),
         );
 
@@ -155,7 +156,7 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
     }
 
     const list = WORKSPACES.getList();
-    const peutSupprimer = list.length > 1 && !isActive;
+    const canDelete = list.length > 1 && !isActive;
 
     return el(
       'div',
@@ -168,7 +169,7 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
           background: isActive ? 'var(--cv-accent-50)' : 'var(--cv-surface)',
         },
       },
-      // Icône
+      // Icon
       el(
         'div',
         {
@@ -190,7 +191,7 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
         }),
       ),
 
-      titre,
+      title,
 
       isEditing
         ? el(
@@ -223,8 +224,8 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
                   icon: 'arrow-right',
                   children: 'Basculer',
                   onclick: async () => {
-                    const ok = await confirmer({
-                      titre: 'Changer d’espace ?',
+                    const ok = await askConfirm({
+                      title: 'Changer d’espace ?',
                       message: `La page va se recharger pour afficher l’espace « ${ws.label} ». Tout chrono en cours dans l’espace actuel reste enregistré.`,
                     });
                     if (ok) WORKSPACES.switchTo(ws.id);
@@ -243,12 +244,12 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
             }),
             UI.IconButton({
               icon: 'trash',
-              label: peutSupprimer ? 'Supprimer' : 'Impossible : actif ou dernier',
+              label: canDelete ? 'Supprimer' : 'Impossible : actif ou dernier',
               variant: 'ghost',
-              disabled: !peutSupprimer,
+              disabled: !canDelete,
               onclick: async () => {
-                const ok = await confirmer({
-                  titre: 'Supprimer cet espace ?',
+                const ok = await askConfirm({
+                  title: 'Supprimer cet espace ?',
                   message: `Toutes les données de l’espace « ${ws.label} » seront effacées (projets, sessions, todos, pointage). Cette action est irréversible.`,
                   danger: true,
                 });
@@ -263,13 +264,13 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
     );
   }
 
-  function blocCreation() {
-    let avecDemo = false;
+  function creationBlock() {
+    let withDemo = false;
     const input = el('input', {
       placeholder: 'Ex. Perso, Freelance, Test, Q4…',
       autocomplete: 'off',
       onkeydown: (e) => {
-        if (e.key === 'Enter') creer();
+        if (e.key === 'Enter') create();
       },
       style: {
         flex: 1,
@@ -286,20 +287,20 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
     const checkbox = el('input', {
       type: 'checkbox',
       onchange: (e) => {
-        avecDemo = e.target.checked;
+        withDemo = e.target.checked;
       },
       style: { accentColor: 'var(--cv-accent-500)' },
     });
 
-    async function creer() {
+    async function create() {
       const label = (input.value || '').trim();
       if (!label) {
         input.focus();
         return;
       }
-      const ws = WORKSPACES.create({ label, seedDemo: avecDemo });
-      const ok = await confirmer({
-        titre: 'Basculer sur cet espace ?',
+      const ws = WORKSPACES.create({ label, seedDemo: withDemo });
+      const ok = await askConfirm({
+        title: 'Basculer sur cet espace ?',
         message: `L’espace « ${ws.label} » a été créé. Veux-tu basculer dessus maintenant ?`,
       });
       if (ok) WORKSPACES.switchTo(ws.id);
@@ -336,7 +337,7 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
         'div',
         { class: 'ch-flex ch-g8' },
         input,
-        UI.Button({ variant: 'primary', icon: 'plus', children: 'Créer', onclick: creer }),
+        UI.Button({ variant: 'primary', icon: 'plus', children: 'Créer', onclick: create }),
       ),
       el(
         'label',
@@ -350,7 +351,7 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
     );
   }
 
-  function blocExportImport() {
+  function exportImportBlock() {
     const fileInput = el('input', {
       type: 'file',
       accept: '.json,application/json',
@@ -360,29 +361,27 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
         e.target.value = '';
         if (!file) return;
         try {
-          const txt = await lireFichier(file);
-          const payload = JSON.parse(txt);
-          const dataKeys = payload?.data || payload;
-          if (
-            !dataKeys ||
-            (!Array.isArray(dataKeys.projets) && !Array.isArray(dataKeys.sessions))
-          ) {
-            throw new Error('JSON invalide');
-          }
+          const txt = await readTextFile(file);
+          // Rejects a file that is not a Chrono export before asking for the confirmation.
+          readExport(txt, Date.now(), { strict: true });
           const ws = WORKSPACES.getActive();
-          const ok = await confirmer({
-            titre: 'Remplacer les données ?',
+          const ok = await askConfirm({
+            title: 'Remplacer les données ?',
             message: `Toutes les données actuelles de l’espace « ${ws.label} » seront remplacées par le contenu du fichier. Continuer ?`,
             danger: true,
           });
           if (!ok) return;
-          await WORKSPACES.importJSON(ws.id, payload);
+          await WORKSPACES.importJson(ws.id, txt);
           if (toasts)
             toasts.push({ variant: 'success', title: 'Import terminé', body: 'Rechargement…' });
           setTimeout(() => location.reload(), 400);
         } catch (err) {
           if (toasts)
-            toasts.push({ variant: 'danger', title: 'Import impossible', body: err.message });
+            toasts.push({
+              variant: 'danger',
+              title: 'Import impossible',
+              body: importErrorMessage(err),
+            });
         }
       },
     });
@@ -420,7 +419,7 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
           children: 'Exporter JSON',
           onclick: async () => {
             try {
-              await WORKSPACES.downloadCurrentJSON(store);
+              await WORKSPACES.downloadCurrentJson(store);
               if (toasts) toasts.push({ variant: 'success', title: 'Export téléchargé' });
             } catch (err) {
               if (toasts)
@@ -449,9 +448,9 @@ export function ouvrirGestionEspaces({ store, toasts } = {}) {
         { class: 'ch-note' },
         'Chaque espace est une base IndexedDB isolée. Idéal pour séparer perso / pro, ou faire des essais sans toucher à tes vraies données.',
       ),
-      el('div', { class: 'ch-pile ch-g8' }, ...list.map((ws) => ligneEspace(ws, activeId))),
-      blocCreation(),
-      blocExportImport(),
+      el('div', { class: 'ch-pile ch-g8' }, ...list.map((ws) => workspaceRow(ws, activeId))),
+      creationBlock(),
+      exportImportBlock(),
     );
   }
 

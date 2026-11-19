@@ -1,22 +1,22 @@
-// Shell principal : sidebar (logo, widget pointage, nav, raccourcis) + main qui swap les vues.
+// Main shell: sidebar (logo, attendance widget, nav, shortcuts) + main area that swaps the views.
 import { createStore } from '../store.js';
 import { WORKSPACES } from '../workspaces.js';
-import { createPointageWidget } from './PointageWidget.js';
-import { createProjets } from './Projets.js';
-import { ouvrirQuickAdd } from './QuickAdd.js';
-import { createRapport } from './Rapport.js';
-import { createTimeline } from './Timeline.js';
-import { createTodos } from './Todos.js';
+import { createAttendanceWidget } from './AttendanceWidget.js';
+import { createProjectsView } from './ProjectsView.js';
+import { openQuickAddModal } from './QuickAdd.js';
+import { createReportView } from './ReportView.js';
+import { createTimelineView } from './TimelineView.js';
+import { createTodosView } from './TodosView.js';
 import * as UI from './ui.js';
-import { ouvrirGestionEspaces } from './Workspaces.js';
+import { openWorkspaceManager } from './WorkspacesView.js';
 
 const { el, icon } = UI;
 
 const SECTIONS = [
-  { id: 'timeline', icon: 'timer', label: 'Timeline', factory: createTimeline },
-  { id: 'todos', icon: 'list-checks', label: 'Todos', factory: createTodos },
-  { id: 'projets', icon: 'folder-open', label: 'Projets', factory: createProjets },
-  { id: 'rapport', icon: 'chart-bar', label: 'Rapport', factory: createRapport },
+  { id: 'timeline', icon: 'timer', label: 'Timeline', factory: createTimelineView },
+  { id: 'todos', icon: 'list-checks', label: 'Todos', factory: createTodosView },
+  { id: 'projects', icon: 'folder-open', label: 'Projets', factory: createProjectsView },
+  { id: 'report', icon: 'chart-bar', label: 'Rapport', factory: createReportView },
 ];
 
 export function start(rootEl) {
@@ -29,8 +29,8 @@ export function start(rootEl) {
 
   /* ---------------- shell ---------------- */
 
-  const widget = createPointageWidget(store, {
-    onOuvrirQuickAdd: () => openQuickAdd(),
+  const widget = createAttendanceWidget(store, {
+    onOpenQuickAdd: () => openQuickAdd(),
   });
 
   function workspaceChip() {
@@ -39,7 +39,7 @@ export function start(rootEl) {
     const btn = el(
       'button',
       {
-        onclick: () => ouvrirGestionEspaces({ store, toasts }),
+        onclick: () => openWorkspaceManager({ store, toasts }),
         title: 'Gérer les espaces de sauvegarde',
         class: 'ch-chip ch-flex-c ch-g8',
         style: { padding: '6px 10px' },
@@ -127,16 +127,16 @@ export function start(rootEl) {
   function paintNav() {
     for (const s of SECTIONS) {
       const btn = navButtons[s.id];
-      const actif = currentSection === s.id;
-      btn.classList.toggle('est-actif', actif);
+      const isOn = currentSection === s.id;
+      btn.classList.toggle('est-actif', isOn);
     }
   }
 
-  /* Sidebar : 100vh fixe, en flex-column. Logo + workspaceChip sont figés en haut,
-       widget + nav scrollent au besoin dans un conteneur interne (min-height:0 obligatoire
-       pour que le scroll ait lieu dans la sidebar plutôt que de pousser la page), et le
-       bloc Raccourcis reste collé en bas. Garantit qu'aucun débordement ne déclenche
-       de scroll de page, même sur écrans courts. */
+  /* Sidebar: fixed 100vh, in a flex column. Logo + workspaceChip are pinned at the top,
+       widget + nav scroll if needed inside an inner container (min-height:0 is required
+       so that the scroll happens in the sidebar rather than pushing the page), and the
+       Shortcuts block stays glued to the bottom. Guarantees that no overflow triggers a
+       page scroll, even on short screens. */
   const middleScroll = el(
     'div',
     {
@@ -203,13 +203,13 @@ export function start(rootEl) {
       ),
     ),
 
-    // Sélecteur d'espace (figé en haut)
+    // Workspace selector (pinned at the top)
     el('div', { style: { flexShrink: 0 } }, workspaceChip()),
 
-    // Zone scrollable : widget pointage + nav
+    // Scrollable area: attendance widget + nav
     middleScroll,
 
-    // Footer raccourcis (figé en bas)
+    // Shortcuts footer (pinned at the bottom)
     el(
       'div',
       {
@@ -264,7 +264,7 @@ export function start(rootEl) {
 
   paintNav();
 
-  /* ---------------- vues ---------------- */
+  /* ---------------- views ---------------- */
   function goto(sectionId) {
     if (sectionId === currentSection && currentView) return;
     if (currentView && currentView.destroy) currentView.destroy();
@@ -274,11 +274,11 @@ export function start(rootEl) {
     const def = SECTIONS.find((s) => s.id === sectionId);
     const factory = def.factory;
     currentView = factory(store, {
-      onOuvrirQuickAdd: () => openQuickAdd(),
-      onDemarrerSurProjet: (projetId, description = '') =>
-        openQuickAdd({ projetPrefill: projetId, descriptionPrefill: description }),
-      onDemarrerSurTodo: (projetId, description = '') =>
-        openQuickAdd({ projetPrefill: projetId, descriptionPrefill: description }),
+      onOpenQuickAdd: () => openQuickAdd(),
+      onStartOnProject: (projectId, description = '') =>
+        openQuickAdd({ projectPrefill: projectId, descriptionPrefill: description }),
+      onStartOnTodo: (projectId, description = '') =>
+        openQuickAdd({ projectPrefill: projectId, descriptionPrefill: description }),
     });
     main.replaceChildren(currentView.el);
   }
@@ -289,49 +289,49 @@ export function start(rootEl) {
 
   /* ---------------- QuickAdd ---------------- */
   function openQuickAdd(opts = {}) {
-    ouvrirQuickAdd(store, {
+    openQuickAddModal(store, {
       ...opts,
-      onDemarre: (projetId) => {
-        const p = store.state.projets.find((x) => x.id === projetId);
-        toasts.push({ variant: 'success', title: 'Chrono démarré', body: p?.nom });
+      onStart: (projectId) => {
+        const p = store.state.projects.find((x) => x.id === projectId);
+        toasts.push({ variant: 'success', title: 'Chrono démarré', body: p?.name });
       },
     });
   }
 
-  /* ---------------- Raccourcis clavier ---------------- */
-  // Les raccourcis globaux ne doivent jamais voler une touche à un contrôle
-  // qui en a l'usage : saisie de texte, modale ouverte (focus piégé dans le
-  // dialogue, « S » ne doit pas arrêter les chronos en arrière-plan),
-  // combinaisons avec Alt/Ctrl/Meta (raccourcis du navigateur ou de l'OS),
-  // répétition automatique d'une touche maintenue, et — pour Espace —
-  // boutons/liens/role="button", que la touche active nativement.
-  function doitIgnorerRaccourci(e) {
+  /* ---------------- Keyboard shortcuts ---------------- */
+  // Global shortcuts must never steal a key from a control
+  // that uses it: text input, open modal (focus trapped in the
+  // dialog, "S" must not stop the timers in the background),
+  // combinations with Alt/Ctrl/Meta (browser or OS shortcuts),
+  // auto-repeat of a held key, and, for Space,
+  // buttons/links/role="button", which the key activates natively.
+  function shouldIgnoreShortcut(e) {
     const t = e.target;
     if (t && t.isContentEditable) return true;
     if (t && t.matches && t.matches('input, textarea, select')) return true;
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) return true;
     if (e.altKey || e.ctrlKey || e.metaKey) return true;
     if (e.repeat) return true;
-    const estEspace = e.key === ' ' || e.code === 'Space';
-    if (estEspace && t && t.closest && t.closest('button, a[href], [role="button"]')) return true;
+    const isSpaceKey = e.key === ' ' || e.code === 'Space';
+    if (isSpaceKey && t && t.closest && t.closest('button, a[href], [role="button"]')) return true;
     return false;
   }
 
   window.addEventListener('keydown', (e) => {
-    if (doitIgnorerRaccourci(e)) return;
+    if (shouldIgnoreShortcut(e)) return;
     if (e.key === ' ' || e.code === 'Space') {
       e.preventDefault();
-      const actives = store.sessionsActives();
+      const actives = store.activeSessions();
       if (actives.length === 0) {
         openQuickAdd();
-      } else if (actives.some((s) => s.statut === 'en_cours')) {
-        store.actions.pauserTout();
+      } else if (actives.some((s) => s.status === 'running')) {
+        store.actions.pauseAll();
         toasts.push({
           variant: 'info',
           title: actives.length > 1 ? 'Chronos en pause' : 'Chrono en pause',
         });
       } else {
-        store.actions.reprendreTout();
+        store.actions.resumeAll();
         toasts.push({
           variant: 'success',
           title: actives.length > 1 ? 'Chronos repris' : 'Chrono repris',
@@ -342,16 +342,16 @@ export function start(rootEl) {
       e.preventDefault();
       openQuickAdd();
     }
-    if (e.key.toLowerCase() === 's' && store.sessionsActives().length) {
+    if (e.key.toLowerCase() === 's' && store.activeSessions().length) {
       e.preventDefault();
-      const n = store.sessionsActives().length;
-      store.actions.arreterTout();
+      const n = store.activeSessions().length;
+      store.actions.stopAll();
       toasts.push({ variant: 'info', title: n > 1 ? 'Chronos arrêtés' : 'Chrono arrêté' });
     }
   });
 
-  /* ---------------- chargement initial ---------------- */
-  // Affiche un loader pendant le chargement initial
+  /* ---------------- initial load ---------------- */
+  // Shows a loader during the initial load
   const loader = el(
     'div',
     { style: { padding: 40, color: 'var(--cv-fg-muted)', font: '400 13px var(--cv-font-sans)' } },

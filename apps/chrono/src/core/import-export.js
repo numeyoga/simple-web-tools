@@ -1,19 +1,29 @@
-// JSON export payload and import validation. The format is versioned (`version: 1`).
+// Import validation and the shape of the export file. Pure: the envelope itself
+// (`createExportEnvelope`, `parseExport`) comes from @simple-web-tools/storage and is used by
+// adapters/backup.js.
+//
+// Export format `chrono-workspace`:
+//   version 2 (current): envelope { app, format, version, exportedAt, data } with the English
+//     `data` { projects, todos, sessions, attendance }.
+//   version 1 (the files of the GitLab site, imported forever): not an envelope, a bare object
+//     { version: 1, exporteLe, workspace, data: { projets, todos, sessions, pointage } }.
 
-import { migrerEcheancesTodos } from './echeances.js';
+import { migrateRelativeDueDates } from './due-dates.js';
 
-/** @typedef {import('../types.js').Donnees} Donnees */
-/** @typedef {import('../types.js').ExportJSON} ExportJSON */
-/** @typedef {import('../types.js').EspaceDeSauvegarde} EspaceDeSauvegarde */
+/** @typedef {import('../types.js').ChronoData} ChronoData */
 
-const STATUTS_SESSION = ['terminee', 'en_cours', 'en_pause'];
+export const EXPORT_APP = 'chrono';
+export const EXPORT_FORMAT = 'chrono-workspace';
+export const EXPORT_VERSION = 2;
+
+const SESSION_STATUSES = ['done', 'running', 'paused'];
 
 /**
  * Keeps "object with a text id" items.
  * @param {unknown} x
  * @returns {boolean}
  */
-const estObjetAvecId = (x) =>
+const isRecordWithId = (x) =>
   !!x &&
   typeof x === 'object' &&
   !Array.isArray(x) &&
@@ -24,59 +34,83 @@ const estObjetAvecId = (x) =>
  * @param {unknown} x
  * @returns {boolean}
  */
-const estSessionValide = (x) =>
-  estObjetAvecId(x) &&
-  STATUTS_SESSION.includes(/** @type {{ statut?: string }} */ (x).statut ?? '');
+const isValidSession = (x) =>
+  isRecordWithId(x) &&
+  SESSION_STATUSES.includes(/** @type {{ status?: string }} */ (x).status ?? '');
 
 /**
- * Builds the export payload of a workspace.
- * @param {Donnees} data
- * @param {EspaceDeSauvegarde} workspace
- * @param {number} now export time
- * @returns {ExportJSON}
+ * Is this parsed file a version 1 export, or bare data? Those files have no `app` field: they
+ * are not envelopes.
+ * @param {unknown} value
+ * @returns {boolean}
  */
-export function construireExport(data, workspace, now) {
+export function isLegacyExport(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && !('app' in value);
+}
+
+/**
+ * Wrap a version 1 file (or bare data) as a version 1 envelope, ready for `parseExport` and its
+ * version 1 to 2 upgrade. The export time is the file's `exporteLe` when it is a valid date,
+ * else `now`.
+ * @param {object} legacy
+ * @param {number} now
+ * @returns {{ app: string, format: string, version: number, exportedAt: string, data: unknown }}
+ */
+export function wrapLegacyExport(legacy, now) {
+  const root = /** @type {{ data?: unknown, exporteLe?: unknown }} */ (legacy);
+  const exportedAt =
+    typeof root.exporteLe === 'string' && !Number.isNaN(Date.parse(root.exporteLe))
+      ? root.exporteLe
+      : new Date(now).toISOString();
   return {
+    app: EXPORT_APP,
+    format: EXPORT_FORMAT,
     version: 1,
-    exporteLe: new Date(now).toISOString(),
-    workspace,
-    data: {
-      projets: data.projets,
-      todos: data.todos,
-      sessions: data.sessions,
-      pointage: data.pointage,
-    },
+    exportedAt,
+    data: root.data || legacy,
   };
 }
 
 /**
- * Validates and cleans an imported payload (an export file, or its `data` part). Invalid
- * items are dropped, old due dates are migrated. Throws when the format is wrong or when
- * nothing valid remains.
+ * The `data` of an export from the four collections of the state.
+ * @param {ChronoData} data
+ * @returns {ChronoData}
+ */
+export function toExportData(data) {
+  return {
+    projects: data.projects,
+    todos: data.todos,
+    sessions: data.sessions,
+    attendance: data.attendance,
+  };
+}
+
+/**
+ * Validates and cleans the version 2 `data` of an import. Invalid items are dropped, old due
+ * dates are migrated. Throws when the format is wrong or when nothing valid remains.
  * @param {unknown} payload
  * @param {number} now
- * @returns {Donnees}
+ * @returns {ChronoData}
  */
-export function validerImport(payload, now) {
-  const racine = /** @type {{ data?: unknown } | null | undefined} */ (payload);
-  const data = /** @type {Partial<Record<keyof Donnees, unknown>> | null | undefined} */ (
-    racine?.data || payload
+export function validateImport(payload, now) {
+  const data = /** @type {Partial<Record<keyof ChronoData, unknown>> | null | undefined} */ (
+    payload
   );
   if (!data || typeof data !== 'object') throw new Error('format invalide');
-  const brut = {
-    projets: Array.isArray(data.projets) ? data.projets : [],
+  const raw = {
+    projects: Array.isArray(data.projects) ? data.projects : [],
     todos: Array.isArray(data.todos) ? data.todos : [],
     sessions: Array.isArray(data.sessions) ? data.sessions : [],
-    pointage: Array.isArray(data.pointage) ? data.pointage : [],
+    attendance: Array.isArray(data.attendance) ? data.attendance : [],
   };
-  const projets = brut.projets.filter(estObjetAvecId);
-  const todos = migrerEcheancesTodos(brut.todos.filter(estObjetAvecId), now).todos;
-  const sessions = brut.sessions.filter(estSessionValide);
-  const pointage = brut.pointage.filter(estObjetAvecId);
-  const nbBrut =
-    brut.projets.length + brut.todos.length + brut.sessions.length + brut.pointage.length;
-  if (nbBrut > 0 && projets.length + todos.length + sessions.length + pointage.length === 0) {
+  const projects = raw.projects.filter(isRecordWithId);
+  const todos = migrateRelativeDueDates(raw.todos.filter(isRecordWithId), now).todos;
+  const sessions = raw.sessions.filter(isValidSession);
+  const attendance = raw.attendance.filter(isRecordWithId);
+  const rawCount =
+    raw.projects.length + raw.todos.length + raw.sessions.length + raw.attendance.length;
+  if (rawCount > 0 && projects.length + todos.length + sessions.length + attendance.length === 0) {
     throw new Error('aucune donnée valide');
   }
-  return { projets, todos, sessions, pointage };
+  return { projects, todos, sessions, attendance };
 }

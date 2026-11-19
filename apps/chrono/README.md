@@ -1,7 +1,10 @@
 # Chrono
 
 Application de suivi du temps en JavaScript vanilla (modules ES, Vite) : pas de framework à
-l'exécution, aucune dépendance d'exécution.
+l'exécution. Les seules dépendances d'exécution sont les paquets du monorepo
+`@simple-web-tools/storage` (noms de stockage, migrations IndexedDB, espaces, export JSON) et
+`@simple-web-tools/dates` (dates locales), plus `idb` (1 ko) par l'intermédiaire du premier
+([raison](../../packages/storage/README.md)).
 
 ## Fonctionnalités
 
@@ -25,14 +28,87 @@ l'exécution, aucune dépendance d'exécution.
 
 Tout reste dans le navigateur, rien n'est envoyé à un serveur.
 
-- Chaque espace possède sa propre base IndexedDB (`chrono__<id>`).
-- Si IndexedDB est indisponible ou ne s'ouvre pas, les données sont écrites en
-  repli dans `localStorage` (`chrono.fallback.<id>.v1`).
-- La liste des espaces et l'espace actif sont dans `localStorage`.
+- Chaque espace possède sa propre base IndexedDB (`chrono__<id>`), en schéma version 2
+  (voir ci-dessous).
+- Si IndexedDB est indisponible ou ne s'ouvre pas, les données sont écrites en repli dans
+  `localStorage` (`chrono-fallback-<id>-v2`).
+- La liste des espaces et l'espace actif sont dans `localStorage` (`chrono-workspaces` et
+  `chrono-workspace-active`, gérés par le registre de `@simple-web-tools/storage`).
+  `chrono-workspaces-no-demo` liste les espaces créés sans données de démonstration.
 - Changer d'espace ou importer un JSON recharge la page.
 
 Vider les données du site dans le navigateur efface donc les données de Chrono :
 pensez à l'export JSON pour sauvegarder.
+
+### Schéma version 2 et migration depuis la version 1
+
+La version 1 (celle du site GitLab) stockait des champs en français. La version 2 les a
+renommés en anglais ; le modèle est décrit dans `src/types.d.ts`. Un champ absent de ce tableau
+est conservé tel quel, sur la même clé.
+
+| Version 1                                 | Version 2                                   |
+| ----------------------------------------- | ------------------------------------------- |
+| Base IndexedDB, version 1                 | Même base `chrono__<id>`, version 2         |
+| Store `projets`                           | `projects`                                  |
+| Store `todos`, `sessions`, `meta`         | Inchangés (`todos`, `sessions`, `meta`)     |
+| Store `pointage`                          | `attendance`                                |
+| Projet `nom`                              | `name`                                      |
+| Projet `couleur`                          | `color`                                     |
+| Projet `archive`                          | `archived`                                  |
+| Projet `id`, `client`                     | Inchangés                                   |
+| Todo `titre`                              | `title`                                     |
+| Todo `fait`                               | `done`                                      |
+| Todo `projetId`                           | `projectId`                                 |
+| Todo `echeance`                           | `dueDate` (voir la note ci-dessous)         |
+| Todo `creeLe`                             | `createdAt`                                 |
+| Todo `id`, `description`                  | Inchangés                                   |
+| Session `projetId`                        | `projectId`                                 |
+| Session `debut`                           | `start`                                     |
+| Session `dernierDebut`                    | `lastStart`                                 |
+| Session `fin`                             | `end`                                       |
+| Session `duree`                           | `duration`                                  |
+| Session `statut`                          | `status`                                    |
+| Session `statut: 'terminee'`              | `status: 'done'`                            |
+| Session `statut: 'en_cours'`              | `status: 'running'`                         |
+| Session `statut: 'en_pause'`              | `status: 'paused'`                          |
+| Session `id`, `description`               | Inchangés                                   |
+| Pointage `sessionsSuspenduesIds`          | `suspendedSessionIds`                       |
+| Pointage `sessionSuspendueId` (ancien)    | Replié dans `suspendedSessionIds`, supprimé |
+| Pointage `type: 'arrivee'`                | `type: 'arrival'`                           |
+| Pointage `type: 'pause_debut'`            | `type: 'break_start'`                       |
+| Pointage `type: 'pause_fin'`              | `type: 'break_end'`                         |
+| Pointage `type: 'depart'`                 | `type: 'departure'`                         |
+| Pointage `id`, `at`                       | Inchangés                                   |
+| Liste des espaces `chrono.workspaces`     | `chrono-workspaces` (registre du paquet)    |
+| Espace `creeLe`                           | `createdAt`                                 |
+| Espace `seedOnInit: false`                | Id ajouté à `chrono-workspaces-no-demo`     |
+| Espace actif `chrono.workspace.active`    | `chrono-workspace-active`                   |
+| Repli `chrono.fallback.<id>.v1`           | `chrono-fallback-<id>-v2`                   |
+| Export JSON `version: 1` (sans enveloppe) | Enveloppe `chrono-workspace` version 2      |
+| Export `exporteLe`, `workspace`           | `exportedAt` ; `workspace` n'est plus écrit |
+
+Notes :
+
+- **Échéance relative** : les premières versions stockaient des étiquettes (`today`, `fri`…) dans
+  `echeance`. La migration ne fait que renommer le champ ; l'étiquette devient une date
+  `AAAA-MM-JJ` au chargement (elle a besoin de l'heure courante, que `src/core/migrations.js`
+  ne lit pas), puis la date est réécrite.
+- **IndexedDB** : `openDatabase` enchaîne deux étapes. L'étape 0 recrée exactement la disposition
+  de la version 1 (`createStoresIfMissing`) : une base neuve et une base existante convergent.
+  L'étape 1 lit les anciens stores dans la transaction de mise à niveau, convertit chaque
+  enregistrement avec `v1ToV2`, crée `projects` et `attendance`, supprime `projets` et
+  `pointage` et réécrit `todos` et `sessions` sur place. Une erreur annule toute la mise à niveau :
+  la base reste en version 1.
+- **Espaces** : au premier démarrage sans `chrono-workspaces`, la liste `chrono.workspaces` et
+  l'espace actif sont repris avec les mêmes identifiants (les noms de base restent donc
+  `chrono__<id>`). Les anciennes clés ne sont jamais supprimées.
+- **Repli localStorage** : une sauvegarde `chrono.fallback.<id>.v1` est lue et convertie tant
+  qu'aucune sauvegarde `chrono-fallback-<id>-v2` n'existe ; elle n'est pas modifiée.
+- **Export et import** : les nouveaux exports sont une enveloppe
+  `{ app: 'chrono', format: 'chrono-workspace', version: 2, exportedAt, data }`. L'import accepte
+  aussi, pour toujours, les fichiers de la version 1 du site GitLab (un objet nu, sans `app`) :
+  ils sont enveloppés en version 1 puis convertis par `v1ToV2`. Un fichier d'une autre application
+  ou d'une version plus récente est refusé (`wrong-app`, `newer-version`).
 
 ## Architecture
 
@@ -45,15 +121,17 @@ index.html            point d'entrée Vite (charge src/main.js)
 public/assets/        fichiers statiques : favicon, icônes Phosphor
 src/
   main.js             démarre l'application dans #root
-  types.d.ts          modèle de données (types JSDoc)
+  types.d.ts          modèle de données, schéma version 2 (et types de la version 1)
   styles/             covenant.css (thème) et app.css
   core/               logique métier PURE
   adapters/           tout ce qui touche au navigateur
     store.js          createStore()
-    idb.js            IndexedDB
+    idb.js            IndexedDB : migrations et accès, sur @simple-web-tools/storage
     fallback.js       repli localStorage
-    workspace-list.js liste et espace actif, noms de stockage
+    names.js          noms de stockage propres à Chrono (préfixés, décision 0005)
+    workspace-list.js registre des espaces, reprise de l'ancienne liste
     workspaces.js     API des espaces (WORKSPACES), import JSON, téléchargement
+    backup.js         export et import : enveloppe du paquet, fichiers de la version 1
     ids.js            générateur d'identifiants
     dom/              vues et primitives d'interface
 tests/
@@ -66,31 +144,31 @@ tests/
 Aucun DOM, aucun `window`, aucun stockage, aucune lecture de l'horloge ni de `Math.random()`
 (décision 0004). L'heure (`now`) et les identifiants des nouveaux enregistrements sont passés en
 arguments. Les règles ont la forme `(data, payload, now[, newId])` et renvoient de **nouvelles**
-données (`{ projets, todos, sessions, pointage }`) sans modifier l'entrée ; les enregistrements
+données (`{ projects, todos, sessions, attendance }`) sans modifier l'entrée ; les enregistrements
 inchangés gardent leur référence, ce qui permet l'écriture différentielle. Quand une règle ne change
 rien, elle renvoie l'objet reçu tel quel.
 
-| Fichier                  | Contenu                                                                                                         |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `dates.js`               | `startOfDay`, `fmtDateISO` (date locale, jamais `toISOString()`), `fmtDuree`.                                   |
-| `presence.js`            | `dureeVivante`, `plagesPresence`, `dureePresence`.                                                              |
-| `sessions.js`            | Démarrer, pauser, reprendre, arrêter (un chrono ou tous), `tronquerSurPresence`, `majSession`, saisie manuelle. |
-| `pointage.js`            | `etatPointage` et `pointer` (arrivée, pause, départ et leur effet sur les chronos).                             |
-| `todos.js`, `projets.js` | Ajout, édition, suppression, archivage.                                                                         |
-| `echeances.js`           | Échéances `AAAA-MM-JJ`, catégories (`bucket`), migration des anciennes étiquettes relatives.                    |
-| `seed.js`                | Données de démonstration et données vides.                                                                      |
-| `import-export.js`       | Charge utile de l'export JSON (`version: 1`) et validation de l'import.                                         |
-| `report.js`              | Agrégation du rapport hebdomadaire et texte CSV.                                                                |
-| `workspaces.js`          | `slugify`, `uniqueId`, liste par défaut des espaces.                                                            |
+| Fichier                   | Contenu                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `dates.js`                | `startOfDay`, `formatLocalDate` (date locale, jamais `toISOString()`), `formatDuration`.                           |
+| `presence.js`             | `liveDuration`, `presenceRanges`, `presenceDuration`.                                                              |
+| `sessions.js`             | `startSession`, pause, reprise, arrêt (un chrono ou tous), `truncateToPresence`, `updateSession`, saisie manuelle. |
+| `attendance.js`           | `attendanceState` et `recordAttendance` (arrivée, pause, départ et leur effet sur les chronos).                    |
+| `todos.js`, `projects.js` | Ajout, édition, suppression, archivage.                                                                            |
+| `due-dates.js`            | Échéances `AAAA-MM-JJ`, catégories (`bucket`), migration des anciennes étiquettes relatives.                       |
+| `seed.js`                 | Données de démonstration et données vides.                                                                         |
+| `migrations.js`           | Conversion version 1 vers version 2 (`v1ToV2` et conversions d'enregistrements), pure.                             |
+| `import-export.js`        | Validation de l'import, reconnaissance et mise en enveloppe des fichiers de la version 1.                          |
+| `report.js`               | Agrégation du rapport hebdomadaire et texte CSV.                                                                   |
 
 ### `src/adapters` : navigateur
 
-`createStore()` (`store.js`) détient l'état (`projets`, `todos`, `sessions`, `pointage`) et expose
+`createStore()` (`store.js`) détient l'état (`projects`, `todos`, `sessions`, `attendance`) et expose
 des `actions`. Chaque action appelle une règle de `core` avec l'heure courante et un identifiant
 neuf, adopte les données renvoyées puis notifie les écouteurs (`store.onState`). Un minuteur d'une
 seconde notifie en plus `store.onTick`, utilisé pour les durées des chronos en cours. Les écritures
 en base sont regroupées et différées de quelques dizaines de millisecondes ; le store possède aussi
-le `BroadcastChannel` du workspace (plusieurs onglets peuvent écrire, chacun relit tout quand un
+le `BroadcastChannel` du workspace (`chrono-sync-<id>`) (plusieurs onglets peuvent écrire, chacun relit tout quand un
 autre a écrit).
 
 Les vues (`adapters/dom/`) s'abonnent au store et **re-rendent entièrement** leur contenu à chaque
@@ -128,12 +206,15 @@ npm run verify                       # depuis la racine : typecheck, lint, forma
 - **Unitaires (Vitest)** : `src/core` est testé sans DOM ni stockage, l'heure étant passée en
   argument (pas de faux minuteurs). Les adapters de stockage sont testés avec
   `@simple-web-tools/test-utils/fake-indexeddb` et de petits faux (`tests/unit/support/`) pour
-  `localStorage`, `BroadcastChannel` et les événements de fenêtre. Les tests sensibles aux dates
+  `localStorage`, `BroadcastChannel` et les événements de fenêtre. Les migrations sont testées
+  sur des bases écrites avec l'API IndexedDB brute, comme la version 1 les créait
+  (`tests/unit/support/idb.js`), et l'import sur un export réel de la version 1
+  (`tests/unit/fixtures/chrono-v1-export.json`). Les tests sensibles aux dates
   se lancent aussi avec `TZ=UTC`, `TZ=Europe/Paris`, `TZ=America/New_York` et
   `TZ=Pacific/Auckland`.
 - **Bout en bout (Playwright)** : parcours en boîte noire à travers l'interface (démarrage,
   chrono, saisie manuelle, todos, projets, rapport et CSV, espaces, export et import JSON,
-  persistance). Toute requête qui n'est pas pour `127.0.0.1` est bloquée : Google Fonts n'est donc
+  persistance, reprise des données de la version 1). Toute requête qui n'est pas pour `127.0.0.1` est bloquée : Google Fonts n'est donc
   jamais atteint. Pas encore d'assertions axe : l'interface actuelle ne les passe pas, elles
   arriveront avec le portage sur Covenant.
 - Le typecheck ne couvre pour l'instant que `src/core`, `src/types.d.ts` et `tests/unit` ; les

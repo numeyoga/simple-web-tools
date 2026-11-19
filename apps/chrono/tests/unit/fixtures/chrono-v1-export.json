@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "exporteLe": "2026-11-18T09:00:00.000Z",
+  "workspace": {
+    "id": "default",
+    "label": "Espace principal",
+    "creeLe": 1700000000000
+  },
+  "data": {
+    "projets": [
+      {
+        "id": "p1",
+        "nom": "Refonte site",
+        "couleur": "#ea580c",
+        "client": "Orion SAS",
+        "archive": false
+      },
+      {
+        "id": "p2",
+        "nom": "Audit",
+        "couleur": "#9333ea",
+        "client": "Atlas",
+        "archive": true,
+        "note": "extra field kept"
+      }
+    ],
+    "todos": [
+      {
+        "id": "t1",
+        "titre": "Valider la palette",
+        "fait": false,
+        "projetId": "p1",
+        "echeance": "2026-11-20",
+        "creeLe": 1794990600000,
+        "description": "avec le client"
+      },
+      {
+        "id": "t2",
+        "titre": "Envoyer la facture",
+        "fait": true,
+        "projetId": null,
+        "echeance": "fri",
+        "creeLe": 1794992400000
+      }
+    ],
+    "sessions": [
+      {
+        "id": "s1",
+        "projetId": "p1",
+        "description": "Maquettes",
+        "debut": 1794988800000,
+        "dernierDebut": null,
+        "fin": 1794996000000,
+        "duree": 7200000,
+        "statut": "terminee"
+      },
+      {
+        "id": "s2",
+        "projetId": "p1",
+        "description": "Revue",
+        "debut": 1794997800000,
+        "dernierDebut": 1794999600000,
+        "fin": null,
+        "duree": 1800000,
+        "statut": "en_cours"
+      },
+      {
+        "id": "s3",
+        "projetId": "p2",
+        "description": "Notes",
+        "debut": 1794999600000,
+        "dernierDebut": null,
+        "fin": null,
+        "duree": 600000,
+        "statut": "en_pause"
+      }
+    ],
+    "pointage": [
+      {
+        "id": "a1",
+        "type": "arrivee",
+        "at": 1794988800000
+      },
+      {
+        "id": "a2",
+        "type": "pause_debut",
+        "at": 1795003200000,
+        "sessionsSuspenduesIds": ["s2"]
+      },
+      {
+        "id": "a3",
+        "type": "pause_fin",
+        "at": 1795006800000
+      },
+      {
+        "id": "a4",
+        "type": "pause_debut",
+        "at": 1795014000000,
+        "sessionSuspendueId": "s3"
+      },
+      {
+        "id": "a5",
+        "type": "depart",
+        "at": 1795021200000
+      }
+    ]
+  }
+}

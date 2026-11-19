@@ -1,15 +1,15 @@
-// vue rapport hebdomadaire : stats, barres jour par jour, tableau projets, export CSV.
-import { agregerSemaine, construireCSVRapport as construireCSV } from '../../core/report.js';
+// weekly report view: stats, day-by-day bars, projects table, CSV export.
+import { aggregateWeek, buildReportCsv as buildCsv } from '../../core/report.js';
 import * as UI from './ui.js';
 
-const { el, fmtDuree } = UI;
+const { el, formatDuration } = UI;
 
-export function createRapport(store) {
-  let semaineOffset = 0;
+export function createReportView(store) {
+  let weekOffset = 0;
 
   const host = el('div', { class: 'ch-pile ch-g20' });
 
-  function statCard(label, valeur, sousTexte, { accent, mono = true, extra } = {}) {
+  function statCard(label, value, subtext, { accent, mono = true, extra } = {}) {
     return el(
       'div',
       {
@@ -27,9 +27,9 @@ export function createRapport(store) {
             letterSpacing: '-0.01em',
           },
         },
-        valeur,
+        value,
       ),
-      sousTexte
+      subtext
         ? el(
             'div',
             {
@@ -39,7 +39,7 @@ export function createRapport(store) {
                 color: 'var(--cv-fg-subtle)',
               },
             },
-            sousTexte,
+            subtext,
           )
         : null,
       extra || null,
@@ -71,19 +71,19 @@ export function createRapport(store) {
     return el('td', attrs, content);
   }
 
-  function barresSemaine(parJour, projets, maxJour) {
+  function weekBars(byDay, projects, maxDay) {
     const H = 180;
-    const jourNoms = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
+    const dayNames = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const maxH = Math.ceil(maxJour / 3600_000 / 2) * 2;
-    const paliers = Array.from({ length: Math.max(1, maxH / 2) + 1 }, (_, i) => i * 2);
+    const maxH = Math.ceil(maxDay / 3600_000 / 2) * 2;
+    const steps = Array.from({ length: Math.max(1, maxH / 2) + 1 }, (_, i) => i * 2);
 
     const axisY = el('div', {
       style: { height: H, position: 'relative', width: 34, flexShrink: 0 },
     });
-    for (const h of paliers) {
+    for (const h of steps) {
       axisY.appendChild(
         el(
           'div',
@@ -105,7 +105,7 @@ export function createRapport(store) {
       class: 'ch-flex ch-g8',
       style: { flex: 1, alignItems: 'flex-end', height: H, position: 'relative' },
     });
-    for (const h of paliers) {
+    for (const h of steps) {
       bars.appendChild(
         el('div', {
           style: {
@@ -121,21 +121,21 @@ export function createRapport(store) {
       );
     }
 
-    parJour.forEach((j, i) => {
+    byDay.forEach((j, i) => {
       const isToday = j.date.getTime() === today.getTime();
       const isWeekend = i >= 5;
-      const hauteurTotale = (j.total / (maxH * 3600_000)) * H;
-      const segs = Object.entries(j.parProjet)
-        .map(([pid, d]) => ({ projet: projets.find((p) => p.id === pid), duree: d }))
-        .filter((x) => x.projet)
-        .sort((a, b) => b.duree - a.duree);
+      const totalHeight = (j.total / (maxH * 3600_000)) * H;
+      const segs = Object.entries(j.byProject)
+        .map(([pid, d]) => ({ project: projects.find((p) => p.id === pid), duration: d }))
+        .filter((x) => x.project)
+        .sort((a, b) => b.duration - a.duration);
 
       const segNodes = segs.map((seg, si) =>
         el('div', {
-          title: `${seg.projet.nom} · ${fmtDuree(seg.duree)}`,
+          title: `${seg.project.name} · ${formatDuration(seg.duration)}`,
           style: {
-            height: (seg.duree / j.total) * hauteurTotale,
-            background: seg.projet.couleur,
+            height: (seg.duration / j.total) * totalHeight,
+            background: seg.project.color,
             borderBottom: si > 0 ? '1px solid rgba(255,255,255,0.2)' : 'none',
           },
         }),
@@ -153,14 +153,14 @@ export function createRapport(store) {
             {
               style: {
                 position: 'absolute',
-                bottom: hauteurTotale + 8,
+                bottom: totalHeight + 8,
                 font: '500 11px/1 var(--cv-font-mono)',
                 color: 'var(--cv-fg-muted)',
                 opacity: j.total > 0 ? 1 : 0.3,
                 whiteSpace: 'nowrap',
               },
             },
-            j.total > 0 ? fmtDuree(j.total, { compact: true }) : '',
+            j.total > 0 ? formatDuration(j.total, { compact: true }) : '',
           ),
 
           el(
@@ -170,7 +170,7 @@ export function createRapport(store) {
               style: {
                 width: '100%',
                 maxWidth: 68,
-                height: hauteurTotale,
+                height: totalHeight,
                 flexDirection: 'column-reverse',
                 borderRadius: 4,
                 overflow: 'hidden',
@@ -199,7 +199,7 @@ export function createRapport(store) {
                     : 'var(--cv-fg)',
               },
             },
-            `${jourNoms[i]} ${j.date.getDate()}`,
+            `${dayNames[i]} ${j.date.getDate()}`,
           ),
         ),
       );
@@ -208,21 +208,21 @@ export function createRapport(store) {
     return el('div', { class: 'ch-flex ch-g16' }, axisY, bars);
   }
 
-  // Tableau récapitulatif de la distribution par jour : une ligne par jour,
-  // une colonne par projet ayant du temps cette semaine, + une colonne Total.
-  // Permet de lire les chiffres sans survoler chaque segment du diagramme.
-  function tableauParJour(parJour, projetsTri, totalSemaine) {
-    const jourNoms = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  // Summary table of the distribution per day: one row per day,
+  // one column per project with time this week, plus a Total column.
+  // Lets the figures be read without hovering over each segment of the chart.
+  function dayTable(byDay, sortedProjects, weekTotal) {
+    const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const cols = projetsTri; // [{ id, duree, projet }]
+    const cols = sortedProjects; // [{ id, duration, project }]
 
     if (cols.length === 0) return el('div', { style: { display: 'none' } });
 
-    const cellTxt = (ms) => (ms > 0 ? fmtDuree(ms) : '·');
+    const cellTxt = (ms) => (ms > 0 ? formatDuration(ms) : '·');
 
-    const totauxProjet = cols.map((c) =>
-      parJour.reduce((acc, j) => acc + (j.parProjet[c.id] || 0), 0),
+    const projectTotals = cols.map((c) =>
+      byDay.reduce((acc, j) => acc + (j.byProject[c.id] || 0), 0),
     );
 
     return el(
@@ -266,9 +266,9 @@ export function createRapport(store) {
                   },
                   el('span', {
                     class: 'ch-pastille',
-                    style: { background: c.projet.couleur, flexShrink: 0 },
+                    style: { background: c.project.color, flexShrink: 0 },
                   }),
-                  el('span', { class: 'ch-ellipse', style: { maxWidth: 120 } }, c.projet.nom),
+                  el('span', { class: 'ch-ellipse', style: { maxWidth: 120 } }, c.project.name),
                 ),
               ),
             ),
@@ -278,7 +278,7 @@ export function createRapport(store) {
         el(
           'tbody',
           null,
-          parJour.map((j, i) => {
+          byDay.map((j, i) => {
             const isToday = j.date.getTime() === today.getTime();
             return el(
               'tr',
@@ -288,12 +288,12 @@ export function createRapport(store) {
                   background: isToday ? 'var(--cv-accent-50)' : 'transparent',
                 },
               },
-              Td(`${jourNoms[i]} ${j.date.getDate()}`, { strong: isToday, muted: j.total === 0 }),
+              Td(`${dayNames[i]} ${j.date.getDate()}`, { strong: isToday, muted: j.total === 0 }),
               ...cols.map((c) => {
-                const v = j.parProjet[c.id] || 0;
+                const v = j.byProject[c.id] || 0;
                 return Td(cellTxt(v), { align: 'right', mono: true, muted: v === 0 });
               }),
-              Td(j.total > 0 ? fmtDuree(j.total) : '·', {
+              Td(j.total > 0 ? formatDuration(j.total) : '·', {
                 align: 'right',
                 mono: true,
                 strong: j.total > 0,
@@ -305,52 +305,52 @@ export function createRapport(store) {
             'tr',
             { style: { background: 'var(--cv-neutral-50)' } },
             Td('Total', { strong: true }),
-            ...totauxProjet.map((v) =>
+            ...projectTotals.map((v) =>
               Td(cellTxt(v), { align: 'right', mono: true, strong: true, muted: v === 0 }),
             ),
-            Td(fmtDuree(totalSemaine), { align: 'right', mono: true, strong: true }),
+            Td(formatDuration(weekTotal), { align: 'right', mono: true, strong: true }),
           ),
         ),
       ),
     );
   }
 
-  function exportCSV(sessionsSem, projets, lundi) {
-    const csv = construireCSV(sessionsSem, projets, Date.now());
+  function exportCSV(weekSessions, projects, monday) {
+    const csv = buildCsv(weekSessions, projects, Date.now());
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    // Date locale (et non toISOString, qui passe en UTC : lundi 00:00 → dimanche).
+    // Local date (not toISOString, which switches to UTC: Monday 00:00 becomes Sunday).
     a.href = url;
-    a.download = `rapport-${UI.fmtDateISO(lundi)}.csv`;
+    a.download = `rapport-${UI.formatLocalDate(monday)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   function render() {
-    const { projets, sessions } = store.state;
+    const { projects, sessions } = store.state;
     const {
-      lundi,
-      dimanche,
-      sessionsSem,
-      parJour,
-      totalSemaine,
-      maxJour,
-      progObjectif,
-      projetsTri,
+      monday,
+      sunday,
+      weekSessions,
+      byDay,
+      weekTotal,
+      maxDay,
+      targetProgress,
+      sortedProjects,
       totalSessions,
-      joursActifs,
-    } = agregerSemaine(sessions, projets, semaineOffset, Date.now());
+      activeDays,
+    } = aggregateWeek(sessions, projects, weekOffset, Date.now());
 
-    const semLabel =
-      semaineOffset === 0
+    const weekLabel =
+      weekOffset === 0
         ? 'Cette semaine'
-        : semaineOffset === -1
+        : weekOffset === -1
           ? 'Semaine dernière'
-          : semaineOffset < 0
-            ? `Il y a ${-semaineOffset} semaines`
-            : `Dans ${semaineOffset} semaines`;
-    const semDates = `${lundi.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${dimanche.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+          : weekOffset < 0
+            ? `Il y a ${-weekOffset} semaines`
+            : `Dans ${weekOffset} semaines`;
+    const weekDates = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
 
     host.replaceChildren(
       // Header
@@ -364,36 +364,36 @@ export function createRapport(store) {
             icon: 'caret-left',
             label: 'Semaine précédente',
             onclick: () => {
-              semaineOffset--;
+              weekOffset--;
               render();
             },
           }),
           el(
             'div',
             null,
-            el('div', { class: 'ch-titre-page' }, semLabel),
+            el('div', { class: 'ch-titre-page' }, weekLabel),
             el(
               'div',
               { class: 'ch-meta', style: { marginTop: 2, textTransform: 'capitalize' } },
-              semDates,
+              weekDates,
             ),
           ),
           UI.IconButton({
             icon: 'caret-right',
             label: 'Semaine suivante',
-            disabled: semaineOffset >= 0,
+            disabled: weekOffset >= 0,
             onclick: () => {
-              semaineOffset++;
+              weekOffset++;
               render();
             },
           }),
-          semaineOffset !== 0
+          weekOffset !== 0
             ? UI.Button({
                 size: 'sm',
                 variant: 'ghost',
                 children: 'Cette semaine',
                 onclick: () => {
-                  semaineOffset = 0;
+                  weekOffset = 0;
                   render();
                 },
               })
@@ -403,7 +403,7 @@ export function createRapport(store) {
         UI.Button({
           icon: 'file-arrow-down',
           children: 'Exporter CSV',
-          onclick: () => exportCSV(sessionsSem, projets, lundi),
+          onclick: () => exportCSV(weekSessions, projects, monday),
         }),
       ),
 
@@ -411,7 +411,7 @@ export function createRapport(store) {
       el(
         'div',
         { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 } },
-        statCard('Total semaine', fmtDuree(totalSemaine), 'objectif 35h00', {
+        statCard('Total semaine', formatDuration(weekTotal), 'objectif 35h00', {
           extra: el(
             'div',
             {
@@ -425,9 +425,9 @@ export function createRapport(store) {
             },
             el('div', {
               style: {
-                width: `${progObjectif * 100}%`,
+                width: `${targetProgress * 100}%`,
                 height: '100%',
-                background: progObjectif >= 1 ? 'var(--cv-success-500)' : 'var(--cv-accent-500)',
+                background: targetProgress >= 1 ? 'var(--cv-success-500)' : 'var(--cv-accent-500)',
                 transition: 'width 300ms',
               },
             }),
@@ -436,17 +436,17 @@ export function createRapport(store) {
         statCard(
           'Sessions',
           String(totalSessions),
-          `réparties sur ${joursActifs} jour${joursActifs > 1 ? 's' : ''}`,
+          `réparties sur ${activeDays} jour${activeDays > 1 ? 's' : ''}`,
           { mono: false },
         ),
         statCard(
           'Moyenne / jour actif',
-          fmtDuree(joursActifs > 0 ? totalSemaine / joursActifs : 0),
-          joursActifs > 0 ? 'sur jours travaillés' : 'aucun jour travaillé',
+          formatDuration(activeDays > 0 ? weekTotal / activeDays : 0),
+          activeDays > 0 ? 'sur jours travaillés' : 'aucun jour travaillé',
         ),
       ),
 
-      // Graphique
+      // Chart
       el(
         'section',
         {
@@ -463,11 +463,11 @@ export function createRapport(store) {
             'Segments colorés = projets',
           ),
         ),
-        barresSemaine(parJour, projets, maxJour),
-        tableauParJour(parJour, projetsTri, totalSemaine),
+        weekBars(byDay, projects, maxDay),
+        dayTable(byDay, sortedProjects, weekTotal),
       ),
 
-      // Table projets
+      // Projects table
       el(
         'section',
         {
@@ -478,7 +478,7 @@ export function createRapport(store) {
           { style: { padding: '14px 20px', borderBottom: '1px solid var(--cv-border)' } },
           el('div', { class: 'ch-titre-carte' }, 'Par projet'),
         ),
-        projetsTri.length === 0
+        sortedProjects.length === 0
           ? el('div', { class: 'ch-vide' }, 'Aucune session sur cette semaine.')
           : el(
               'table',
@@ -504,9 +504,9 @@ export function createRapport(store) {
               el(
                 'tbody',
                 null,
-                projetsTri.map(({ id, duree, projet }) => {
-                  const sessionsCount = sessionsSem.filter((s) => s.projetId === id).length;
-                  const part = totalSemaine > 0 ? (duree / totalSemaine) * 100 : 0;
+                sortedProjects.map(({ id, duration, project }) => {
+                  const sessionsCount = weekSessions.filter((s) => s.projectId === id).length;
+                  const part = weekTotal > 0 ? (duration / weekTotal) * 100 : 0;
                   return el(
                     'tr',
                     { style: { borderBottom: '1px solid var(--cv-border)' } },
@@ -514,13 +514,13 @@ export function createRapport(store) {
                       el(
                         'div',
                         { class: 'ch-flex-c ch-g8' },
-                        el('span', { class: 'ch-pastille', style: { background: projet.couleur } }),
-                        el('span', { class: 'ch-libelle' }, projet.nom),
+                        el('span', { class: 'ch-pastille', style: { background: project.color } }),
+                        el('span', { class: 'ch-libelle' }, project.name),
                       ),
                     ),
-                    Td(projet.client || '—', { muted: true }),
+                    Td(project.client || '—', { muted: true }),
                     Td(String(sessionsCount), { align: 'right', mono: true }),
-                    Td(fmtDuree(duree), { align: 'right', mono: true }),
+                    Td(formatDuration(duration), { align: 'right', mono: true }),
                     Td(`${part.toFixed(0)}\u00a0%`, { align: 'right', mono: true, muted: true }),
                   );
                 }),
@@ -529,7 +529,7 @@ export function createRapport(store) {
                   { style: { background: 'var(--cv-neutral-50)' } },
                   Td('Total', { colSpan: 2, strong: true }),
                   Td(String(totalSessions), { align: 'right', mono: true, strong: true }),
-                  Td(fmtDuree(totalSemaine), { align: 'right', mono: true, strong: true }),
+                  Td(formatDuration(weekTotal), { align: 'right', mono: true, strong: true }),
                   Td('100\u00a0%', { align: 'right', mono: true, muted: true }),
                 ),
               ),
