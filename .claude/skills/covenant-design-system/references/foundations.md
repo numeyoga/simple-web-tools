@@ -1,0 +1,255 @@
+# Covenant Design System
+
+> A covenant is explicit. Once signed, both parties know what to expect.
+
+Covenant is a **design system for backoffice web applications**. It is built to be read and applied by an **AI coding assistant** as easily as by a human engineer — every component, token, and pattern is defined once, in plain HTML, CSS and vanilla JavaScript, with no framework dependencies.
+
+## Who Covenant is for
+
+**For developers:**
+Covenant defines each component, token and pattern once. Follow it, and you gain consistency and velocity. Vanilla stack, zero dependencies. A checklist (the **Checklist** section) tells you before review whether it's ready, against Covenant and WCAG 2.2 AA. Covenant is explicit — an AI can read it — but you are still the one writing the code, so you are the one who verifies.
+
+**For users of Covenant-built apps:**
+If the app follows Covenant, you know what to expect. Actions behave the same everywhere. The interface makes sense. Errors are clear. It is designed for work tools — not for pretty interfaces.
+
+## The brief, in one paragraph
+
+Covenant is for **backoffice**, **web-based** applications. The visual language should help the user **find important information and actions quickly**. It must not distract, and it must not make them wait on unnecessary animations. All feedback from the app must be easy to understand. The system is explicitly designed to be consumed by an AI coding assistant during implementation.
+
+---
+
+## Sources & context for this version
+
+This design system was defined **from scratch** — no existing codebase, Figma, or brand assets were attached to the project. The choices below were confirmed with the owner at kickoff:
+
+| Decision | Value |
+| --- | --- |
+| Visual direction | Neutral modern Swiss — geometric sans, strong grid, black/white/single accent |
+| Stack | Vanilla Web: HTML, CSS and vanilla JavaScript; no framework, no build step |
+| Language | English only |
+| Color palette | Neutral + single orange accent + semantic (success/warning/danger/info) |
+| Mode support | Light + Dark (token overrides, same component CSS) |
+| Typography | IBM Plex Sans (UI) + IBM Plex Mono (data) — "engineering" feel; every size in rem, scaled up on large screens |
+| UI density | 32 px default row height at standard scale (2rem: rows grow with the text) |
+| Corner radius | 8 px default |
+| Icons | Phosphor (multi-weight, via CDN) |
+| Motion | Restrained — short functional transitions only, no bounce |
+| Accessibility | WCAG 2.2 AA, keyboard-first, both themes |
+| Sample product | Professional time tracker + todos backoffice |
+
+If you connect a codebase, Figma, or brand files later, re-run the design-system skill — the agent will reconcile against real sources and revise this README.
+
+---
+
+## CONTENT FUNDAMENTALS
+
+Covenant copy is **flat, declarative, and free of hedging**. The user is a professional doing work — treat them like one.
+
+### Voice
+- **Second person.** "You" — direct, not distant. Avoid "we" in UI copy; reserve it for onboarding and legal surfaces.
+- **Imperative for actions.** Button and menu labels are verbs: `Save`, `Delete project`, `Export CSV`. Never `Click here`, never `Please save`.
+- **Declarative for status.** State facts in the present tense: `3 tasks overdue`, `Sync paused`, `Invoice sent`. Never `Oops!`, `Yay!`, `Success!`.
+- **Sentence case everywhere.** Titles, buttons, labels, menu items. Never Title Case, never ALL CAPS (except the `overline` micro-label style, which is a typographic role, not copy).
+- **No emoji.** Emoji are not part of Covenant. They carry tone we don't want in backoffice tools and they fail silently across locales and accessibility contexts.
+- **No exclamation marks.** A period is sufficient. If a statement needs an exclamation, the statement is probably wrong.
+
+### Examples
+
+| Do | Don't |
+| --- | --- |
+| `Delete 3 entries?` | `Are you sure you want to delete these entries?` |
+| `Saved` | `Your changes have been saved successfully! 🎉` |
+| `Timer running · 01:42:15` | `Don't forget — your timer is still going!` |
+| `Cannot parse duration. Use `1h 30m` or `1:30`.` | `Oops! Something went wrong.` |
+| `Archive project` | `Archive This Project` |
+| `No tasks. Press N to create one.` | `It looks like you haven't added any tasks yet!` |
+
+### Error copy — three parts
+1. **What failed**, in plain terms: `Couldn't save entry.`
+2. **Why**, if known: `Server returned 403.`
+3. **What to do next**: `Retry, or check your session.`
+
+Combine into one line if it fits: `Couldn't save entry — session expired. Sign in again.`
+
+### Numbers & time
+- **Durations** use mono and a fixed format: `01:42:15` (HH:MM:SS) or `1h 42m`. Never `~1.7 hours`.
+- **Timestamps** are relative in lists (`3m ago`, `yesterday`), absolute in detail views (`Apr 18, 2026 · 14:32`).
+- **Counts** are never rounded in tables; `1,247` not `~1.2k`.
+
+---
+
+## VISUAL FOUNDATIONS
+
+### Color
+
+A disciplined three-tier system:
+
+1. **Neutrals (zinc scale, 12 steps).** The frame, the text, the dividers. 90% of surface area.
+2. **Single accent — orange (`--cv-accent-500`, `#ea580c`).** Primary actions, focus, selected states, links. **One accent, no exceptions.** If you think you need a second accent, use the neutral scale plus weight / size.
+   - `--cv-accent-500` is the brand orange for graphics only: the logo point, active indicators, chart bars, selection borders. It measures 3.56:1 against white, so text never sits on it.
+   - A fill behind text uses `--cv-accent-fill` with `--cv-fg-on-accent` (`#c2410c` + white in light, 5.18:1; `#fb923c` + near-black in dark, 8.7:1). Hover `--cv-accent-fill-hover`, pressed `--cv-accent-fill-pressed`.
+   - Accent text uses `--cv-fg-accent`.
+3. **Semantic colors — success (green), warning (yellow), danger (crimson), info (steel).** Reserved for status only. Never decorative. The accent stays warm orange; warning is pure yellow so it never overlaps the accent; danger is crimson `#e11d48`, cooler and pinker than orange, so it reads clearly as "bad" next to warm UI; info is steel `#475569`, a neutral hint that never competes with the accent. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`. Alerts, badges and toasts use the themed `--cv-<status>-surface`, `--cv-<status>-border` and `--cv-fg-<status>`, so they turn dark in the dark theme.
+
+All pairings are verified at **WCAG 2.2 AA (4.5:1 for body, 3:1 for large text and UI)** in both light and dark:
+- `--cv-fg`, `--cv-fg-muted`, `--cv-fg-subtle` and the `--cv-fg-<status>` colors (success, warning, danger, info) pass 4.5:1 on `--cv-bg`, `--cv-surface` and `--cv-surface-2` in both themes. `--cv-fg-disabled` is exempt.
+- Status text and icons use `--cv-fg-<status>` on `--cv-<status>-surface` (6.8:1 or more in both themes). Status is never shown by color alone: it always comes with a word or an icon.
+- Boundaries of inputs, selects, segmented controls and checkboxes use `--cv-border-control` (3:1 or more, WCAG 1.4.11).
+
+### Typography
+- **IBM Plex Sans** for everything UI.
+- **IBM Plex Mono** for numeric data, IDs, durations, timestamps in tables. Mono is a semantic role, not decoration.
+- Default UI text is **13 px / 1.5** at standard scale (`0.8125rem`). Table rows and inputs at 13 px. Page bodies may go up to 14 px.
+- **Every size is in rem** — text, spacing, row heights, icons, panels — so the whole interface follows the browser's font-size setting and scales as one block. Only borders, focus outlines, shadows and radii stay in px.
+- **Large screens scale up automatically**: ×1.125 from 2000 CSS px wide (QHD at 125 %, 4K at 175 %) and ×1.25 from 2400 CSS px (QHD 27" at 100 %, 4K at 150 %). On a 27" 2560 × 1440 screen at 100 %, body text is 16.25 px and rows are 40 px.
+- **Users can choose**: `data-text-size` on `<html>` set from the user's preference — `standard` (×1), `comfortable` (×1.125), `large` (×1.25); no attribute means automatic. See the TextSize component.
+- **Minimum text size is 12 px** (`--cv-text-xs`, `0.75rem`) at standard scale: overlines, badges, tags, tooltips and counters included.
+- Headings are **semibold (600)**, never 700. Tracking is slightly tight (-0.01em) at display sizes, normal below 22 px.
+
+### Spacing
+A 4 px base scale (0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 px at standard scale; `0.25rem` steps in the tokens). Default component padding is **8 px vertical / 12 px horizontal**. Default stack gap is **8 px** inside components, **16 px** between components, **24–32 px** between sections.
+
+### Backgrounds
+- **Flat.** No gradients anywhere in the product chrome.
+- **No hand-drawn illustrations, no textures, no patterns.** Backoffice has no decorative surfaces.
+- Page background: `--cv-bg` (off-white in light, near-black in dark).
+- Card / panel background: `--cv-surface` (pure white / `#1d2027`).
+- Subtle wells and hover states: `--cv-surface-2`.
+- Full-bleed images appear only in user-uploaded content (e.g. attachments). The chrome itself never carries imagery.
+
+### Borders
+- **1 px, always.** `--cv-border` for default, `--cv-border-strong` for emphasis, `--cv-border-control` for form-control boundaries, `--cv-accent-500` for selection, `--cv-border-focus` for focus.
+- Hairlines separate data rows; never use borders + shadows on the same edge.
+
+### Shadows & elevation
+- **xs / sm / md / lg / xl**, each scoped to a role:
+  - `xs` — sticky headers, table row hover
+  - `sm` — cards, surfaces above the page
+  - `md` — dropdowns, popovers, menus
+  - `lg` — modals, drawers
+  - `xl` — toasts, command bar
+- Shadows are **neutral grey**, never coloured. Dark mode shadows are blacker and stronger.
+
+### Corner radii
+- **0 / 2 / 4 / 8 / 12 / 16 / full**.
+- Default `--cv-radius-md: 8px` on cards, inputs, buttons.
+- `--cv-radius-lg: 12px` on modals, drawers and the command menu; `--cv-radius-sm: 4px` on tags, keycaps and menu items. No other values.
+- `full` (pill) only on status badges, avatars and switches.
+- Never mix radii on adjacent surfaces — a card at 8 px contains inputs at 8 px, not 4 px.
+
+### Hover, press, focus
+- **Hover** — background shifts **one step** on the neutral scale (e.g. `--cv-surface` → `--cv-surface-2`; accent fills: `--cv-accent-fill` → `--cv-accent-fill-hover`). Never opacity. Never "glow".
+- **Press** — background shifts **two steps** (e.g. `--cv-surface` → `--cv-surface-3`; accent fills: `--cv-accent-fill-pressed`). No transform/shrink — users perceive layout movement as latency.
+- **Focus** — 2 px outline in `--cv-border-focus` (`--cv-accent-600` in light, `--cv-accent-400` in dark; 4:1 or more on every surface), 2 px offset, visible **on keyboard only** (`:focus-visible`). The focus ring is sacred — never remove it.
+- **Disabled** — `opacity: 0.5`, `cursor: not-allowed`, and `aria-disabled="true"`. Never swap the color.
+
+### Transparency & blur
+- Avoid both. A modal scrim is `rgba(9, 9, 11, 0.45)` — that is the only sanctioned use of transparency.
+- Never `backdrop-filter: blur()`. It is expensive and not supported everywhere.
+
+### Motion
+- **Restrained.** Only modals, drawers, dropdowns, and toasts have transitions. Table rows, inputs, buttons change instantly.
+- **120 ms** for state changes inside overlays. **180 ms** for enter/exit. **280 ms** only for drawers.
+- Easing is `cubic-bezier(0.2, 0, 0, 1)` — Material's "standard." Never spring, never bounce.
+- `@media (prefers-reduced-motion: reduce)` kills all transitions.
+
+### Layout rules
+- **Fixed sidebar (14.5rem, 232 px at standard scale)**, fixed top bar (3rem, 48 px), fluid content area from 1024 px up (the AppShell component). Both grow with the text scale.
+- **Below 1024 px** the sidebar becomes an off-canvas drawer opened from a menu button in the top bar. At 320 px CSS width (400 % zoom) nothing scrolls sideways except a data table inside its own focusable region (WCAG 1.4.10 Reflow).
+- Maximum content width `90rem` (1440 px at standard scale), centered. Wider screens get larger text first, then gutter space, never wider tables.
+- 8-column content grid inside the main area, 16 px gutter; one column below 768 px.
+- Controls use `min-height`, never a fixed height, so 200 % zoom (1.4.4) and text-spacing overrides (1.4.12) never clip text.
+- Every page starts with a skip link to `<main>` and keeps the sidebar order identical.
+
+### Imagery
+The chrome carries no imagery. When user-uploaded images appear (attachments, avatars):
+- Avatars are circles at 24 / 32 / 40 px. Fallback is initials on the neutral-200 background.
+- Attached images display at their natural ratio inside an 8 px-radius container with a 1 px border.
+- No filters, no grain, no warm/cool treatment.
+
+### Cards
+- **1 px border** (`--cv-border`) **+ 8 px radius** + `--cv-shadow-sm`.
+- Never both a strong shadow and a strong border — pick one.
+- Internal padding: 16 px (compact) or 20 px (default) or 24 px (prominent).
+
+---
+
+## ICONOGRAPHY
+
+Covenant uses **[Phosphor Icons](https://phosphoricons.com/)** via CDN.
+
+```html
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<i class="ph ph-clock"></i>
+<i class="ph-bold ph-check"></i>
+```
+
+### Why Phosphor
+- **Multi-weight** (thin / light / regular / bold / fill / duotone) — lets us match the "calm but engineered" feel without swapping libraries.
+- **1:1 glyph set** across weights so we can change emphasis without redrawing.
+- Broad coverage: status, time, data, file, user, system glyphs.
+
+### Usage rules
+- **Default weight: `regular`.** Use `bold` only for filled primary-button icons or for a 1-level-up emphasis inside a dense row.
+- **Size: `1em`** relative to the surrounding text, inheriting `currentColor`. Default rendered size is 16 px (inside body text) or 20 px (inside buttons).
+- **Line up icons by optical center**, not bounding box — apply a negative `vertical-align: -0.15em` on inline icons next to text.
+- **Every icon-only button has an `aria-label`.** No exceptions. Decorative icons take `aria-hidden="true"`.
+- **No emoji. No unicode glyphs as icons** (e.g. ✓, ★, →). Use `ph-check`, `ph-star`, `ph-arrow-right`.
+
+### When to skip an icon
+In a backoffice, icons compete with data for attention. Skip them:
+- Next to self-explanatory text buttons (`Save`, `Cancel`).
+- Inside dense tables where a text column is already narrow.
+- As purely decorative accents.
+
+Use them:
+- In sidebar navigation (users scan by shape).
+- In command bars and menus (pattern recognition).
+- For status indicators where color alone would fail WCAG (`ph-check-circle` + green, `ph-warning` + yellow).
+
+### Logo
+A simple mark + wordmark lockup, defined in SVG at `assets/covenant-logo.svg`. The mark is a capital C formed by two arcs that meet — a visual pun on "covenant" as an agreement between two parties. The centre point is the orange accent. See the Logo component (`components/Logo/`).
+
+---
+
+## Index of this design system
+
+```
+project/
+├── README.md                ← you are here: content and visual foundations
+├── checklist.md             ← Covenant + WCAG 2.2 AA checklist, run before every review
+├── tokens.json              ← all tokens: color (light + dark), type, spacing, radius, shadow, row density
+├── tokens.css               ← tokens.json compiled to CSS custom properties + .cv-* type classes
+├── components/
+│   ├── bundle.css           ← every component as .cv-* classes, base styles, fonts, motion, layout
+│   ├── bundle.js            ← behaviours the platform lacks (window.Covenant), no dependency
+│   └── <Component>/         ← README.md (anatomy, states, accessibility, checklist) + preview.html
+├── fonts/README.md          ← IBM Plex, self-hosting notes
+└── assets/                  ← logo lockups and mark (SVG)
+```
+
+Components: **Actions** Button, Link · **Forms** FormField, TextInput, Textarea, Select, Checkbox, Radio, Switch, SegmentedControl, Combobox, DateTimeInput · **Feedback** Alert, Badge, Toast, Tooltip, Skeleton, EmptyState · **Overlays** Modal, Drawer, Menu, CommandMenu · **Navigation** SidebarNav, TopBar, Breadcrumbs, Tabs, Pagination · **Data display** DataTable, Card, Avatar, Kbd · **Layout** AppShell, TextSize · **Brand** Logo, Icons.
+
+### How to consume Covenant
+
+Covenant is Vanilla Web: no framework, no build step. It works the same in a static page, a server-rendered app (Phoenix, Spring, Rails…) or inside any framework's templates.
+
+1. Copy `tokens.css`, `components/bundle.css` and `components/bundle.js` into your project (rename them `covenant-tokens.css`, `covenant.css`, `covenant.js` if you like).
+2. Load them once, in this order, with Phosphor:
+
+```html
+<link rel="stylesheet" href="covenant-tokens.css">
+<link rel="stylesheet" href="covenant.css">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<script src="covenant.js" defer></script>
+```
+
+3. Set the theme on the root: `<html lang="en" data-theme="light">` or `data-theme="dark"`. Add `data-text-size="standard|comfortable|large"` from the user's stored preference, or leave it out for automatic scaling. Never set a `font-size` on `<html>` yourself: Covenant scales from it.
+4. Copy the **Anatomy** markup from each component page and keep its classes, roles and ARIA attributes. Never restyle a component locally: extend `bundle.css` deliberately.
+5. Use tokens (`var(--cv-fg)`, `var(--cv-surface)`, `var(--cv-shadow-sm)`, …) for anything you build around the components; never hard-coded values.
+6. Behaviours start by themselves. For markup added later, call `Covenant.init(element)`. `Covenant.setTextSize(size)` changes the text size and fires `cv:textsize` so the app can save the choice. `Covenant.toast({ status, title, text })` shows a toast; `Covenant.openDialog(id)` and `Covenant.closeDialog(id)` drive dialogs.
+7. Run the **Checklist** before review.
+
+**In an existing app:** align **tokens** first (load `tokens.css` and remap your theme variables onto `--cv-*`), then move components one surface at a time: buttons, forms, navigation, tables.
+
+**When an AI agent implements against Covenant:** it uses the `covenant-design-system` skill, which carries these files, every component page and the checklist. It reads this README, then the component pages it needs, copies their anatomy, uses tokens only, never introduces a second accent, and runs the checklist before calling a component done. If a design calls for something not covered here, it stops and asks.

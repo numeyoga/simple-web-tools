@@ -21,8 +21,9 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 - [x] `packages/config`: ESLint, Prettier and `jsconfig` bases. Lint `scripts/` too.
 - [ ] `packages/covenant`: a single copy of the design system. Today Locavern and Chrono each
-      carry their own version, and Chrono's loads Google Fonts from a CDN. Translate the
-      `covenant-design-system` skill (`.claude/skills/`) to English at the same time.
+      carry their own version, and Chrono's loads Google Fonts from a CDN. The
+      `covenant-design-system` skill (`.claude/skills/`) is the reference: it is in English
+      and targets WCAG 2.2 AA.
       **Do this after the interface comparison of step 4**: extracting Locavern's copy first
       would make Locavern's look the default, which the comparison exists to avoid.
 - [x] `packages/i18n`: message catalogs, plurals, `Intl` formatting ([decision 0002](decisions/0002-english-code-translated-ui.md)).
