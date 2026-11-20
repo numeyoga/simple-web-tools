@@ -50,7 +50,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+      // Only this app's caches: the cache storage is shared by every app of the origin (decision 0005).
+      const stale = keys.filter((k) => k.startsWith('locavern-') && k !== CACHE_NAME);
+      await Promise.all(stale.map((k) => caches.delete(k)));
       await self.clients.claim();
     })(),
   );
