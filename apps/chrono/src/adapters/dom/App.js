@@ -41,176 +41,73 @@ export function start(rootEl) {
   function workspaceChip() {
     const ws = WORKSPACES.getActive();
     const list = WORKSPACES.getList();
-    const btn = el(
+    return el(
       'button',
       {
+        type: 'button',
         onclick: () => openWorkspaceManager({ store, toasts }),
-        title: 'Gérer les espaces de sauvegarde',
-        class: 'ch-chip ch-flex-c ch-g8',
-        style: { padding: '6px 10px' },
+        class: 'cv-btn ch-workspace',
       },
-      icon('database', { weight: 'fill', size: 14, style: { color: 'var(--cv-accent-500)' } }),
+      icon('database'),
       el(
-        'div',
-        { class: 'ch-souple' },
-        el(
-          'div',
-          {
-            style: {
-              font: '600 9px/1 var(--cv-font-sans)',
-              color: 'var(--cv-fg-subtle)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              marginBottom: 2,
-            },
-          },
-          'Espace de sauvegarde',
-        ),
-        el(
-          'div',
-          {
-            class: 'ch-ellipse',
-            style: {
-              font: '500 12px/1.2 var(--cv-font-sans)',
-              color: 'var(--cv-fg)',
-            },
-          },
-          ws.label,
-        ),
+        'span',
+        { class: 'ch-grow ch-stack' },
+        el('span', { class: 'cv-overline' }, 'Espace de sauvegarde'),
+        el('span', { class: 'ch-ellipsis ch-strong' }, ws.label),
       ),
-      list.length > 1
-        ? el(
-            'span',
-            {
-              class: 'ch-mono-xs',
-              style: {
-                padding: '2px 6px',
-                background: 'var(--cv-neutral-100)',
-                borderRadius: 4,
-                flexShrink: 0,
-              },
-            },
-            `${list.length}`,
-          )
-        : null,
-      icon('caret-up-down', { size: 12, style: { color: 'var(--cv-fg-subtle)', flexShrink: 0 } }),
+      list.length > 1 ? UI.Tag(`${list.length}`, { mono: true }) : null,
+      icon('caret-up-down'),
     );
-    return btn;
   }
 
   const navList = el(
     'div',
-    { class: 'ch-pile ch-g2', style: { marginTop: 4 } },
+    null,
+    el('div', { class: 'cv-overline cv-sidebar__group' }, 'Espace'),
     el(
-      'div',
-      {
-        style: {
-          padding: '4px 10px 2px',
-          font: '600 10px/1 var(--cv-font-sans)',
-          color: 'var(--cv-fg-subtle)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-        },
-      },
-      'Espace',
+      'ul',
+      null,
+      ...SECTIONS.map((s) => {
+        const btn = el(
+          'button',
+          {
+            type: 'button',
+            onclick: () => goto(s.id),
+            class: 'cv-nav-item ch-nav-btn',
+          },
+          icon(s.icon),
+          s.label,
+        );
+        navButtons[s.id] = btn;
+        return el('li', null, btn);
+      }),
     ),
-    ...SECTIONS.map((s) => {
-      const btn = el(
-        'button',
-        {
-          onclick: () => goto(s.id),
-          class: 'ch-nav-btn',
-        },
-        icon(s.icon, { size: 16 }),
-        s.label,
-      );
-      navButtons[s.id] = btn;
-      return btn;
-    }),
   );
 
   function paintNav() {
     for (const s of SECTIONS) {
       const btn = navButtons[s.id];
       if (!btn) continue;
-      const isOn = currentSection === s.id;
-      btn.classList.toggle('est-actif', isOn);
+      if (currentSection === s.id) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
     }
   }
 
-  /* Sidebar: fixed 100vh, in a flex column. Logo + workspaceChip are pinned at the top,
+  /* Sidebar: fixed 100vh, in a flex column. Brand + workspaceChip are pinned at the top,
        widget + nav scroll if needed inside an inner container (min-height:0 is required
        so that the scroll happens in the sidebar rather than pushing the page), and the
        Shortcuts block stays glued to the bottom. Guarantees that no overflow triggers a
        page scroll, even on short screens. */
-  const middleScroll = el(
-    'div',
-    {
-      class: 'ch-pile ch-g14',
-      style: {
-        flex: 1,
-        minHeight: 0,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        margin: '0 -4px',
-        padding: '0 4px',
-      },
-    },
-    widget.el,
-    navList,
-  );
+  const middleScroll = el('div', { class: 'ch-sidebar-scroll' }, widget.el, navList);
 
   const sidebar = el(
     'nav',
-    {
-      'aria-label': 'Navigation',
-      class: 'ch-pile ch-g14',
-      style: {
-        width: 264,
-        flexShrink: 0,
-        background: 'var(--cv-surface)',
-        borderRight: '1px solid var(--cv-border)',
-        padding: '14px 12px',
-        position: 'sticky',
-        top: 0,
-        height: '100vh',
-        boxSizing: 'border-box',
-      },
-    },
-    // Logo
-    el(
-      'div',
-      { class: 'ch-flex-c ch-g10', style: { padding: '2px 8px 4px', flexShrink: 0 } },
-      el(
-        'div',
-        {
-          class: 'ch-flex-c',
-          style: {
-            width: 28,
-            height: 28,
-            borderRadius: 7,
-            background: 'var(--cv-fg)',
-            color: 'var(--cv-fg-inverse)',
-            justifyContent: 'center',
-          },
-        },
-        icon('timer', { weight: 'fill', size: 16 }),
-      ),
-      el(
-        'div',
-        {
-          style: {
-            font: '600 15px/1 var(--cv-font-sans)',
-            color: 'var(--cv-fg)',
-            letterSpacing: '-0.01em',
-          },
-        },
-        'Chrono',
-      ),
-    ),
+    { 'aria-label': 'Navigation', class: 'cv-sidebar ch-sidebar' },
+    // Brand
+    el('div', { class: 'ch-brand ch-shrink-0' }, icon('timer', { weight: 'bold' }), 'Chrono'),
 
     // Workspace selector (pinned at the top)
-    el('div', { style: { flexShrink: 0 } }, workspaceChip()),
+    el('div', { class: 'ch-shrink-0' }, workspaceChip()),
 
     // Scrollable area: attendance widget + nav
     middleScroll,
@@ -218,55 +115,36 @@ export function start(rootEl) {
     // Shortcuts footer (pinned at the bottom)
     el(
       'div',
-      {
-        style: {
-          flexShrink: 0,
-          padding: 10,
-          border: '1px solid var(--cv-border)',
-          borderRadius: 8,
-          background: 'var(--cv-neutral-50)',
-        },
-      },
+      { class: 'ch-shortcuts' },
+      el('div', { class: 'cv-overline' }, 'Raccourcis'),
       el(
         'div',
-        {
-          class: 'ch-surtitre',
-          style: { marginBottom: 6 },
-        },
-        'Raccourcis',
-      ),
-      el(
-        'div',
-        { class: 'ch-legende ch-pile ch-g4' },
+        { class: 'ch-meta ch-stack ch-gap-2 ch-mt-3' },
         el(
           'div',
-          { class: 'ch-flex ch-entre' },
+          { class: 'ch-row ch-between ch-center' },
           el('span', null, 'Démarrer / pause'),
           UI.Kbd('Espace'),
         ),
-        el('div', { class: 'ch-flex ch-entre' }, el('span', null, 'Nouveau chrono'), UI.Kbd('N')),
-        el('div', { class: 'ch-flex ch-entre' }, el('span', null, 'Tout arrêter'), UI.Kbd('S')),
+        el(
+          'div',
+          { class: 'ch-row ch-between ch-center' },
+          el('span', null, 'Nouveau chrono'),
+          UI.Kbd('N'),
+        ),
+        el(
+          'div',
+          { class: 'ch-row ch-between ch-center' },
+          el('span', null, 'Tout arrêter'),
+          UI.Kbd('S'),
+        ),
       ),
     ),
   );
 
-  const main = el('main', {
-    class: 'ch-souple ch-pile ch-g20',
-    style: {
-      padding: '24px 32px',
-      width: '100%',
-      boxSizing: 'border-box',
-    },
-  });
+  const main = el('main', { class: 'ch-main' });
 
-  rootEl.appendChild(
-    el(
-      'div',
-      { class: 'ch-flex', style: { minHeight: '100vh', background: 'var(--cv-bg)' } },
-      sidebar,
-      main,
-    ),
-  );
+  rootEl.appendChild(el('div', { class: 'ch-app' }, sidebar, main));
 
   paintNav();
 
@@ -275,27 +153,15 @@ export function start(rootEl) {
   let readOnlyBanner = null;
 
   function buildReadOnlyBanner() {
-    return el(
-      'div',
-      {
-        role: 'status',
-        'data-testid': 'read-only-banner',
-        class: 'ch-flex-c ch-g12',
-        style: {
-          padding: '10px 14px',
-          background: 'var(--cv-warning-50)',
-          border: '1px solid var(--cv-warning-500)',
-          borderRadius: 8,
-          color: 'var(--cv-warning-700)',
-          font: '500 13px/1.4 var(--cv-font-sans)',
-        },
-      },
-      icon('warning', { weight: 'fill', size: 16 }),
-      el(
-        'span',
-        { class: 'ch-souple' },
-        'Chrono est ouvert dans un autre onglet. Cet onglet est en lecture seule.',
-      ),
+    const banner = UI.Alert({
+      status: 'warning',
+      title: 'Chrono est ouvert dans un autre onglet.',
+      text: 'Cet onglet est en lecture seule.',
+      live: true,
+    });
+    banner.dataset.testid = 'read-only-banner';
+    banner.classList.add('ch-center');
+    banner.append(
       UI.Button({
         size: 'sm',
         children: 'Reprendre l’édition',
@@ -310,6 +176,7 @@ export function start(rootEl) {
         },
       }),
     );
+    return banner;
   }
 
   // Shows or hides the banner, and disables the controls that change data.
@@ -326,8 +193,8 @@ export function start(rootEl) {
     }
     // A control that is disabled for another reason is left alone: only the ones disabled here
     // carry the marker, and only those are enabled again.
-    for (const control of /** @type {NodeListOf<HTMLButtonElement>} */ (
-      document.querySelectorAll('button[data-mutates]')
+    for (const control of /** @type {NodeListOf<HTMLButtonElement | HTMLInputElement>} */ (
+      document.querySelectorAll('button[data-mutates], input[data-mutates], select[data-mutates]')
     )) {
       if (readOnly && !control.disabled) {
         control.disabled = true;
@@ -379,8 +246,8 @@ export function start(rootEl) {
 
   /* ---------------- Keyboard shortcuts ---------------- */
   // Global shortcuts must never steal a key from a control
-  // that uses it: text input, open modal (focus trapped in the
-  // dialog, "S" must not stop the timers in the background),
+  // that uses it: text input, open modal (a native <dialog>: the page behind is inert, "S"
+  // must not stop the timers in the background),
   // combinations with Alt/Ctrl/Meta (browser or OS shortcuts),
   // auto-repeat of a held key, and, for Space,
   // buttons/links/role="button", which the key activates natively.
@@ -389,7 +256,7 @@ export function start(rootEl) {
     const t = /** @type {HTMLElement | null} */ (e.target);
     if (t && t.isContentEditable) return true;
     if (t && t.matches && t.matches('input, textarea, select')) return true;
-    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return true;
+    if (document.querySelector('dialog[open]')) return true;
     if (e.altKey || e.ctrlKey || e.metaKey) return true;
     if (e.repeat) return true;
     const isSpaceKey = e.key === ' ' || e.code === 'Space';
@@ -455,18 +322,11 @@ export function start(rootEl) {
           role: 'alert',
           'data-testid': 'storage-error',
           'data-code': code,
-          class: 'ch-pile ch-g12',
-          style: {
-            maxWidth: 560,
-            margin: '15vh auto 0',
-            padding: '0 24px',
-            background: 'var(--cv-bg)',
-            color: 'var(--cv-fg)',
-          },
+          class: 'ch-error-screen',
         },
-        icon('warning', { weight: 'fill', size: 28, style: { color: 'var(--cv-warning-600)' } }),
-        el('h1', { style: { font: '600 20px/1.3 var(--cv-font-sans)', margin: 0 } }, message.title),
-        el('p', { style: { font: '400 14px/1.5 var(--cv-font-sans)', margin: 0 } }, message.body),
+        icon('warning', { className: 'ch-warning-text ch-icon-xl' }),
+        el('h1', { class: 'cv-h1 ch-page-title' }, message.title),
+        el('p', { class: 'ch-message' }, message.body),
         el(
           'div',
           null,
@@ -483,11 +343,7 @@ export function start(rootEl) {
 
   /* ---------------- initial load ---------------- */
   // Shows a loader during the initial load
-  const loader = el(
-    'div',
-    { style: { padding: 40, color: 'var(--cv-fg-muted)', font: '400 13px var(--cv-font-sans)' } },
-    'Chargement…',
-  );
+  const loader = el('p', { class: 'ch-meta ch-loading', role: 'status' }, 'Chargement…');
   main.appendChild(loader);
 
   store.onRefused(() => {

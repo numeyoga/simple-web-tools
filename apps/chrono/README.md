@@ -142,7 +142,8 @@ de référence ([décision 0004](../../docs/decisions/0004-reference-architectur
 
 ```text
 index.html            point d'entrée Vite (charge src/main.js)
-public/assets/        fichiers statiques : favicon, icônes Phosphor
+public/theme-init.js  script classique : thème et taille du texte avant le premier rendu
+public/assets/        fichiers statiques : favicon
 src/
   main.js             démarre l'application dans #root
   types.d.ts          modèle de données, schéma version 2 (et types de la version 1)
@@ -206,9 +207,12 @@ barre latérale, la navigation et les raccourcis clavier.
 
 Aucune variable globale n'est partagée entre modules : tout passe par `import` / `export`.
 
-Les icônes [Phosphor](https://phosphoricons.com/) (version 2.1.1, licence MIT) sont servies depuis
-`public/assets/vendor/phosphor/` (graisses regular, fill et bold). Le thème visuel est
-`src/styles/covenant.css`.
+L'interface vient du paquet `@simple-web-tools/covenant` (dépendance d'exécution, comme
+`storage` et `dates` : tokens, CSS des composants, comportements, polices IBM Plex et icônes
+Phosphor, tout est embarqué par Vite, aucune requête externe). `src/styles/app.css` ne contient
+que la mise en page et les rôles sémantiques ; les vues construisent le balisage des composants
+(`src/adapters/dom/ui.js`). `public/theme-init.js` lit `chrono-theme` (`light` ou `dark`, sinon
+`prefers-color-scheme`) et `chrono-text-size` (`standard`, `comfortable`, `large`).
 
 ## Lancer en local
 
@@ -244,8 +248,8 @@ npm run verify                       # depuis la racine : typecheck, lint, forma
   chrono, saisie manuelle, todos, projets, rapport et CSV, espaces, export et import JSON,
   persistance, reprise des données de la version 1, deux onglets dans le même contexte :
   lecture seule, relecture, reprise du verrou ; IndexedDB indisponible ou bloqué ; import du
-  repli). Toute requête qui n'est pas pour `127.0.0.1` est bloquée : Google Fonts n'est donc
-  jamais atteint. Pas encore d'assertions axe : l'interface actuelle ne les passe pas, elles
+  repli). Toute requête qui n'est pas pour `127.0.0.1` est bloquée, et un test vérifie
+  qu'aucune n'est émise. Pas encore d'assertions axe : l'interface actuelle ne les passe pas, elles
   arriveront avec le portage sur Covenant.
 - Le typecheck couvre tout `src` (vues comprises), `src/types.d.ts` et `tests/unit`.
 

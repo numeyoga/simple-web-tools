@@ -49,7 +49,7 @@ test('JSON export then import into an empty workspace: the data is restored', as
   });
   await page
     .getByRole('dialog', { name: 'Remplacer les données ?' })
-    .getByRole('button', { name: 'Supprimer' })
+    .getByRole('button', { name: 'Remplacer les données' })
     .click();
   await expect(page.getByRole('button', { name: 'Espace de sauvegarde Vide' })).toBeVisible();
   await page.getByRole('button', { name: 'Projets' }).click();

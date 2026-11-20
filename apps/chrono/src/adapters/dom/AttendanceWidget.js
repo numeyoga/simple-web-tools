@@ -1,5 +1,6 @@
 // sidebar widget: presence + active timer.
-// Full re-render on every update (state OR tick). The component is small, so it does not matter.
+// Full re-render when the state changes. A tick only rewrites the figures that move (durations),
+// so the buttons are not replaced every second: they keep the keyboard focus and their tooltip.
 
 import * as UI from './ui.js';
 
@@ -30,9 +31,25 @@ function totalPauses(events) {
  * @param {{ onOpenQuickAdd: () => void }} opts
  */
 export function createAttendanceWidget(store, opts) {
-  const host = el('div', { class: 'ch-pile ch-g12' });
+  const host = el('div', { class: 'ch-stack ch-gap-4' });
+
+  /** @type {(() => void)[]} */
+  let liveUpdaters = [];
+  /**
+   * A text that follows the clock: written now, and again on every tick.
+   * @param {HTMLElement} node
+   * @param {() => string} text
+   */
+  function live(node, text) {
+    node.textContent = text();
+    liveUpdaters.push(() => {
+      node.textContent = text();
+    });
+    return node;
+  }
 
   function render() {
+    liveUpdaters = [];
     const s = store.state;
     const attState = store.attendanceState();
     const actives = s.sessions.filter((x) => x.status !== 'done').sort((a, b) => a.start - b.start);
@@ -43,15 +60,17 @@ export function createAttendanceWidget(store, opts) {
     const lastBreakStartEvent = attState.events
       .filter((e) => e.type === 'break_start')
       .slice(-1)[0];
-    const presenceDuration = arrival ? Date.now() - arrival.at - totalPauses(attState.events) : 0;
-    const currentBreakDuration =
+    const presenceDuration = () =>
+      arrival ? Date.now() - arrival.at - totalPauses(attState.events) : 0;
+    const currentBreakDuration = () =>
       lastBreakStartEvent && status === 'on_break' ? Date.now() - lastBreakStartEvent.at : 0;
 
     /**
      * @type {Record<
      *   import('../../types.js').AttendanceState['status'],
      *   {
-     *     label: string, color: string, dot: string, cta: string | null, ctaVariant: string,
+     *     label: string, variant: import('./types.js').BadgeOptions['variant'],
+     *     cta: string | null, ctaVariant: 'primary' | 'secondary',
      *     action: import('../../types.js').AttendanceType | null,
      *   }
      * >}
@@ -59,32 +78,28 @@ export function createAttendanceWidget(store, opts) {
     const metas = {
       not_arrived: {
         label: 'Pas encore arrivé',
-        color: 'var(--cv-fg-muted)',
-        dot: 'var(--cv-neutral-400)',
+        variant: 'neutral',
         action: 'arrival',
         cta: 'Pointer arrivée',
         ctaVariant: 'primary',
       },
       present: {
         label: 'Présent',
-        color: 'var(--cv-success-700)',
-        dot: 'var(--cv-success-500)',
+        variant: 'success',
         action: 'break_start',
         cta: 'Pause',
         ctaVariant: 'secondary',
       },
       on_break: {
         label: 'En pause',
-        color: 'var(--cv-warning-700)',
-        dot: 'var(--cv-warning-500)',
+        variant: 'warning',
         action: 'break_end',
         cta: 'Reprendre',
         ctaVariant: 'primary',
       },
       left: {
         label: 'Journée terminée',
-        color: 'var(--cv-fg-muted)',
-        dot: 'var(--cv-neutral-400)',
+        variant: 'neutral',
         action: null,
         cta: null,
         ctaVariant: 'secondary',
@@ -95,82 +110,35 @@ export function createAttendanceWidget(store, opts) {
     // ----- presence block -----
     const presenceBlock = el(
       'section',
-      {
-        class: 'ch-panneau ch-pile ch-g10',
-        style: { padding: 14 },
-      },
-      el(
-        'div',
-        { class: 'ch-flex-c ch-g8' },
-        el('span', {
-          style: {
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: meta.dot,
-            animation: status === 'present' ? 'cv-pulse 2s infinite' : 'none',
-            boxShadow: status === 'present' ? '0 0 0 3px rgba(22,163,74,0.15)' : 'none',
-          },
-        }),
-        el(
-          'span',
-          {
-            style: {
-              font: '600 12px/1 var(--cv-font-sans)',
-              color: meta.color,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            },
-          },
-          meta.label,
-        ),
-      ),
+      { class: 'cv-card cv-card--compact', 'aria-label': 'Présence' },
+      el('div', null, UI.Badge({ variant: meta.variant, children: meta.label })),
 
       arrival && status !== 'not_arrived'
         ? el(
             'div',
-            { class: 'ch-pile ch-g6' },
+            { class: 'ch-stack ch-gap-3' },
             el(
               'div',
-              { class: 'ch-flex ch-entre ch-g8', style: { alignItems: 'baseline' } },
-              el(
-                'div',
-                {
-                  style: { font: '500 11px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg-subtle)' },
-                },
-                'Présence',
-              ),
-              el(
-                'div',
-                {
-                  style: {
-                    font: '500 20px/1 var(--cv-font-mono)',
-                    color: 'var(--cv-fg)',
-                    letterSpacing: '-0.02em',
-                  },
-                },
-                formatDuration(presenceDuration),
+              { class: 'ch-row ch-between ch-gap-3 ch-baseline' },
+              el('div', { class: 'ch-meta' }, 'Présence'),
+              live(el('div', { class: 'cv-num ch-kpi ch-kpi--md' }), () =>
+                formatDuration(presenceDuration()),
               ),
             ),
             el(
               'div',
-              { class: 'ch-legende ch-flex-c ch-g6' },
-              icon('sign-in', { size: 13 }),
+              { class: 'ch-meta ch-row ch-center ch-gap-3' },
+              icon('sign-in'),
               el(
                 'span',
                 null,
                 'Arrivée ',
-                el(
-                  'span',
-                  { style: { fontFamily: 'var(--cv-font-mono)', color: 'var(--cv-fg)' } },
-                  formatTime(arrival.at),
-                ),
+                el('span', { class: 'cv-num ch-fg' }, formatTime(arrival.at)),
               ),
               status === 'on_break'
-                ? el(
-                    'span',
-                    { style: { marginLeft: 'auto', color: 'var(--cv-warning-700)' } },
-                    `pause · ${formatDuration(currentBreakDuration, { compact: true })}`,
+                ? live(
+                    el('span', { class: 'ch-end ch-warning-text' }),
+                    () => `pause · ${formatDuration(currentBreakDuration(), { compact: true })}`,
                   )
                 : null,
             ),
@@ -179,7 +147,7 @@ export function createAttendanceWidget(store, opts) {
 
       el(
         'div',
-        { class: 'ch-flex ch-g6' },
+        { class: 'ch-row ch-gap-3' },
         meta.cta
           ? UI.Button({
               variant: meta.ctaVariant,
@@ -189,7 +157,7 @@ export function createAttendanceWidget(store, opts) {
               mutates: true,
               onclick: () =>
                 store.actions.recordAttendance(/** @type {AttendanceType} */ (meta.action)),
-              style: { flex: 1 },
+              className: 'ch-grow',
             })
           : null,
         status === 'present' || status === 'on_break'
@@ -198,7 +166,6 @@ export function createAttendanceWidget(store, opts) {
               size: 'sm',
               icon: 'sign-out',
               children: 'Partir',
-              title: 'Clôturer la journée',
               mutates: true,
               onclick: () => {
                 // On a break: close the break first to keep a clean history.
@@ -208,16 +175,7 @@ export function createAttendanceWidget(store, opts) {
               },
             })
           : null,
-        status === 'left'
-          ? el(
-              'div',
-              {
-                class: 'ch-indice',
-                style: { flex: 1, textAlign: 'center' },
-              },
-              'À demain.',
-            )
-          : null,
+        status === 'left' ? el('div', { class: 'ch-subtle ch-fill ch-center' }, 'À demain.') : null,
       ),
     );
 
@@ -228,103 +186,57 @@ export function createAttendanceWidget(store, opts) {
       const isRunning = active.status === 'running';
       return el(
         'section',
-        {
-          class: 'ch-pile ch-g8',
-          style: {
-            background: 'var(--cv-fg)',
-            color: 'var(--cv-fg-inverse)',
-            border: '1px solid var(--cv-fg)',
-            borderRadius: 10,
-            padding: 12,
-          },
-        },
+        { class: 'ch-ink', 'aria-label': project?.name || 'Sans projet' },
         el(
           'div',
-          { class: 'ch-flex-c ch-g8' },
-          el('span', {
-            style: {
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              flexShrink: 0,
-              background: isRunning ? 'var(--cv-accent-400)' : 'var(--cv-neutral-400)',
-              animation: isRunning ? 'cv-pulse 1.2s infinite' : 'none',
-            },
-          }),
-          project
-            ? el('span', {
-                class: 'ch-pastille',
-                style: { background: project.color, flexShrink: 0 },
-              })
-            : null,
+          { class: 'ch-row ch-center ch-gap-3' },
+          project ? el('span', { class: 'ch-swatch', style: { background: project.color } }) : null,
           el(
             'div',
-            { class: 'ch-souple' },
+            { class: 'ch-grow' },
+            el('div', { class: 'ch-ellipsis ch-strong' }, project?.name || 'Sans projet'),
             el(
               'div',
-              {
-                class: 'ch-ellipse',
-                style: { font: '500 12px/1.2 var(--cv-font-sans)' },
-              },
-              project?.name || 'Sans projet',
+              { class: 'ch-caption ch-ellipsis' },
+              active.description
+                ? `${isRunning ? 'En cours' : 'En pause'} · ${active.description}`
+                : isRunning
+                  ? 'En cours'
+                  : 'En pause',
             ),
-            active.description
-              ? el(
-                  'div',
-                  {
-                    class: 'ch-ellipse',
-                    style: {
-                      font: '400 10px/1.3 var(--cv-font-sans)',
-                      color: 'rgba(255,255,255,0.6)',
-                      marginTop: 1,
-                    },
-                  },
-                  active.description,
-                )
-              : null,
           ),
         ),
         el(
           'div',
-          { class: 'ch-flex-c ch-g6' },
-          el(
-            'div',
-            {
-              style: { font: '500 20px/1 var(--cv-font-mono)', letterSpacing: '-0.02em', flex: 1 },
-            },
+          { class: 'ch-row ch-center ch-gap-3' },
+          live(el('div', { class: 'cv-num ch-kpi ch-kpi--md ch-grow' }), () =>
             formatDuration(liveDuration(active), { withSeconds: true }),
           ),
           isRunning
-            ? el(
-                'button',
-                {
-                  'data-mutates': '',
-                  onclick: () => store.actions.pauseSession(active.id),
-                  class: 'ch-btn-sombre',
-                  title: 'Mettre en pause',
-                },
-                icon('pause', { size: 14 }),
-              )
-            : el(
-                'button',
-                {
-                  'data-mutates': '',
-                  onclick: () => store.actions.resumeSession(active.id),
-                  class: 'ch-btn-sombre ch-btn-sombre--accent',
-                  title: 'Reprendre',
-                },
-                icon('play', { size: 14 }),
-              ),
-          el(
-            'button',
-            {
-              'data-mutates': '',
-              onclick: () => store.actions.stopSession(active.id),
-              class: 'ch-btn-sombre',
-              title: 'Arrêter & enregistrer',
-            },
-            icon('stop', { size: 14 }),
-          ),
+            ? UI.IconButton({
+                icon: 'pause',
+                label: 'Mettre en pause',
+                variant: 'secondary',
+                size: 'sm',
+                mutates: true,
+                onclick: () => store.actions.pauseSession(active.id),
+              })
+            : UI.IconButton({
+                icon: 'play',
+                label: 'Reprendre',
+                variant: 'primary',
+                size: 'sm',
+                mutates: true,
+                onclick: () => store.actions.resumeSession(active.id),
+              }),
+          UI.IconButton({
+            icon: 'stop',
+            label: 'Arrêter & enregistrer',
+            variant: 'secondary',
+            size: 'sm',
+            mutates: true,
+            onclick: () => store.actions.stopSession(active.id),
+          }),
         ),
       );
     }
@@ -333,26 +245,17 @@ export function createAttendanceWidget(store, opts) {
     if (actives.length === 0) {
       activeBlock = el(
         'section',
-        {
-          class: 'ch-pile ch-g10',
-          style: {
-            background: 'var(--cv-surface)',
-            color: 'var(--cv-fg)',
-            border: '1px dashed var(--cv-border-strong)',
-            borderRadius: 10,
-            padding: 16,
-          },
-        },
+        { class: 'cv-card cv-card--compact', 'aria-label': 'Chronos' },
         el(
           'div',
-          { class: 'ch-flex-c ch-g8' },
-          icon('timer', { size: 16, style: { color: 'var(--cv-fg-subtle)' } }),
-          el('span', { class: 'ch-libelle' }, 'Aucun chrono actif'),
+          { class: 'ch-row ch-center ch-gap-3' },
+          icon('timer'),
+          el('span', { class: 'ch-strong' }, 'Aucun chrono actif'),
         ),
         el(
           'div',
-          { class: 'ch-note' },
-          'Lance un ou plusieurs chronos en parallèle — depuis un projet, une todo ou en un clic.',
+          { class: 'ch-meta' },
+          'Lance un ou plusieurs chronos en parallèle, depuis un projet, une todo ou en un clic.',
         ),
         UI.Button({
           variant: 'primary',
@@ -362,34 +265,19 @@ export function createAttendanceWidget(store, opts) {
           mutates: true,
           onclick: opts.onOpenQuickAdd,
           disabled: status === 'left',
-          style: { alignSelf: 'stretch' },
         }),
       );
     } else {
       const header = el(
         'div',
-        { class: 'ch-flex-c ch-g8', style: { padding: '0 2px' } },
+        { class: 'ch-row ch-center ch-wrap ch-gap-3' },
         el(
           'span',
-          {
-            class: 'ch-surtitre ch-surtitre--fort',
-          },
+          { class: 'cv-overline' },
           actives.length > 1 ? `${actives.length} chronos en parallèle` : 'Chrono actif',
         ),
         actives.length > 1 && runningCount > 0
-          ? el(
-              'span',
-              {
-                style: {
-                  font: '500 10px/1 var(--cv-font-mono)',
-                  color: 'var(--cv-accent-600)',
-                  padding: '2px 6px',
-                  background: 'var(--cv-accent-50)',
-                  borderRadius: 4,
-                },
-              },
-              `${runningCount} en cours`,
-            )
+          ? el('span', { class: 'cv-tag cv-tag--mono' }, `${runningCount} en cours`)
           : null,
       );
 
@@ -397,7 +285,7 @@ export function createAttendanceWidget(store, opts) {
         actives.length > 1
           ? el(
               'div',
-              { class: 'ch-flex ch-g6' },
+              { class: 'ch-row ch-gap-3' },
               runningCount > 0
                 ? UI.Button({
                     variant: 'secondary',
@@ -406,7 +294,7 @@ export function createAttendanceWidget(store, opts) {
                     children: 'Tout mettre en pause',
                     mutates: true,
                     onclick: () => store.actions.pauseAll(),
-                    style: { flex: 1 },
+                    className: 'ch-grow',
                   })
                 : UI.Button({
                     variant: 'secondary',
@@ -415,13 +303,13 @@ export function createAttendanceWidget(store, opts) {
                     children: 'Tout reprendre',
                     mutates: true,
                     onclick: () => store.actions.resumeAll(),
-                    style: { flex: 1 },
+                    className: 'ch-grow',
                   }),
-              UI.Button({
+              UI.IconButton({
+                icon: 'stop',
+                label: 'Tout arrêter & enregistrer',
                 variant: 'secondary',
                 size: 'sm',
-                icon: 'stop',
-                title: 'Tout arrêter & enregistrer',
                 mutates: true,
                 onclick: () => store.actions.stopAll(),
               }),
@@ -430,7 +318,7 @@ export function createAttendanceWidget(store, opts) {
 
       activeBlock = el(
         'section',
-        { class: 'ch-pile ch-g8' },
+        { class: 'ch-stack ch-gap-3', 'aria-label': 'Chronos' },
         header,
         ...actives.map(chronoCard),
         groupBar,
@@ -442,7 +330,6 @@ export function createAttendanceWidget(store, opts) {
           mutates: true,
           onclick: opts.onOpenQuickAdd,
           disabled: status === 'left',
-          style: { alignSelf: 'stretch' },
         }),
       );
     }
@@ -452,7 +339,9 @@ export function createAttendanceWidget(store, opts) {
 
   render();
   const offState = store.onState(render);
-  const offTick = store.onTick(render);
+  const offTick = store.onTick(() => {
+    for (const update of liveUpdaters) update();
+  });
 
   return {
     el: host,

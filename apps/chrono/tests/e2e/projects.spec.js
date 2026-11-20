@@ -19,7 +19,7 @@ test('project: creation then archiving', async ({ page }) => {
 
   await expect(main.getByText('Aucun projet actif.')).toBeVisible();
   await expect(main.getByText('0 actifs · 1 archivés')).toBeVisible();
-  await main.getByRole('button', { name: 'Actifs' }).click(); // switches to the list of the archived ones
+  await main.getByRole('radio', { name: 'Archivés' }).check(); // switches to the list of the archived ones
   await expect(main.getByText('Projet Alpha')).toBeVisible();
   await expect(main.getByRole('button', { name: 'Désarchiver' })).toBeVisible();
 

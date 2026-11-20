@@ -1,7 +1,7 @@
 // projects view: cards with totals, creation modal.
 import * as UI from './ui.js';
 
-const { el, icon, formatDuration, liveDuration } = UI;
+const { el, formatDuration, liveDuration } = UI;
 
 /* Curated palette (16 well-separated hues). A custom colour can be entered with the native picker. */
 const COLORS = [
@@ -39,7 +39,7 @@ export function createProjectsView(store, opts) {
   let showTotals = localStorage.getItem(PREF_TOTALS) === '1';
   const computed = new Set(); // projects whose total was computed on demand
 
-  const host = el('div', { class: 'ch-pile ch-g16' });
+  const host = el('div', { class: 'ch-view' });
 
   /** @param {Project | null} [existing] */
   function openProjectModal(existing = null) {
@@ -47,31 +47,18 @@ export function createProjectsView(store, opts) {
     const draft = existing
       ? { name: existing.name, client: existing.client || '', color: existing.color }
       : { name: '', client: '', color: COLORS[0] ?? '#2563eb' };
-    const colorsRow = el('div', {
-      style: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(9, 28px)',
-        gap: 8,
-        alignItems: 'center',
-      },
-    });
+    const colorsRow = el('div', { class: 'ch-swatches' });
 
     /* Hidden native picker, triggered by the "+" button. */
     const nativePicker = el('input', {
       type: 'color',
       value: COLORS.includes(norm(draft.color)) ? COLORS[0] : draft.color,
+      tabindex: -1,
+      'aria-hidden': 'true',
+      class: 'ch-color-input',
       oninput: (/** @type {import('./types.js').TargetEvent} */ e) => {
         draft.color = e.target.value;
         paintColors();
-      },
-      style: {
-        position: 'absolute',
-        width: 0,
-        height: 0,
-        padding: 0,
-        border: 0,
-        opacity: 0,
-        pointerEvents: 'none',
       },
     });
 
@@ -79,61 +66,36 @@ export function createProjectsView(store, opts) {
       const current = norm(draft.color);
       const isInPalette = COLORS.some((c) => norm(c) === current);
       colorsRow.replaceChildren(
-        ...COLORS.map((c) => {
-          const isSelected = norm(c) === current;
-          return el('button', {
+        ...COLORS.map((c) =>
+          el('button', {
             type: 'button',
+            class: 'ch-swatch-btn',
+            'aria-pressed': String(norm(c) === current),
             onclick: () => {
               draft.color = c;
               paintColors();
             },
             'aria-label': `Couleur ${c}`,
-            title: c,
-            style: {
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              border: isSelected ? '2px solid var(--cv-fg)' : '2px solid transparent',
-              background: c,
-              cursor: 'pointer',
-              padding: 0,
-              boxShadow: isSelected ? '0 0 0 2px var(--cv-surface) inset' : 'none',
-            },
-          });
-        }),
+            style: { background: c },
+          }),
+        ),
         /* "Custom colour" button: opens the native colour picker.
              If a custom colour is already chosen, it is shown in the button. */
-        el(
-          'button',
-          {
-            type: 'button',
-            onclick: () => nativePicker.click(),
-            'aria-label': 'Couleur personnalisée',
-            title: isInPalette
-              ? 'Couleur personnalisée…'
-              : `Couleur personnalisée : ${draft.color}`,
-            style: {
-              width: 28,
-              height: 28,
-              borderRadius: 8,
-              padding: 0,
-              cursor: 'pointer',
-              border: !isInPalette
-                ? '2px solid var(--cv-fg)'
-                : '1px dashed var(--cv-border-strong)',
-              background: !isInPalette
-                ? draft.color
-                : 'conic-gradient(from 180deg, #ef4444, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #ef4444)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              textShadow: '0 0 2px rgba(0,0,0,0.4)',
-              boxShadow: !isInPalette ? '0 0 0 2px var(--cv-surface) inset' : 'none',
-            },
-          },
-          !isInPalette ? '' : icon('plus', { size: 14, style: { color: 'var(--cv-fg)' } }),
-        ),
+        isInPalette
+          ? UI.IconButton({
+              icon: 'plus',
+              label: 'Couleur personnalisée',
+              variant: 'secondary',
+              onclick: () => nativePicker.click(),
+            })
+          : el('button', {
+              type: 'button',
+              class: 'ch-swatch-btn',
+              'aria-pressed': 'true',
+              'aria-label': `Couleur personnalisée ${draft.color}`,
+              style: { background: draft.color },
+              onclick: () => nativePicker.click(),
+            }),
         nativePicker,
       );
     }
@@ -143,9 +105,10 @@ export function createProjectsView(store, opts) {
       label: 'Nom du projet',
       value: draft.name,
       placeholder: 'Ex. Refonte site — Acme',
-      autoFocus: !isEdit,
+      autoFocus: true,
+      required: true,
     });
-    /* Autocomplete on the clients already known. The user can also type
+    /* Suggestions from the clients already known. The user can also type
          a new free value: it is created on the fly. */
     const knownClients = Array.from(
       new Set(
@@ -155,35 +118,48 @@ export function createProjectsView(store, opts) {
           .filter(Boolean),
       ),
     );
-    const clientW = UI.Autocomplete({
-      label: 'Client',
-      value: draft.client,
-      options: knownClients,
-      placeholder: 'Ex. Acme SAS (facultatif)',
-      hint:
-        knownClients.length > 0
-          ? `${knownClients.length} client${knownClients.length > 1 ? 's' : ''} déjà saisi${knownClients.length > 1 ? 's' : ''} — ou tape un nouveau nom`
-          : null,
-    });
+    const clientHint =
+      knownClients.length > 0
+        ? `${knownClients.length} client${knownClients.length > 1 ? 's' : ''} déjà saisi${knownClients.length > 1 ? 's' : ''}, ou tape un nouveau nom`
+        : null;
+    const clientW =
+      knownClients.length > 0
+        ? UI.Combobox({
+            label: 'Client',
+            value: draft.client,
+            options: knownClients,
+            placeholder: 'Ex. Acme SAS (facultatif)',
+            hint: clientHint,
+            emptyText: 'Aucun client correspondant. Ce nom sera créé.',
+          })
+        : UI.Input({
+            label: 'Client',
+            value: draft.client,
+            placeholder: 'Ex. Acme SAS (facultatif)',
+          });
     const inputName = nameW.input;
     const inputClient = clientW.input;
 
     const body = el(
       'div',
-      { class: 'ch-pile ch-g12' },
+      { class: 'ch-stack ch-gap-5' },
       nameW,
       clientW,
       el(
-        'div',
-        null,
-        el('div', { class: 'ch-label', style: { marginBottom: 6 } }, 'Couleur'),
+        'fieldset',
+        { class: 'cv-fieldset' },
+        el('legend', { class: 'cv-label' }, 'Couleur'),
         colorsRow,
       ),
     );
 
     function save() {
       const name = inputName.value.trim();
-      if (!name) return;
+      if (!name) {
+        nameW.setError('Le nom est vide. Saisis le nom du projet.');
+        inputName.focus();
+        return;
+      }
       const patch = {
         name,
         client: inputClient.value.trim(),
@@ -194,32 +170,39 @@ export function createProjectsView(store, opts) {
       modal.close();
     }
 
-    function originalDelete() {
+    async function originalDelete() {
       if (!existing) return;
       const { sessions, todos } = store.state;
       const n = sessions.filter((s) => s.projectId === existing.id).length;
       const m = todos.filter((t) => t.projectId === existing.id).length;
       const msg =
         n + m > 0
-          ? `Supprimer le projet « ${existing.name} » ? ${n} session${n > 1 ? 's' : ''} et ${m} tâche${m > 1 ? 's' : ''} seront aussi supprimées.`
-          : `Supprimer le projet « ${existing.name} » ?`;
-      if (!confirm(msg)) return;
+          ? `Le projet « ${existing.name} » sera supprimé avec ${n} session${n > 1 ? 's' : ''} et ${m} tâche${m > 1 ? 's' : ''}. Tu ne pourras pas annuler.`
+          : `Le projet « ${existing.name} » sera supprimé. Tu ne pourras pas annuler.`;
+      const ok = await UI.Confirm({
+        title: `Supprimer le projet « ${existing.name} » ?`,
+        message: msg,
+        confirmLabel: 'Supprimer le projet',
+        danger: true,
+        within: modal,
+      });
+      if (!ok) return;
       store.actions.deleteProject(existing.id);
       modal.close();
     }
 
     const saveButton = UI.Button({
       variant: 'primary',
-      icon: 'check',
       children: isEdit ? 'Enregistrer' : 'Créer',
       onclick: save,
     });
     const updateDisabled = () => {
       saveButton.disabled = !inputName.value.trim();
-      saveButton.style.opacity = saveButton.disabled ? '0.5' : '1';
-      saveButton.style.cursor = saveButton.disabled ? 'not-allowed' : 'pointer';
     };
-    inputName.addEventListener('input', updateDisabled);
+    inputName.addEventListener('input', () => {
+      nameW.setError(null);
+      updateDisabled();
+    });
     updateDisabled();
     inputName.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') save();
@@ -229,19 +212,17 @@ export function createProjectsView(store, opts) {
     if (isEdit)
       footer.push(
         UI.Button({
-          variant: 'destructive',
-          icon: 'trash',
+          variant: 'danger',
           children: 'Supprimer',
           onclick: originalDelete,
-          style: { marginRight: 'auto' },
+          className: 'ch-push',
         }),
       );
-    footer.push(UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }));
+    footer.push(UI.Button({ children: 'Annuler', onclick: () => modal.close() }));
     footer.push(saveButton);
 
     const modal = UI.Modal({
       title: isEdit ? 'Modifier le projet' : 'Nouveau projet',
-      width: 480,
       body,
       footer,
     });
@@ -250,6 +231,53 @@ export function createProjectsView(store, opts) {
   function openCreationModal() {
     openProjectModal(null);
   }
+
+  const metaNode = el('div', { class: 'ch-meta ch-mt-1' });
+  const gridSlot = el('div', null);
+  host.append(
+    // Header: built once, so the controls keep the focus when the grid changes
+    el(
+      'div',
+      { class: 'ch-row ch-center ch-wrap ch-gap-4' },
+      el('div', null, el('h1', { class: 'cv-h1 ch-page-title' }, 'Projets'), metaNode),
+      el(
+        'div',
+        { class: 'ch-row ch-center ch-wrap ch-gap-4 ch-end' },
+        UI.Checkbox({
+          label: 'Afficher les totaux',
+          switchRole: true,
+          checked: showTotals,
+          onchange: (checked) => {
+            showTotals = checked;
+            localStorage.setItem(PREF_TOTALS, showTotals ? '1' : '0');
+            computed.clear();
+            render();
+          },
+        }),
+        UI.Segmented({
+          legend: 'Projets affichés',
+          name: 'projects-shown',
+          options: [
+            { value: 'active', label: 'Actifs' },
+            { value: 'archived', label: 'Archivés' },
+          ],
+          value: showArchived ? 'archived' : 'active',
+          onchange: (value) => {
+            showArchived = value === 'archived';
+            render();
+          },
+        }),
+        UI.Button({
+          variant: 'primary',
+          icon: 'plus',
+          children: 'Nouveau projet',
+          mutates: true,
+          onclick: openCreationModal,
+        }),
+      ),
+    ),
+    gridSlot,
+  );
 
   function render() {
     const { projects, sessions, todos } = store.state;
@@ -270,86 +298,19 @@ export function createProjectsView(store, opts) {
       else counts.open += 1;
     }
 
-    host.replaceChildren(
-      // Header
-      el(
-        'div',
-        { class: 'ch-flex-c ch-g12' },
-        el(
-          'div',
-          null,
-          el('div', { class: 'ch-titre-page' }, 'Projets'),
-          el(
-            'div',
-            { class: 'ch-meta', style: { marginTop: 4 } },
-            `${projects.filter((p) => !p.archived).length} actifs · ${projects.filter((p) => p.archived).length} archivés`,
-          ),
-        ),
-        el(
-          'div',
-          { class: 'ch-flex ch-g8', style: { marginLeft: 'auto' } },
-          UI.Button({
-            variant: showTotals ? 'primary' : 'secondary',
-            icon: showTotals ? 'clock' : 'clock-countdown',
-            children: showTotals ? 'Totaux affichés' : 'Totaux masqués',
-            title:
-              'Afficher ou masquer les temps cumulés et le nombre de sessions sur toutes les cartes',
-            onclick: () => {
-              showTotals = !showTotals;
-              localStorage.setItem(PREF_TOTALS, showTotals ? '1' : '0');
-              computed.clear();
-              render();
-            },
-          }),
-          UI.Button({
-            variant: showArchived ? 'primary' : 'secondary',
-            icon: 'archive',
-            children: showArchived ? 'Archivés' : 'Actifs',
-            onclick: () => {
-              showArchived = !showArchived;
-              render();
-            },
-          }),
-          UI.Button({
-            variant: 'primary',
-            icon: 'plus',
-            children: 'Nouveau projet',
-            mutates: true,
-            onclick: openCreationModal,
-          }),
-        ),
-      ),
-
-      // Grid
+    metaNode.textContent = `${projects.filter((p) => !p.archived).length} actifs · ${projects.filter((p) => p.archived).length} archivés`;
+    gridSlot.replaceChildren(
       listEl.length === 0
-        ? el(
-            'div',
-            {
-              style: {
-                padding: '48px 16px',
-                textAlign: 'center',
-                color: 'var(--cv-fg-muted)',
-                font: '400 14px/1.5 var(--cv-font-sans)',
-                border: '1px dashed var(--cv-border-strong)',
-                borderRadius: 10,
-              },
-            },
-            icon('folder-open', { size: 32, style: { color: 'var(--cv-fg-subtle)' } }),
-            el(
-              'div',
-              { style: { marginTop: 8 } },
-              `Aucun projet ${showArchived ? 'archivé' : 'actif'}.`,
-            ),
-          )
+        ? UI.EmptyState({
+            icon: 'folder-open',
+            title: `Aucun projet ${showArchived ? 'archivé' : 'actif'}.`,
+            text: showArchived
+              ? 'Les projets que tu archives apparaissent ici.'
+              : 'Crée un projet pour y rattacher des chronos et des todos.',
+          })
         : el(
             'div',
-            {
-              style: {
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: 12,
-              },
-            },
+            { class: 'ch-grid-cards' },
             listEl.map((p) =>
               projectCard(
                 p,
@@ -369,88 +330,51 @@ export function createProjectsView(store, opts) {
   function projectCard(p, t, td) {
     return el(
       'article',
-      {
-        class: 'ch-carte ch-carte--rogne ch-pile ch-g12',
-        style: { padding: 16, position: 'relative' },
-      },
-      el('div', {
-        style: {
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: 0,
-          width: 4,
-          background: p.color,
-        },
-      }),
+      { class: 'cv-card cv-card--compact ch-project-card' },
+      el('div', { class: 'ch-card-stripe', style: { background: p.color } }),
       el(
         'div',
-        { style: { paddingLeft: 6 } },
-        el(
-          'div',
-          { style: { font: '600 14px/1.3 var(--cv-font-sans)', color: 'var(--cv-fg)' } },
-          p.name,
-        ),
-        el('div', { class: 'ch-meta', style: { marginTop: 2 } }, p.client || '—'),
+        null,
+        el('h2', { class: 'cv-card__title' }, p.name),
+        el('div', { class: 'cv-card__meta ch-mt-1' }, p.client || '—'),
       ),
 
       showTotals || computed.has(p.id)
         ? el(
             'div',
-            { style: { paddingLeft: 6 } },
-            el('div', { class: 'ch-surtitre ch-surtitre--xs' }, 'Temps total'),
+            null,
+            el('div', { class: 'cv-overline' }, 'Temps total'),
+            el('div', { class: 'cv-num ch-kpi ch-mt-3' }, formatDuration(t.duration)),
             el(
               'div',
-              {
-                style: {
-                  font: '500 22px/1 var(--cv-font-mono)',
-                  color: 'var(--cv-fg)',
-                  marginTop: 6,
-                  letterSpacing: '-0.01em',
-                },
-              },
-              formatDuration(t.duration),
-            ),
-            el(
-              'div',
-              {
-                style: {
-                  font: '400 11px/1.2 var(--cv-font-sans)',
-                  color: 'var(--cv-fg-subtle)',
-                  marginTop: 2,
-                },
-              },
+              { class: 'ch-subtle ch-mt-1' },
               `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`,
             ),
           )
         : el(
             'div',
-            { style: { paddingLeft: 6 } },
-            el(
-              'button',
-              {
-                onclick: () => {
-                  computed.add(p.id);
-                  render();
-                },
-                title: 'Calculer le temps cumulé et le nombre de sessions de ce projet',
-                class: 'ch-btn-pointille',
+            null,
+            UI.Button({
+              size: 'sm',
+              icon: 'clock-countdown',
+              children: 'Calculer le temps',
+              onclick: () => {
+                computed.add(p.id);
+                render();
               },
-              icon('clock-countdown', { size: 14 }),
-              'Calculer le temps',
-            ),
+            }),
           ),
 
       el(
         'div',
-        { class: 'ch-flex ch-g6', style: { paddingLeft: 6 } },
-        UI.Badge({ variant: 'neutral', children: `${td.open} todo${td.open > 1 ? 's' : ''}` }),
+        { class: 'ch-row ch-wrap ch-gap-3' },
+        UI.Tag(`${td.open} todo${td.open > 1 ? 's' : ''}`),
         td.done > 0 ? UI.Badge({ variant: 'success', children: `${td.done} faites` }) : null,
       ),
 
       el(
         'div',
-        { class: 'ch-flex ch-g6', style: { marginTop: 'auto', paddingLeft: 6 } },
+        { class: 'ch-row ch-gap-3 ch-mt-auto' },
         !p.archived
           ? [
               UI.Button({
@@ -460,7 +384,7 @@ export function createProjectsView(store, opts) {
                 children: 'Démarrer',
                 mutates: true,
                 onclick: () => opts.onStartOnProject(p.id),
-                style: { flex: 1 },
+                className: 'ch-grow',
               }),
               UI.IconButton({
                 icon: 'pencil-simple',
@@ -486,7 +410,7 @@ export function createProjectsView(store, opts) {
                 children: 'Désarchiver',
                 mutates: true,
                 onclick: () => store.actions.toggleProjectArchived(p.id),
-                style: { flex: 1 },
+                className: 'ch-grow',
               }),
               UI.IconButton({
                 icon: 'pencil-simple',

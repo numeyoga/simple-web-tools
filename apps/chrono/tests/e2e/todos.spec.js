@@ -13,10 +13,12 @@ test('todo: add, then mark as done', async ({ page }) => {
   await expect(main.getByText('Envoyer la facture')).toBeVisible();
   await expect(main.getByText('1 en cours · 0 terminées')).toBeVisible();
 
-  await main.getByRole('button', { name: 'Terminer' }).click();
+  await main.getByRole('checkbox', { name: 'Envoyer la facture' }).check();
 
   await expect(main.getByText('0 en cours · 1 terminées')).toBeVisible();
-  await expect(main.getByRole('button', { name: 'Rouvrir' })).toBeVisible();
+  await expect(
+    main.getByRole('checkbox', { name: 'Envoyer la facture', checked: true }),
+  ).toBeVisible();
 
   expect(errors).toEqual([]);
 });

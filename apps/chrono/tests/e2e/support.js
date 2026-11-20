@@ -6,7 +6,7 @@ export const FROZEN_NOW = new Date(2026, 10, 18, 10, 0, 0);
 
 /**
  * Opens the app with the network blocked: any request that is not for the local preview server
- * is aborted, so the Google Fonts stylesheet never leaves the machine.
+ * is aborted, so nothing can leave the machine (and `blockedHosts` must stay empty).
  *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
@@ -79,7 +79,7 @@ export async function enterSession(page, { description, end }) {
   await page.getByRole('button', { name: 'Timeline' }).click();
   await page.getByRole('main').getByRole('button', { name: 'Nouvelle' }).click();
   const addDialog = page.getByRole('dialog', { name: 'Ajouter un chrono' });
-  await addDialog.getByRole('tab', { name: 'Saisir manuellement' }).click();
+  await addDialog.getByRole('radio', { name: 'Saisir manuellement' }).check();
   await addDialog.getByRole('textbox', { name: 'Sur quoi as-tu travaillé ?' }).fill(description);
   await addDialog.getByLabel('Début').fill('2026-11-18T08:00');
   await addDialog.getByLabel('Fin').fill(`2026-11-18T${end}`);
