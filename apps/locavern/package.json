@@ -25,6 +25,7 @@
   "dependencies": {
     "@simple-web-tools/covenant": "*",
     "@simple-web-tools/dates": "*",
+    "@simple-web-tools/i18n": "*",
     "@simple-web-tools/storage": "*",
     "@tiptap/core": "^3.34.0",
     "@tiptap/extension-bold": "^3.34.0",

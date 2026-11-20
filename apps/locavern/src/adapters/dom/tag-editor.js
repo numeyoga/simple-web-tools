@@ -1,5 +1,6 @@
 import { normalizeTags, parseTagsInput } from '../../core/model.js';
 import { initTooltips, setTooltip } from './tooltip.js';
+import { t } from '../i18n.js';
 
 /**
  * Create an accessible tag editor (or pure view-only tag display) widget.
@@ -23,7 +24,7 @@ import { initTooltips, setTooltip } from './tooltip.js';
  */
 export function createTagEditor({
   idPrefix,
-  labelText = 'Étiquettes',
+  labelText = t('common.tags'),
   initialTags = [],
   suggestions = [],
   readOnly,
@@ -62,7 +63,7 @@ export function createTagEditor({
   input.id = `${idPrefix}-input`;
   input.type = 'text';
   input.className = 'cv-input';
-  input.placeholder = 'Ex. urgent, client-a (Entrée ou virgule)';
+  input.placeholder = t('tags.placeholder');
   input.maxLength = 120;
   input.disabled = readOnly;
   input.setAttribute('list', datalistId);
@@ -72,7 +73,7 @@ export function createTagEditor({
   addBtn.id = `${idPrefix}-add`;
   addBtn.className = 'cv-btn cv-btn--sm';
   addBtn.disabled = readOnly;
-  addBtn.textContent = 'Ajouter l’étiquette';
+  addBtn.textContent = t('tags.add');
 
   function refreshDatalist() {
     if (viewOnly) return;
@@ -94,7 +95,7 @@ export function createTagEditor({
         chipsBox.hidden = false;
         const emptyMsg = document.createElement('span');
         emptyMsg.className = 'cv-caption';
-        emptyMsg.textContent = 'Aucune étiquette.';
+        emptyMsg.textContent = t('tags.none');
         chipsBox.append(emptyMsg);
       } else {
         chipsBox.hidden = true;
@@ -114,8 +115,8 @@ export function createTagEditor({
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'lc-tag-chip__remove';
-          removeBtn.setAttribute('aria-label', `Retirer l’étiquette ${tag}`);
-          setTooltip(removeBtn, 'Retirer l’étiquette');
+          removeBtn.setAttribute('aria-label', t('tags.removeNamed', { tag }));
+          setTooltip(removeBtn, t('tags.remove'));
           const ic = document.createElement('i');
           ic.className = 'ph ph-x cv-icon';
           ic.setAttribute('aria-hidden', 'true');

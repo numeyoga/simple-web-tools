@@ -7,6 +7,7 @@ import {
   sanitizeWhiteboardElements,
   sanitizeWhiteboardViewport,
 } from './model.js';
+import { LocavernError, frenchText } from './messages.js';
 
 /** @type {readonly TemplateKind[]} */
 export const TEMPLATE_KINDS = Object.freeze(['checklist', 'note', 'whiteboard']);
@@ -94,16 +95,16 @@ export function normalizeTemplateChecklistItems(items) {
 export function createLocalTemplate(input) {
   const cleanName = input.name.trim().slice(0, 120);
   if (!cleanName) {
-    throw new Error('Le nom du modèle ne peut pas être vide.');
+    throw new LocavernError('errors.templates.nameEmpty');
   }
   if (!TEMPLATE_KINDS.includes(input.kind)) {
-    throw new Error(`Type de modèle inconnu : ${String(input.kind)}`);
+    throw new LocavernError('errors.templates.unknownKind', { kind: String(input.kind) });
   }
 
   if (input.kind === 'checklist') {
     const items = normalizeTemplateChecklistItems(input.checklistItems);
     if (items.length === 0) {
-      throw new Error('Le modèle de checklist doit contenir au moins une étape.');
+      throw new LocavernError('errors.templates.checklistNeedsStep');
     }
     return Object.freeze({
       id: input.id,
@@ -128,7 +129,7 @@ export function createLocalTemplate(input) {
 
   const elements = sanitizeTemplateWhiteboardElements(input.elements);
   if (elements.length === 0) {
-    throw new Error('Le modèle de tableau blanc doit contenir au moins un élément.');
+    throw new LocavernError('errors.templates.whiteboardNeedsElement');
   }
   return Object.freeze({
     id: input.id,
@@ -142,280 +143,316 @@ export function createLocalTemplate(input) {
 }
 
 /**
- * Curated built-in local starter templates available offline out of the box.
- * @type {readonly LocalTemplate[]}
+ * Curated built-in local starter templates available offline out of the box, with their text in
+ * the language of `t`. They are never stored: the interface asks for them in its own language
+ * each time, and a note or a whiteboard made from one keeps the text it got.
+ * @param {import('./messages.js').TranslateFn} [t] the translator of the interface (French when omitted)
+ * @returns {readonly LocalTemplate[]}
  */
-export const BUILTIN_TEMPLATES = Object.freeze([
-  createLocalTemplate({
-    id: 'builtin-checklist-release',
-    kind: 'checklist',
-    name: 'Préparation de livraison',
-    builtin: true,
-    now: '2026-01-01T00:00:00.000Z',
-    checklistItems: [
-      'Vérifier les tests automatisés',
-      'Exporter une sauvegarde ZIP locale',
-      'Relire les points ouverts et notes liées',
-      'Valider l’accessibilité clavier et le contraste',
-    ],
-  }),
-  createLocalTemplate({
-    id: 'builtin-checklist-review',
-    kind: 'checklist',
-    name: 'Revue qualité et sécurité',
-    builtin: true,
-    now: '2026-01-01T00:00:00.000Z',
-    checklistItems: [
-      'Contrôler les cas limites et messages d’erreur',
-      'Vérifier la persistance après rechargement',
-      'Nettoyer les éléments temporaires et orphelins',
-    ],
-  }),
-  createLocalTemplate({
-    id: 'builtin-note-meeting',
-    kind: 'note',
-    name: 'Compte-rendu de réunion',
-    builtin: true,
-    now: '2026-01-01T00:00:00.000Z',
-    contentDoc: {
-      type: 'doc',
-      content: [
+export function createBuiltinTemplates(t = frenchText) {
+  return Object.freeze([
+    createLocalTemplate({
+      id: 'builtin-checklist-release',
+      kind: 'checklist',
+      name: t('templates.builtin.release.name'),
+      builtin: true,
+      now: '2026-01-01T00:00:00.000Z',
+      checklistItems: [
+        t('templates.builtin.release.item1'),
+        t('templates.builtin.release.item2'),
+        t('templates.builtin.release.item3'),
+        t('templates.builtin.release.item4'),
+      ],
+    }),
+    createLocalTemplate({
+      id: 'builtin-checklist-review',
+      kind: 'checklist',
+      name: t('templates.builtin.review.name'),
+      builtin: true,
+      now: '2026-01-01T00:00:00.000Z',
+      checklistItems: [
+        t('templates.builtin.review.item1'),
+        t('templates.builtin.review.item2'),
+        t('templates.builtin.review.item3'),
+      ],
+    }),
+    createLocalTemplate({
+      id: 'builtin-note-meeting',
+      kind: 'note',
+      name: t('templates.builtin.meeting.name'),
+      builtin: true,
+      now: '2026-01-01T00:00:00.000Z',
+      contentDoc: {
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: t('templates.builtin.meeting.agenda') }],
+          },
+          {
+            type: 'bulletList',
+            content: [
+              {
+                type: 'listItem',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: t('templates.builtin.meeting.point1') }],
+                  },
+                ],
+              },
+              {
+                type: 'listItem',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: t('templates.builtin.meeting.point2') }],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: t('templates.builtin.meeting.decisions') }],
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: t('templates.builtin.meeting.decisionsText') }],
+          },
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: t('templates.builtin.meeting.followUp') }],
+          },
+          {
+            type: 'taskList',
+            content: [
+              {
+                type: 'taskItem',
+                attrs: { checked: false },
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: t('templates.builtin.meeting.firstAction') }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }),
+    createLocalTemplate({
+      id: 'builtin-note-adr',
+      kind: 'note',
+      name: t('templates.builtin.adr.name'),
+      builtin: true,
+      now: '2026-01-01T00:00:00.000Z',
+      contentDoc: {
+        type: 'doc',
+        content: [
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: t('templates.builtin.adr.context') }],
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: t('templates.builtin.adr.contextText') }],
+          },
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: t('templates.builtin.adr.option') }],
+          },
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: t('templates.builtin.adr.optionText') }],
+          },
+          {
+            type: 'heading',
+            attrs: { level: 2 },
+            content: [{ type: 'text', text: t('templates.builtin.adr.consequences') }],
+          },
+          {
+            type: 'bulletList',
+            content: [
+              {
+                type: 'listItem',
+                content: [
+                  {
+                    type: 'paragraph',
+                    content: [{ type: 'text', text: t('templates.builtin.adr.tradeoffs') }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    }),
+    createLocalTemplate({
+      id: 'builtin-wb-retro',
+      kind: 'whiteboard',
+      name: t('templates.builtin.retro.name'),
+      builtin: true,
+      now: '2026-01-01T00:00:00.000Z',
+      viewport: { panX: 0, panY: 0, zoom: 1 },
+      elements: [
         {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Ordre du jour' }],
+          id: 'r-col-1',
+          type: 'rect',
+          x: 40,
+          y: 40,
+          width: 220,
+          height: 320,
+          text: t('templates.builtin.retro.positive'),
+          color: 'success',
+          transparentBg: true,
+          zIndex: 0,
         },
         {
-          type: 'bulletList',
-          content: [
-            {
-              type: 'listItem',
-              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Point 1' }] }],
-            },
-            {
-              type: 'listItem',
-              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Point 2' }] }],
-            },
-          ],
-        },
-        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Décisions' }] },
-        {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Synthèse des décisions retenues.' }],
+          id: 'r-col-2',
+          type: 'rect',
+          x: 280,
+          y: 40,
+          width: 220,
+          height: 320,
+          text: t('templates.builtin.retro.improve'),
+          color: 'warning',
+          transparentBg: true,
+          zIndex: 1,
         },
         {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Actions à suivre' }],
+          id: 'r-col-3',
+          type: 'rect',
+          x: 520,
+          y: 40,
+          width: 220,
+          height: 320,
+          text: t('templates.builtin.retro.actions'),
+          color: 'accent',
+          transparentBg: true,
+          zIndex: 2,
         },
         {
-          type: 'taskList',
-          content: [
-            {
-              type: 'taskItem',
-              attrs: { checked: false },
-              content: [
-                { type: 'paragraph', content: [{ type: 'text', text: 'Première action' }] },
-              ],
-            },
-          ],
+          id: 'r-card-1',
+          type: 'sticky',
+          x: 60,
+          y: 220,
+          width: 180,
+          height: 100,
+          text: t('templates.builtin.retro.card1'),
+          color: 'success',
+          zIndex: 3,
+        },
+        {
+          id: 'r-card-2',
+          type: 'sticky',
+          x: 300,
+          y: 220,
+          width: 180,
+          height: 100,
+          text: t('templates.builtin.retro.card2'),
+          color: 'warning',
+          zIndex: 4,
+        },
+        {
+          id: 'r-card-3',
+          type: 'sticky',
+          x: 540,
+          y: 220,
+          width: 180,
+          height: 100,
+          text: t('templates.builtin.retro.card3'),
+          color: 'accent',
+          zIndex: 5,
         },
       ],
-    },
-  }),
-  createLocalTemplate({
-    id: 'builtin-note-adr',
-    kind: 'note',
-    name: 'Note de décision (ADR)',
-    builtin: true,
-    now: '2026-01-01T00:00:00.000Z',
-    contentDoc: {
-      type: 'doc',
-      content: [
-        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Contexte' }] },
+    }),
+    createLocalTemplate({
+      id: 'builtin-wb-flow',
+      kind: 'whiteboard',
+      name: t('templates.builtin.flow.name'),
+      builtin: true,
+      now: '2026-01-01T00:00:00.000Z',
+      viewport: { panX: 0, panY: 0, zoom: 1 },
+      elements: [
         {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Problème traité et contraintes locales.' }],
+          id: 'f-step-1',
+          type: 'rect',
+          x: 40,
+          y: 120,
+          width: 160,
+          height: 100,
+          text: t('templates.builtin.flow.input'),
+          color: 'neutral',
+          zIndex: 0,
         },
         {
-          type: 'heading',
-          attrs: { level: 2 },
-          content: [{ type: 'text', text: 'Option retenue' }],
+          id: 'f-step-2',
+          type: 'rect',
+          x: 280,
+          y: 120,
+          width: 160,
+          height: 100,
+          text: t('templates.builtin.flow.processing'),
+          color: 'accent',
+          zIndex: 1,
         },
         {
-          type: 'paragraph',
-          content: [{ type: 'text', text: 'Choix d’architecture et justification.' }],
+          id: 'f-step-3',
+          type: 'rect',
+          x: 520,
+          y: 120,
+          width: 160,
+          height: 100,
+          text: t('templates.builtin.flow.output'),
+          color: 'success',
+          zIndex: 2,
         },
-        { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Conséquences' }] },
         {
-          type: 'bulletList',
-          content: [
-            {
-              type: 'listItem',
-              content: [
-                { type: 'paragraph', content: [{ type: 'text', text: 'Avantages et compromis' }] },
-              ],
-            },
+          id: 'f-arr-1',
+          type: 'arrow',
+          x: 200,
+          y: 162,
+          width: 80,
+          height: 16,
+          color: 'accent',
+          points: [
+            [0, 8],
+            [80, 8],
           ],
+          startBinding: { elementId: 'f-step-1', anchor: 'right' },
+          endBinding: { elementId: 'f-step-2', anchor: 'left' },
+          zIndex: 3,
+        },
+        {
+          id: 'f-arr-2',
+          type: 'arrow',
+          x: 440,
+          y: 162,
+          width: 80,
+          height: 16,
+          color: 'success',
+          points: [
+            [0, 8],
+            [80, 8],
+          ],
+          startBinding: { elementId: 'f-step-2', anchor: 'right' },
+          endBinding: { elementId: 'f-step-3', anchor: 'left' },
+          zIndex: 4,
         },
       ],
-    },
-  }),
-  createLocalTemplate({
-    id: 'builtin-wb-retro',
-    kind: 'whiteboard',
-    name: 'Rétrospective (3 colonnes)',
-    builtin: true,
-    now: '2026-01-01T00:00:00.000Z',
-    viewport: { panX: 0, panY: 0, zoom: 1 },
-    elements: [
-      {
-        id: 'r-col-1',
-        type: 'rect',
-        x: 40,
-        y: 40,
-        width: 220,
-        height: 320,
-        text: 'Points positifs',
-        color: 'success',
-        transparentBg: true,
-        zIndex: 0,
-      },
-      {
-        id: 'r-col-2',
-        type: 'rect',
-        x: 280,
-        y: 40,
-        width: 220,
-        height: 320,
-        text: 'À améliorer',
-        color: 'warning',
-        transparentBg: true,
-        zIndex: 1,
-      },
-      {
-        id: 'r-col-3',
-        type: 'rect',
-        x: 520,
-        y: 40,
-        width: 220,
-        height: 320,
-        text: 'Actions',
-        color: 'accent',
-        transparentBg: true,
-        zIndex: 2,
-      },
-      {
-        id: 'r-card-1',
-        type: 'sticky',
-        x: 60,
-        y: 220,
-        width: 180,
-        height: 100,
-        text: 'Ce qui a bien fonctionné',
-        color: 'success',
-        zIndex: 3,
-      },
-      {
-        id: 'r-card-2',
-        type: 'sticky',
-        x: 300,
-        y: 220,
-        width: 180,
-        height: 100,
-        text: 'Point de friction',
-        color: 'warning',
-        zIndex: 4,
-      },
-      {
-        id: 'r-card-3',
-        type: 'sticky',
-        x: 540,
-        y: 220,
-        width: 180,
-        height: 100,
-        text: 'Prochaine étape',
-        color: 'accent',
-        zIndex: 5,
-      },
-    ],
-  }),
-  createLocalTemplate({
-    id: 'builtin-wb-flow',
-    kind: 'whiteboard',
-    name: 'Flux en 3 étapes',
-    builtin: true,
-    now: '2026-01-01T00:00:00.000Z',
-    viewport: { panX: 0, panY: 0, zoom: 1 },
-    elements: [
-      {
-        id: 'f-step-1',
-        type: 'rect',
-        x: 40,
-        y: 120,
-        width: 160,
-        height: 100,
-        text: 'Entrée',
-        color: 'neutral',
-        zIndex: 0,
-      },
-      {
-        id: 'f-step-2',
-        type: 'rect',
-        x: 280,
-        y: 120,
-        width: 160,
-        height: 100,
-        text: 'Traitement',
-        color: 'accent',
-        zIndex: 1,
-      },
-      {
-        id: 'f-step-3',
-        type: 'rect',
-        x: 520,
-        y: 120,
-        width: 160,
-        height: 100,
-        text: 'Sortie',
-        color: 'success',
-        zIndex: 2,
-      },
-      {
-        id: 'f-arr-1',
-        type: 'arrow',
-        x: 200,
-        y: 162,
-        width: 80,
-        height: 16,
-        color: 'accent',
-        points: [
-          [0, 8],
-          [80, 8],
-        ],
-        startBinding: { elementId: 'f-step-1', anchor: 'right' },
-        endBinding: { elementId: 'f-step-2', anchor: 'left' },
-        zIndex: 3,
-      },
-      {
-        id: 'f-arr-2',
-        type: 'arrow',
-        x: 440,
-        y: 162,
-        width: 80,
-        height: 16,
-        color: 'success',
-        points: [
-          [0, 8],
-          [80, 8],
-        ],
-        startBinding: { elementId: 'f-step-2', anchor: 'right' },
-        endBinding: { elementId: 'f-step-3', anchor: 'left' },
-        zIndex: 4,
-      },
-    ],
-  }),
-]);
+    }),
+  ]);
+}
+
+/** The built-in templates in French, the default language of the core. */
+export const BUILTIN_TEMPLATES = createBuiltinTemplates(frenchText);
 
 /**
  * Instantiate fresh ChecklistItem objects from a checklist template.
@@ -491,10 +528,11 @@ export function instantiateWhiteboardTemplate(template, generateId = () => crypt
  * Return built-in + custom templates matching a specific kind.
  * @param {readonly LocalTemplate[]} customTemplates
  * @param {TemplateKind} kind
+ * @param {readonly LocalTemplate[]} [builtinTemplates] the built-in templates, in the language of the interface
  * @returns {LocalTemplate[]}
  */
-export function getTemplatesForKind(customTemplates, kind) {
-  const builtins = BUILTIN_TEMPLATES.filter((t) => t.kind === kind);
-  const custom = customTemplates.filter((t) => t.kind === kind && !t.builtin);
+export function getTemplatesForKind(customTemplates, kind, builtinTemplates = BUILTIN_TEMPLATES) {
+  const builtins = builtinTemplates.filter((tpl) => tpl.kind === kind);
+  const custom = customTemplates.filter((tpl) => tpl.kind === kind && !tpl.builtin);
   return [...builtins, ...custom];
 }

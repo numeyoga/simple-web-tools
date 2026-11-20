@@ -2,6 +2,7 @@
 
 import { openStatusModal } from './status-modal.js';
 import { setTooltip } from './tooltip.js';
+import { t } from '../i18n.js';
 
 /**
  * Render the shared header for Task views (project filter, List/Kanban switch, status config button, New Task CTA).
@@ -24,17 +25,19 @@ export function createTaskWorkspaceHeader({ state, dispatch, onOpenNewTask }) {
   const projectSelect = document.createElement('select');
   projectSelect.id = 'task-project-filter';
   projectSelect.className = 'cv-input';
-  projectSelect.setAttribute('aria-label', 'Filtrer par projet');
+  projectSelect.setAttribute('aria-label', t('tasks.filterByProject'));
 
   const allOpt = document.createElement('option');
   allOpt.value = '';
-  allOpt.textContent = 'Tous les projets';
+  allOpt.textContent = t('common.allProjects');
   projectSelect.append(allOpt);
 
   for (const project of state.projects) {
     const opt = document.createElement('option');
     opt.value = project.id;
-    opt.textContent = project.archived ? `${project.name} (archivé)` : project.name;
+    opt.textContent = project.archived
+      ? t('common.archivedName', { name: project.name })
+      : project.name;
     projectSelect.append(opt);
   }
   projectSelect.value = state.preferences.selectedProjectId ?? '';
@@ -50,13 +53,13 @@ export function createTaskWorkspaceHeader({ state, dispatch, onOpenNewTask }) {
   const segFieldset = document.createElement('fieldset');
   segFieldset.className = 'cv-segmented';
   const segLegend = document.createElement('legend');
-  segLegend.textContent = 'Mode d’affichage des tâches';
+  segLegend.textContent = t('tasks.displayMode');
   segFieldset.append(segLegend);
 
   /** @type {Array<[TaskDisplayMode, string]>} */
   const modes = [
-    ['list', 'Liste'],
-    ['kanban', 'Kanban'],
+    ['list', t('tasks.modeList')],
+    ['kanban', t('tasks.modeKanban')],
   ];
   for (const [modeValue, label] of modes) {
     const lbl = document.createElement('label');
@@ -89,8 +92,8 @@ export function createTaskWorkspaceHeader({ state, dispatch, onOpenNewTask }) {
   const statusIcon = document.createElement('i');
   statusIcon.className = 'ph ph-columns cv-icon';
   statusIcon.setAttribute('aria-hidden', 'true');
-  statusBtn.append(statusIcon, document.createTextNode(' Statuts'));
-  setTooltip(statusBtn, 'Configurer les colonnes du Kanban');
+  statusBtn.append(statusIcon, document.createTextNode(` ${t('tasks.statuses')}`));
+  setTooltip(statusBtn, t('tasks.configureKanban'));
   statusBtn.addEventListener('click', openStatusModal);
 
   const newBtn = document.createElement('button');
@@ -101,7 +104,7 @@ export function createTaskWorkspaceHeader({ state, dispatch, onOpenNewTask }) {
   const icon = document.createElement('i');
   icon.className = 'ph ph-plus cv-icon';
   icon.setAttribute('aria-hidden', 'true');
-  newBtn.append(icon, document.createTextNode(' Nouvelle tâche'));
+  newBtn.append(icon, document.createTextNode(` ${t('tasks.new')}`));
   newBtn.addEventListener('click', onOpenNewTask);
 
   rightGroup.append(statusBtn, newBtn);

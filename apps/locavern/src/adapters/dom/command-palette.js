@@ -6,6 +6,7 @@
 
 import { matchesSearchTokens, tokenizeSearchQuery } from '../../core/search.js';
 import { closeDialogById } from './app-shell.js';
+import { t } from '../i18n.js';
 
 /**
  * @typedef {{
@@ -55,7 +56,7 @@ export function wireCommandPalette({ getDynamicItems }) {
     (() => {
       const li = document.createElement('li');
       li.className = 'cv-listbox__empty';
-      li.textContent = 'Aucun résultat.';
+      li.textContent = t('palette.noResults');
       return li;
     })();
 

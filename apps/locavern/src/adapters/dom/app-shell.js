@@ -4,6 +4,7 @@
 import { DEFAULT_TOAST_DURATION_SECONDS, normalizeToastDurationSeconds } from '../../core/model.js';
 import { wireCommandPalette } from './command-palette.js';
 import { hideAllTooltips, initTooltips, setTooltip } from './tooltip.js';
+import { t } from '../i18n.js';
 
 const THEME_STORAGE_KEY = 'locavern-color-scheme';
 const TEXT_SIZE_STORAGE_KEY = 'locavern-text-size';
@@ -186,8 +187,8 @@ export function notify(opts) {
   if (toastEl) {
     const dismissBtn = toastEl.querySelector('[data-cv-dismiss]');
     if (dismissBtn instanceof HTMLElement) {
-      dismissBtn.setAttribute('aria-label', 'Fermer la notification');
-      setTooltip(dismissBtn, 'Fermer la notification');
+      dismissBtn.setAttribute('aria-label', t('shell.dismissNotification'));
+      setTooltip(dismissBtn, t('shell.dismissNotification'));
     }
   }
   return toastEl;
@@ -367,7 +368,7 @@ export function confirmAction({ title, message, confirmLabel, danger = true }) {
   cancelBtn.setAttribute('data-cv-close', '');
   cancelBtn.value = 'cancel';
   cancelBtn.autofocus = true;
-  cancelBtn.textContent = 'Annuler';
+  cancelBtn.textContent = t('common.cancel');
 
   const confirmBtn = document.createElement('button');
   confirmBtn.type = 'button';
@@ -393,13 +394,13 @@ export function confirmAction({ title, message, confirmLabel, danger = true }) {
 
 /** @type {Record<ActiveView, string>} */
 const VIEW_TITLES = {
-  today: 'Aujourd’hui',
-  tasks: 'Tâches',
-  projects: 'Projets',
-  calendar: 'Calendrier',
-  notes: 'Notes',
-  whiteboards: 'Tableaux blancs',
-  archives: 'Archives',
+  today: t('common.today'),
+  tasks: t('common.tasks'),
+  projects: t('common.projects'),
+  calendar: t('common.calendar'),
+  notes: t('common.notes'),
+  whiteboards: t('common.whiteboards'),
+  archives: t('common.archives'),
 };
 
 /**
@@ -407,10 +408,10 @@ const VIEW_TITLES = {
  * @param {ActiveView} activeView
  */
 export function syncNavigationChrome(activeView) {
-  const label = VIEW_TITLES[activeView] ?? 'Tâches';
+  const label = VIEW_TITLES[activeView] ?? t('common.tasks');
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = label;
-  document.title = `${label} · Locavern`;
+  document.title = t('app.titleWithView', { view: label });
 
   document.querySelectorAll('[data-nav-view]').forEach((node) => {
     if (node.getAttribute('data-nav-view') === activeView) {
@@ -449,11 +450,8 @@ export function renderSwUpdateBanner(available, handlers) {
   const textWrap = document.createElement('div');
   const lead = document.createElement('span');
   lead.className = 'cv-alert__title';
-  lead.textContent = 'Nouvelle version prête hors ligne. ';
-  textWrap.append(
-    lead,
-    document.createTextNode('Rechargez l’application pour utiliser la version mise à jour.'),
-  );
+  lead.textContent = `${t('shell.update.lead')} `;
+  textWrap.append(lead, document.createTextNode(t('shell.update.text')));
 
   const actions = document.createElement('div');
   actions.className = 'lc-view-header__group';
@@ -462,10 +460,10 @@ export function renderSwUpdateBanner(available, handlers) {
   reloadBtn.type = 'button';
   reloadBtn.className = 'cv-btn cv-btn--primary cv-btn--sm';
   reloadBtn.id = 'btn-sw-reload';
-  reloadBtn.textContent = 'Recharger';
+  reloadBtn.textContent = t('shell.update.reload');
   reloadBtn.addEventListener('click', () => {
     reloadBtn.disabled = true;
-    reloadBtn.textContent = 'Rechargement…';
+    reloadBtn.textContent = t('shell.update.reloading');
     handlers.onReload();
   });
 
@@ -473,7 +471,7 @@ export function renderSwUpdateBanner(available, handlers) {
   dismissBtn.type = 'button';
   dismissBtn.className = 'cv-btn cv-btn--sm';
   dismissBtn.id = 'btn-sw-dismiss';
-  dismissBtn.textContent = 'Plus tard';
+  dismissBtn.textContent = t('shell.update.later');
   dismissBtn.addEventListener('click', () => {
     slot.replaceChildren();
     handlers.onDismiss?.();
@@ -510,18 +508,13 @@ export function renderReadOnlyBanner(readOnly, onRetryLock) {
   body.className = 'cv-alert__body';
   const lead = document.createElement('span');
   lead.className = 'cv-alert__title';
-  lead.textContent = 'Mode lecture seule actif. ';
-  body.append(
-    lead,
-    document.createTextNode(
-      'Un autre onglet détient le verrou d’écriture sur la base locale. Fermez l’autre onglet puis réessayez pour modifier vos données.',
-    ),
-  );
+  lead.textContent = `${t('shell.readOnly.lead')} `;
+  body.append(lead, document.createTextNode(t('shell.readOnly.text')));
 
   const retryBtn = document.createElement('button');
   retryBtn.type = 'button';
   retryBtn.className = 'cv-btn cv-btn--sm';
-  retryBtn.textContent = 'Reprendre l’édition';
+  retryBtn.textContent = t('shell.readOnly.retry');
   retryBtn.addEventListener('click', onRetryLock);
 
   alert.append(icon, body, retryBtn);

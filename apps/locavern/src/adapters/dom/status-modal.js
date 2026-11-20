@@ -1,12 +1,13 @@
 /** @import { AppCommand, AppState, StoreEffect, TaskStatusConfig } from '../../types.d.ts' */
 
 import {
-  DEFAULT_TASK_STATUSES,
+  createDefaultTaskStatuses,
   createTaskStatusId,
   normalizeTaskStatuses,
 } from '../../core/model.js';
 import { closeDialogById, notify, openDialogById } from './app-shell.js';
 import { initTooltips, setTooltip } from './tooltip.js';
+import { t } from '../i18n.js';
 
 /**
  * Open the Kanban statuses configuration modal (`#modal-statuses`).
@@ -86,14 +87,14 @@ export function wireStatusModal({ store }) {
       const b = document.createElement('span');
       b.className = 'cv-badge cv-badge--accent';
       b.dataset.statusRoleBadge = 'initial';
-      b.textContent = 'Initial';
+      b.textContent = t('common.initial');
       return b;
     }
     if (role === 'terminal') {
       const b = document.createElement('span');
       b.className = 'cv-badge cv-badge--success';
       b.dataset.statusRoleBadge = 'terminal';
-      b.textContent = 'Terminal';
+      b.textContent = t('common.terminal');
       return b;
     }
     return null;
@@ -115,20 +116,18 @@ export function wireStatusModal({ store }) {
     const intro = document.createElement('p');
     intro.className = 'cv-hint';
     intro.style.margin = '0';
-    intro.textContent =
-      'Définissez les colonnes du Kanban et leur rôle métier. Un statut initial identifie le point d’entrée ; un statut terminal clôture la tâche et empêche d’y ajouter de nouveaux liens.';
+    intro.textContent = t('statuses.intro');
 
     const listGroup = document.createElement('div');
     listGroup.className = 'lc-status-list';
     listGroup.setAttribute('role', 'group');
-    listGroup.setAttribute('aria-label', 'Colonnes du Kanban');
+    listGroup.setAttribute('aria-label', t('statuses.listLabel'));
 
     if (draftStatuses.length === 0) {
       const emptyHint = document.createElement('p');
       emptyHint.className = 'cv-caption';
       emptyHint.style.margin = '0';
-      emptyHint.textContent =
-        'Aucun statut configuré. Ajoutez un statut ci-dessous ou restaurez les statuts par défaut.';
+      emptyHint.textContent = t('statuses.empty');
       listGroup.append(emptyHint);
     }
 
@@ -145,7 +144,7 @@ export function wireStatusModal({ store }) {
       const inputId = `status-label-input-${statusItem.id}`;
       const errorId = `status-label-error-${statusItem.id}`;
       label.htmlFor = inputId;
-      label.textContent = `Libellé du statut ${idx + 1}`;
+      label.textContent = t('statuses.labelN', { number: idx + 1 });
 
       const input = document.createElement('input');
       input.id = inputId;
@@ -166,7 +165,7 @@ export function wireStatusModal({ store }) {
       errIcon.className = 'ph ph-warning-circle cv-icon';
       errIcon.setAttribute('aria-hidden', 'true');
       const errText = document.createElement('span');
-      errText.textContent = 'Saisissez un libellé de statut.';
+      errText.textContent = t('statuses.labelRequired');
       errSpan.append(errIcon, errText);
 
       input.addEventListener('input', () => {
@@ -187,11 +186,11 @@ export function wireStatusModal({ store }) {
       roleSelect.className = 'cv-input';
       roleSelect.disabled = readOnly;
       roleSelect.dataset.statusRoleIndex = String(idx);
-      roleSelect.setAttribute('aria-label', `Rôle du statut ${idx + 1}`);
+      roleSelect.setAttribute('aria-label', t('statuses.roleN', { number: idx + 1 }));
       for (const [val, txt] of /** @type {const} */ ([
-        ['none', 'Intermédiaire'],
-        ['initial', 'Initial'],
-        ['terminal', 'Terminal'],
+        ['none', t('statuses.roleNone')],
+        ['initial', t('common.initial')],
+        ['terminal', t('common.terminal')],
       ])) {
         const opt = document.createElement('option');
         opt.value = val;
@@ -223,8 +222,11 @@ export function wireStatusModal({ store }) {
       upBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
       upBtn.disabled = readOnly || idx === 0;
       upBtn.dataset.moveUp = statusItem.id;
-      upBtn.setAttribute('aria-label', `Monter le statut ${statusItem.label || String(idx + 1)}`);
-      setTooltip(upBtn, 'Monter le statut');
+      upBtn.setAttribute(
+        'aria-label',
+        t('statuses.moveUpNamed', { name: statusItem.label || String(idx + 1) }),
+      );
+      setTooltip(upBtn, t('statuses.moveUp'));
       const upIc = document.createElement('i');
       upIc.className = 'ph ph-arrow-up cv-icon';
       upIc.setAttribute('aria-hidden', 'true');
@@ -247,9 +249,9 @@ export function wireStatusModal({ store }) {
       downBtn.dataset.moveDown = statusItem.id;
       downBtn.setAttribute(
         'aria-label',
-        `Descendre le statut ${statusItem.label || String(idx + 1)}`,
+        t('statuses.moveDownNamed', { name: statusItem.label || String(idx + 1) }),
       );
-      setTooltip(downBtn, 'Descendre le statut');
+      setTooltip(downBtn, t('statuses.moveDown'));
       const downIc = document.createElement('i');
       downIc.className = 'ph ph-arrow-down cv-icon';
       downIc.setAttribute('aria-hidden', 'true');
@@ -272,9 +274,9 @@ export function wireStatusModal({ store }) {
       delBtn.dataset.deleteStatus = statusItem.id;
       delBtn.setAttribute(
         'aria-label',
-        `Supprimer le statut ${statusItem.label || String(idx + 1)}`,
+        t('statuses.deleteNamed', { name: statusItem.label || String(idx + 1) }),
       );
-      setTooltip(delBtn, 'Supprimer le statut');
+      setTooltip(delBtn, t('statuses.delete'));
       const delIc = document.createElement('i');
       delIc.className = 'ph ph-trash cv-icon';
       delIc.setAttribute('aria-hidden', 'true');
@@ -296,7 +298,7 @@ export function wireStatusModal({ store }) {
     const addLabel = document.createElement('label');
     addLabel.className = 'cv-label';
     addLabel.htmlFor = 'new-status-label-input';
-    addLabel.textContent = 'Ajouter un statut';
+    addLabel.textContent = t('statuses.addLabel');
 
     const addRow = document.createElement('div');
     addRow.className = 'lc-checklist__add lc-status-add-row';
@@ -305,7 +307,7 @@ export function wireStatusModal({ store }) {
     addInput.type = 'text';
     addInput.className = 'cv-input';
     addInput.maxLength = 60;
-    addInput.placeholder = 'Ex. En revue';
+    addInput.placeholder = t('statuses.addPlaceholder');
     addInput.disabled = readOnly;
 
     const addRoleWrap = document.createElement('div');
@@ -314,11 +316,11 @@ export function wireStatusModal({ store }) {
     addRoleSelect.id = 'new-status-role-select';
     addRoleSelect.className = 'cv-input';
     addRoleSelect.disabled = readOnly;
-    addRoleSelect.setAttribute('aria-label', 'Rôle du nouveau statut');
+    addRoleSelect.setAttribute('aria-label', t('statuses.newRole'));
     for (const [val, txt] of /** @type {const} */ ([
-      ['none', 'Intermédiaire'],
-      ['initial', 'Initial'],
-      ['terminal', 'Terminal'],
+      ['none', t('statuses.roleNone')],
+      ['initial', t('common.initial')],
+      ['terminal', t('common.terminal')],
     ])) {
       const opt = document.createElement('option');
       opt.value = val;
@@ -332,7 +334,7 @@ export function wireStatusModal({ store }) {
     addBtn.id = 'btn-add-status';
     addBtn.className = 'cv-btn';
     addBtn.disabled = readOnly;
-    addBtn.textContent = 'Ajouter';
+    addBtn.textContent = t('common.add');
 
     const addError = document.createElement('span');
     addError.id = 'new-status-label-error';
@@ -342,7 +344,7 @@ export function wireStatusModal({ store }) {
     addErrIcon.className = 'ph ph-warning-circle cv-icon';
     addErrIcon.setAttribute('aria-hidden', 'true');
     const addErrText = document.createElement('span');
-    addErrText.textContent = 'Saisissez un libellé pour ajouter un statut.';
+    addErrText.textContent = t('statuses.addRequired');
     addError.append(addErrIcon, addErrText);
 
     function handleAddStatus() {
@@ -402,9 +404,9 @@ export function wireStatusModal({ store }) {
     resetBtn.className = 'cv-btn cv-btn--ghost';
     resetBtn.style.marginRight = 'auto';
     resetBtn.disabled = readOnly;
-    resetBtn.textContent = 'Valeurs par défaut';
+    resetBtn.textContent = t('statuses.reset');
     resetBtn.addEventListener('click', () => {
-      draftStatuses = DEFAULT_TASK_STATUSES.map((s) => ({
+      draftStatuses = createDefaultTaskStatuses(t).map((s) => ({
         id: s.id,
         label: s.label,
         ...(s.isInitial ? { isInitial: true } : {}),
@@ -417,7 +419,7 @@ export function wireStatusModal({ store }) {
     cancelBtn.type = 'button';
     cancelBtn.className = 'cv-btn';
     cancelBtn.setAttribute('data-cv-close', '');
-    cancelBtn.textContent = 'Annuler';
+    cancelBtn.textContent = t('common.cancel');
 
     const saveBtn = document.createElement('button');
     saveBtn.type = 'submit';
@@ -425,7 +427,7 @@ export function wireStatusModal({ store }) {
     saveBtn.className = 'cv-btn cv-btn--primary';
     saveBtn.id = 'btn-save-statuses';
     saveBtn.disabled = readOnly;
-    saveBtn.textContent = 'Enregistrer';
+    saveBtn.textContent = t('common.save');
 
     modalFooter.replaceChildren(resetBtn, cancelBtn, saveBtn);
 
@@ -477,8 +479,8 @@ export function wireStatusModal({ store }) {
       closeDialogById('modal-statuses');
       notify({
         status: 'success',
-        title: 'Statuts mis à jour',
-        text: `${cleaned.length} ${cleaned.length > 1 ? 'statuts configurés' : 'statut configuré'} pour le Kanban.`,
+        title: t('statuses.updated'),
+        text: t('statuses.updatedText', { count: cleaned.length }),
       });
     });
 

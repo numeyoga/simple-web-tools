@@ -1,4 +1,5 @@
 import { setTooltip } from './tooltip.js';
+import { t } from '../i18n.js';
 
 /** @import { LocalTemplate } from '../../types.d.ts' */
 
@@ -68,14 +69,14 @@ export function createTemplatePicker({
   const applyIc = document.createElement('i');
   applyIc.className = 'ph ph-sparkle cv-icon';
   applyIc.setAttribute('aria-hidden', 'true');
-  applyBtn.append(applyIc, document.createTextNode(' Appliquer'));
+  applyBtn.append(applyIc, document.createTextNode(` ${t('common.apply')}`));
 
   const deleteBtn = document.createElement('button');
   deleteBtn.type = 'button';
   deleteBtn.id = `${idPrefix}-delete`;
   deleteBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
-  deleteBtn.setAttribute('aria-label', 'Supprimer le modèle sélectionné');
-  setTooltip(deleteBtn, 'Supprimer ce modèle personnalisé');
+  deleteBtn.setAttribute('aria-label', t('templates.deleteSelected'));
+  setTooltip(deleteBtn, t('templates.deleteCustomTooltip'));
   deleteBtn.hidden = true;
   const delIc = document.createElement('i');
   delIc.className = 'ph ph-trash cv-icon';
@@ -95,7 +96,7 @@ export function createTemplatePicker({
     const saveIc = document.createElement('i');
     saveIc.className = 'ph ph-bookmark-simple cv-icon';
     saveIc.setAttribute('aria-hidden', 'true');
-    saveOpenBtn.append(saveIc, document.createTextNode(' Enregistrer comme modèle'));
+    saveOpenBtn.append(saveIc, document.createTextNode(` ${t('templates.saveAs')}`));
     actions.append(saveOpenBtn);
   }
 
@@ -111,28 +112,28 @@ export function createTemplatePicker({
   const nameLabel = document.createElement('label');
   nameLabel.className = 'cv-label lc-sr-only';
   nameLabel.htmlFor = `${idPrefix}-name-input`;
-  nameLabel.textContent = 'Nom du nouveau modèle';
+  nameLabel.textContent = t('templates.newName');
 
   const nameInput = document.createElement('input');
   nameInput.id = `${idPrefix}-name-input`;
   nameInput.type = 'text';
   nameInput.className = 'cv-input';
   nameInput.maxLength = 120;
-  nameInput.placeholder = 'Nom du modèle local';
+  nameInput.placeholder = t('templates.namePlaceholder');
   nameInput.disabled = readOnly;
 
   const confirmBtn = document.createElement('button');
   confirmBtn.type = 'button';
   confirmBtn.id = `${idPrefix}-save-confirm`;
   confirmBtn.className = 'cv-btn cv-btn--primary cv-btn--sm';
-  confirmBtn.textContent = 'Valider';
+  confirmBtn.textContent = t('templates.confirm');
   confirmBtn.disabled = readOnly;
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
   cancelBtn.id = `${idPrefix}-save-cancel`;
   cancelBtn.className = 'cv-btn cv-btn--sm';
-  cancelBtn.textContent = 'Annuler';
+  cancelBtn.textContent = t('common.cancel');
 
   saveBar.append(nameLabel, nameInput, confirmBtn, cancelBtn);
   if (showSave && onSaveNew) {
@@ -166,7 +167,7 @@ export function createTemplatePicker({
 
     if (builtins.length > 0) {
       const grp = document.createElement('optgroup');
-      grp.label = 'Modèles intégrés';
+      grp.label = t('templates.groupBuiltin');
       for (const tpl of builtins) {
         const opt = document.createElement('option');
         opt.value = tpl.id;
@@ -178,7 +179,7 @@ export function createTemplatePicker({
 
     if (custom.length > 0) {
       const grp = document.createElement('optgroup');
-      grp.label = 'Mes modèles locaux';
+      grp.label = t('templates.groupMine');
       for (const tpl of custom) {
         const opt = document.createElement('option');
         opt.value = tpl.id;

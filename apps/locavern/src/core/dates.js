@@ -1,15 +1,13 @@
 /**
  * Locavern date module. The generic calendar helpers (parsing, arithmetic, grids) live in
  * `@simple-web-tools/dates` and are re-exported here so that the app keeps one import path.
- * This file adds what is specific to Locavern: French labels (until the i18n catalogs of
- * roadmap step 5), off-hours slots, recurrence and due-date urgency.
+ * This file adds what is specific to Locavern: off-hours slots, recurrence and due-date urgency.
+ * How a date reads in a language is in `format.js`.
  */
 
 import {
   addMonthsClamped,
-  buildWeekCalendarGrid as buildGenericWeekCalendarGrid,
   diffIsoDays,
-  getIsoWeekdayMon0,
   getTodayIsoDate as getTodayIsoDateFor,
   parseIsoDate,
   parseTimeHhMm,
@@ -19,6 +17,7 @@ import {
 export {
   addMonthsClamped,
   buildMonthCalendarGrid,
+  buildWeekCalendarGrid,
   diffIsoDays,
   formatIsoDate,
   getIsoWeekdayMon0,
@@ -39,41 +38,6 @@ export {
 export function getTodayIsoDate(now = new Date()) {
   return getTodayIsoDateFor(now);
 }
-
-/** @type {readonly string[]} */
-export const WEEKDAY_SHORT_FR = Object.freeze(['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']);
-
-/** @type {readonly string[]} */
-const MONTH_NAMES_FR = Object.freeze([
-  'Janvier',
-  'Février',
-  'Mars',
-  'Avril',
-  'Mai',
-  'Juin',
-  'Juillet',
-  'Août',
-  'Septembre',
-  'Octobre',
-  'Novembre',
-  'Décembre',
-]);
-
-/** @type {readonly string[]} */
-const MONTH_SHORT_FR = Object.freeze([
-  'janv.',
-  'févr.',
-  'mars',
-  'avr.',
-  'mai',
-  'juin',
-  'juil.',
-  'août',
-  'sept.',
-  'oct.',
-  'nov.',
-  'déc.',
-]);
 
 /**
  * Return true if an hour (0..23) falls within the 18:00–07:00 off-hours slot
@@ -119,42 +83,6 @@ export function computeNextRecurrenceDueDate(dueDate, recurrence, todayIso = get
 }
 
 /**
- * Build the 7-day Monday-to-Sunday week containing `anchorIsoDate`, with French weekday labels.
- * @param {string} anchorIsoDate
- * @returns {Array<import('@simple-web-tools/dates').WeekGridCell & { weekdayLabel: string }>}
- */
-export function buildWeekCalendarGrid(anchorIsoDate) {
-  return buildGenericWeekCalendarGrid(anchorIsoDate).map((cell) => ({
-    ...cell,
-    weekdayLabel: WEEKDAY_SHORT_FR[cell.weekdayIndex] ?? '',
-  }));
-}
-
-/**
- * Format "Mois AAAA" in French sentence case.
- * @param {number} year
- * @param {number} month 1..12
- * @returns {string}
- */
-export function formatMonthYearLabel(year, month) {
-  const name = MONTH_NAMES_FR[month - 1] ?? '';
-  return `${name} ${year}`;
-}
-
-/**
- * Format a compact French date label like "15 nov." or "15 nov. 2026".
- * @param {string} isoDate
- * @param {boolean} [withYear]
- * @returns {string}
- */
-export function formatShortDateFr(isoDate, withYear = false) {
-  const parts = parseIsoDate(isoDate);
-  if (!parts) return isoDate;
-  const monthLabel = MONTH_SHORT_FR[parts.month - 1] ?? String(parts.month);
-  return withYear ? `${parts.day} ${monthLabel} ${parts.year}` : `${parts.day} ${monthLabel}`;
-}
-
-/**
  * Classify a task dueDate relative to todayIso ('overdue' | 'today' | 'this_week' | 'later' | null).
  * Returns null for missing dates or completed/terminal tasks.
  * @param {string | null | undefined} dueDate
@@ -171,44 +99,4 @@ export function classifyDueDateUrgency(dueDate, todayIso, status = null, isTermi
   if (delta === 0) return 'today';
   if (delta <= 6) return 'this_week';
   return 'later';
-}
-
-/** @type {readonly string[]} */
-const WEEKDAY_LONG_FR = Object.freeze([
-  'Lundi',
-  'Mardi',
-  'Mercredi',
-  'Jeudi',
-  'Vendredi',
-  'Samedi',
-  'Dimanche',
-]);
-
-/** @type {readonly string[]} */
-const MONTH_LOWER_FR = Object.freeze([
-  'janvier',
-  'février',
-  'mars',
-  'avril',
-  'mai',
-  'juin',
-  'juillet',
-  'août',
-  'septembre',
-  'octobre',
-  'novembre',
-  'décembre',
-]);
-
-/**
- * Format a full French calendar date like "Dimanche 15 novembre 2026".
- * @param {string} isoDate
- * @returns {string}
- */
-export function formatFullDateFr(isoDate) {
-  const parts = parseIsoDate(isoDate);
-  if (!parts) return isoDate;
-  const weekday = WEEKDAY_LONG_FR[getIsoWeekdayMon0(isoDate)] ?? '';
-  const monthName = MONTH_LOWER_FR[parts.month - 1] ?? String(parts.month);
-  return `${weekday} ${parts.day} ${monthName} ${parts.year}`;
 }

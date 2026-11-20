@@ -25,28 +25,29 @@ import {
   stepValueWithGrid,
 } from '../core/whiteboard.js';
 import { initTooltips, setTooltip } from './dom/tooltip.js';
+import { t } from './i18n.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MAX_HISTORY = 50;
 
 /** @type {Record<WhiteboardColorToken, string>} */
 const COLOR_LABELS = {
-  neutral: 'Neutre',
-  accent: 'Accent',
-  success: 'Succès',
-  warning: 'Avertissement',
-  danger: 'Danger',
+  neutral: t('whiteboard.color.neutral'),
+  accent: t('whiteboard.color.accent'),
+  success: t('whiteboard.color.success'),
+  warning: t('whiteboard.color.warning'),
+  danger: t('whiteboard.color.danger'),
 };
 
 /** @type {Record<WhiteboardElementType, string>} */
 const TYPE_LABELS = {
-  sticky: 'Post-it',
-  rect: 'Rectangle',
-  ellipse: 'Ellipse',
-  arrow: 'Flèche',
-  text: 'Texte',
-  path: 'Tracé libre',
-  image: 'Image locale',
+  sticky: t('whiteboard.type.sticky'),
+  rect: t('whiteboard.type.rect'),
+  ellipse: t('whiteboard.type.ellipse'),
+  arrow: t('whiteboard.type.arrow'),
+  text: t('whiteboard.type.text'),
+  path: t('whiteboard.type.path'),
+  image: t('common.localImage'),
 };
 
 /** @type {Record<WhiteboardColorToken, { fillVar: string; strokeVar: string; lineVar: string; textVar: string }>} */
@@ -158,10 +159,21 @@ function wrapTextLines(text, maxWidth) {
  */
 function describeElement(el) {
   const typeLabel = TYPE_LABELS[el.type] ?? el.type;
-  const textSnippet = el.text ? ` : « ${el.text.slice(0, 60)} »` : '';
-  const bgHint = el.transparentBg ? ', fond transparent' : '';
-  const boundHint = el.type === 'arrow' && (el.startBinding || el.endBinding) ? ', aimantée' : '';
-  return `${typeLabel}${textSnippet}${bgHint}${boundHint}, position ${Math.round(el.x)}, ${Math.round(el.y)}, taille ${Math.round(el.width)} par ${Math.round(el.height)}`;
+  const head = el.text
+    ? t('whiteboard.describe.withText', { type: typeLabel, text: el.text.slice(0, 60) })
+    : typeLabel;
+  const bound = el.type === 'arrow' && (el.startBinding || el.endBinding);
+  return [
+    head,
+    ...(el.transparentBg ? [t('whiteboard.describe.transparent')] : []),
+    ...(bound ? [t('whiteboard.describe.snapped')] : []),
+    t('whiteboard.describe.geometry', {
+      x: Math.round(el.x),
+      y: Math.round(el.y),
+      width: Math.round(el.width),
+      height: Math.round(el.height),
+    }),
+  ].join(', ');
 }
 
 /**
@@ -357,21 +369,21 @@ export function mountWhiteboardCanvas({
   const toolbar = document.createElement('div');
   toolbar.className = 'lc-wb-toolbar';
   toolbar.setAttribute('role', 'toolbar');
-  toolbar.setAttribute('aria-label', 'Outils du tableau blanc');
+  toolbar.setAttribute('aria-label', t('whiteboard.toolbarLabel'));
 
   /** @type {Map<'select' | 'marquee' | WhiteboardElementType, HTMLButtonElement>} */
   const toolButtons = new Map();
 
   /** @type {Array<{ tool: 'select' | 'marquee' | WhiteboardElementType; label: string; icon: string }>} */
   const toolSpecs = [
-    { tool: 'select', label: 'Sélectionner', icon: 'ph-cursor' },
-    { tool: 'marquee', label: 'Sélection par zone', icon: 'ph-selection' },
-    { tool: 'sticky', label: 'Post-it', icon: 'ph-note' },
-    { tool: 'rect', label: 'Rectangle', icon: 'ph-rectangle' },
-    { tool: 'ellipse', label: 'Ellipse', icon: 'ph-circle' },
-    { tool: 'arrow', label: 'Flèche', icon: 'ph-arrow-up-right' },
-    { tool: 'text', label: 'Texte', icon: 'ph-text-t' },
-    { tool: 'path', label: 'Tracé libre', icon: 'ph-pencil-simple' },
+    { tool: 'select', label: t('whiteboard.tool.select'), icon: 'ph-cursor' },
+    { tool: 'marquee', label: t('whiteboard.tool.marquee'), icon: 'ph-selection' },
+    { tool: 'sticky', label: t('whiteboard.type.sticky'), icon: 'ph-note' },
+    { tool: 'rect', label: t('whiteboard.type.rect'), icon: 'ph-rectangle' },
+    { tool: 'ellipse', label: t('whiteboard.type.ellipse'), icon: 'ph-circle' },
+    { tool: 'arrow', label: t('whiteboard.type.arrow'), icon: 'ph-arrow-up-right' },
+    { tool: 'text', label: t('whiteboard.type.text'), icon: 'ph-text-t' },
+    { tool: 'path', label: t('whiteboard.type.path'), icon: 'ph-pencil-simple' },
   ];
 
   const toolsGroup = document.createElement('div');
@@ -405,9 +417,9 @@ export function mountWhiteboardCanvas({
 
   const addCenterBtn = createToolbarBtn({
     icon: 'ph-plus-circle',
-    label: 'Ajouter au centre',
+    label: t('whiteboard.addCenter'),
     action: 'add-center',
-    text: 'Ajouter au centre',
+    text: t('whiteboard.addCenter'),
   });
   addCenterBtn.addEventListener('click', () => {
     if (!editable) return;
@@ -417,7 +429,7 @@ export function mountWhiteboardCanvas({
 
   const insertImageBtn = createToolbarBtn({
     icon: 'ph-image',
-    label: 'Image locale',
+    label: t('common.localImage'),
     action: 'insert-image',
   });
 
@@ -438,7 +450,7 @@ export function mountWhiteboardCanvas({
   const colorGroup = document.createElement('div');
   colorGroup.className = 'lc-wb-toolbar__group lc-wb-colors';
   colorGroup.setAttribute('role', 'radiogroup');
-  colorGroup.setAttribute('aria-label', 'Couleur de l’élément');
+  colorGroup.setAttribute('aria-label', t('whiteboard.colorGroup'));
 
   /** @type {Map<WhiteboardColorToken, HTMLButtonElement>} */
   const colorButtons = new Map();
@@ -449,7 +461,7 @@ export function mountWhiteboardCanvas({
     btn.dataset.wbColor = colorToken;
     btn.setAttribute('role', 'radio');
     btn.setAttribute('aria-checked', String(colorToken === activeColor));
-    btn.setAttribute('aria-label', `Couleur ${COLOR_LABELS[colorToken]}`);
+    btn.setAttribute('aria-label', t('whiteboard.colorNamed', { name: COLOR_LABELS[colorToken] }));
     setTooltip(btn, COLOR_LABELS[colorToken]);
 
     const swatch = document.createElement('span');
@@ -466,7 +478,7 @@ export function mountWhiteboardCanvas({
           commitElements(
             elements.map((el) => (selectedIds.has(el.id) ? { ...el, color: colorToken } : el)),
           );
-          announce(`Couleur ${COLOR_LABELS[colorToken]} appliquée`);
+          announce(t('whiteboard.colorApplied', { name: COLOR_LABELS[colorToken] }));
         }
       }
       syncToolbarState();
@@ -477,11 +489,11 @@ export function mountWhiteboardCanvas({
 
   const transparentBgBtn = createToolbarBtn({
     icon: 'ph-checkerboard',
-    label: 'Fond transparent',
+    label: t('whiteboard.transparentBg'),
     action: 'toggle-transparent-bg',
     toggle: true,
   });
-  setTooltip(transparentBgBtn, 'Fond transparent (permet d’encadrer un autre élément)');
+  setTooltip(transparentBgBtn, t('whiteboard.transparentBgTooltip'));
   transparentBgBtn.addEventListener('click', () => {
     if (!editable) return;
     const bgTargets = elements.filter(
@@ -497,16 +509,12 @@ export function mountWhiteboardCanvas({
           targetIds.has(el.id) ? { ...el, transparentBg: nextTransparent ? true : undefined } : el,
         ),
       );
-      announce(nextTransparent ? 'Fond transparent activé' : 'Fond rempli activé');
+      announce(nextTransparent ? t('whiteboard.transparentOn') : t('whiteboard.filledOn'));
       return;
     }
     activeTransparentBg = !activeTransparentBg;
     syncToolbarState();
-    announce(
-      activeTransparentBg
-        ? 'Fond transparent activé pour les prochains éléments'
-        : 'Fond rempli activé pour les prochains éléments',
-    );
+    announce(activeTransparentBg ? t('whiteboard.transparentNext') : t('whiteboard.filledNext'));
   });
   colorGroup.append(transparentBgBtn);
 
@@ -516,7 +524,7 @@ export function mountWhiteboardCanvas({
 
   const editTextBtn = createToolbarBtn({
     icon: 'ph-textbox',
-    label: 'Modifier le texte',
+    label: t('whiteboard.editText'),
     action: 'edit-text',
   });
   editTextBtn.addEventListener('click', () => {
@@ -529,7 +537,7 @@ export function mountWhiteboardCanvas({
 
   const duplicateElBtn = createToolbarBtn({
     icon: 'ph-copy',
-    label: 'Dupliquer (Ctrl+D)',
+    label: t('whiteboard.duplicate'),
     action: 'duplicate-selected',
   });
   duplicateElBtn.addEventListener('click', () => {
@@ -538,10 +546,10 @@ export function mountWhiteboardCanvas({
 
   const bringForwardBtn = createToolbarBtn({
     icon: 'ph-stack-plus',
-    label: 'Avancer d’un niveau',
+    label: t('whiteboard.forward'),
     action: 'bring-forward',
   });
-  setTooltip(bringForwardBtn, 'Avancer d’un niveau (Page précédente)');
+  setTooltip(bringForwardBtn, t('whiteboard.forwardTooltip'));
   bringForwardBtn.addEventListener('click', () => {
     if (editable && selectedIds.size === 1 && primarySelectedId) {
       stepSelectedLayer(1);
@@ -550,10 +558,10 @@ export function mountWhiteboardCanvas({
 
   const sendBackwardBtn = createToolbarBtn({
     icon: 'ph-stack-minus',
-    label: 'Reculer d’un niveau',
+    label: t('whiteboard.backward'),
     action: 'send-backward',
   });
-  setTooltip(sendBackwardBtn, 'Reculer d’un niveau (Page suivante)');
+  setTooltip(sendBackwardBtn, t('whiteboard.backwardTooltip'));
   sendBackwardBtn.addEventListener('click', () => {
     if (editable && selectedIds.size === 1 && primarySelectedId) {
       stepSelectedLayer(-1);
@@ -562,7 +570,7 @@ export function mountWhiteboardCanvas({
 
   const deleteElBtn = createToolbarBtn({
     icon: 'ph-trash',
-    label: 'Supprimer la sélection',
+    label: t('whiteboard.deleteSelection'),
     action: 'delete-selected',
   });
   deleteElBtn.addEventListener('click', () => {
@@ -579,14 +587,14 @@ export function mountWhiteboardCanvas({
 
   const undoBtn = createToolbarBtn({
     icon: 'ph-arrow-counter-clockwise',
-    label: 'Annuler (Ctrl+Z)',
+    label: t('whiteboard.undo'),
     action: 'undo',
   });
   undoBtn.addEventListener('click', () => undo());
 
   const redoBtn = createToolbarBtn({
     icon: 'ph-arrow-clockwise',
-    label: 'Rétablir (Ctrl+Y)',
+    label: t('whiteboard.redo'),
     action: 'redo',
   });
   redoBtn.addEventListener('click', () => redo());
@@ -599,34 +607,30 @@ export function mountWhiteboardCanvas({
 
   const gridBtn = createToolbarBtn({
     icon: 'ph-grid-four',
-    label: 'Afficher la grille d’alignement',
+    label: t('whiteboard.grid'),
     action: 'toggle-grid',
     toggle: true,
   });
-  setTooltip(gridBtn, 'Afficher ou masquer la grille d’alignement');
+  setTooltip(gridBtn, t('whiteboard.gridTooltip'));
   gridBtn.addEventListener('click', () => {
     gridVisible = !gridVisible;
     syncGridDisplay();
     syncToolbarState();
-    announce(gridVisible ? 'Grille d’alignement affichée' : 'Grille d’alignement masquée');
+    announce(gridVisible ? t('whiteboard.gridShown') : t('whiteboard.gridHidden'));
   });
 
   const snapBtn = createToolbarBtn({
     icon: 'ph-magnet',
-    label: 'Magnétisme sur la grille',
+    label: t('whiteboard.snap'),
     action: 'toggle-snap',
     toggle: true,
   });
-  setTooltip(snapBtn, `Magnétisme sur la grille (pas de ${GRID_SIZE} px)`);
+  setTooltip(snapBtn, t('whiteboard.snapTooltip', { size: GRID_SIZE }));
   snapBtn.addEventListener('click', () => {
     if (!editable) return;
     snapToGrid = !snapToGrid;
     syncToolbarState();
-    announce(
-      snapToGrid
-        ? `Magnétisme sur la grille activé (${GRID_SIZE} px)`
-        : 'Magnétisme sur la grille désactivé',
-    );
+    announce(snapToGrid ? t('whiteboard.snapOn', { size: GRID_SIZE }) : t('whiteboard.snapOff'));
   });
 
   gridGroup.append(gridBtn, snapBtn);
@@ -637,7 +641,7 @@ export function mountWhiteboardCanvas({
 
   const zoomOutBtn = createToolbarBtn({
     icon: 'ph-magnifying-glass-minus',
-    label: 'Zoom -',
+    label: t('whiteboard.zoomOut'),
     action: 'zoom-out',
   });
   zoomOutBtn.addEventListener('click', () => applyZoomDelta(-0.2));
@@ -646,24 +650,26 @@ export function mountWhiteboardCanvas({
   zoomResetBtn.type = 'button';
   zoomResetBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm cv-num';
   zoomResetBtn.dataset.wbAction = 'zoom-reset';
-  zoomResetBtn.setAttribute('aria-label', 'Réinitialiser le zoom à 100 %');
-  setTooltip(zoomResetBtn, 'Réinitialiser le zoom à 100 %');
-  zoomResetBtn.textContent = `${Math.round(viewport.zoom * 100)} %`;
+  zoomResetBtn.setAttribute('aria-label', t('whiteboard.zoomReset'));
+  setTooltip(zoomResetBtn, t('whiteboard.zoomReset'));
+  zoomResetBtn.textContent = t('whiteboard.zoomPercent', {
+    value: Math.round(viewport.zoom * 100),
+  });
   zoomResetBtn.addEventListener('click', () => {
     setViewport({ panX: 0, panY: 0, zoom: 1 });
-    announce('Zoom réinitialisé à 100 %');
+    announce(t('whiteboard.zoomResetDone'));
   });
 
   const zoomInBtn = createToolbarBtn({
     icon: 'ph-magnifying-glass-plus',
-    label: 'Zoom +',
+    label: t('whiteboard.zoomIn'),
     action: 'zoom-in',
   });
   zoomInBtn.addEventListener('click', () => applyZoomDelta(0.2));
 
   const fitViewBtn = createToolbarBtn({
     icon: 'ph-frame-corners',
-    label: 'Ajuster à la vue',
+    label: t('whiteboard.fit'),
     action: 'fit-to-view',
   });
   fitViewBtn.addEventListener('click', () => {
@@ -677,11 +683,11 @@ export function mountWhiteboardCanvas({
   if (onToggleMaximize) {
     maximizeBtn = createToolbarBtn({
       icon: 'ph-arrows-out-simple',
-      label: 'Afficher en taille maximum',
+      label: t('whiteboard.maximize'),
       action: 'toggle-maximize',
       toggle: true,
     });
-    setTooltip(maximizeBtn, 'Afficher en taille maximum');
+    setTooltip(maximizeBtn, t('whiteboard.maximize'));
     maximizeBtn.addEventListener('click', () => {
       onToggleMaximize();
     });
@@ -700,12 +706,12 @@ export function mountWhiteboardCanvas({
   textEditorBar.className = 'lc-wb-text-editor';
   textEditorBar.hidden = true;
   textEditorBar.setAttribute('role', 'region');
-  textEditorBar.setAttribute('aria-label', 'Édition du texte de l’élément');
+  textEditorBar.setAttribute('aria-label', t('whiteboard.textBar'));
 
   const textEditorLabel = document.createElement('label');
   textEditorLabel.className = 'cv-label';
   textEditorLabel.htmlFor = `${uid}-text-input`;
-  textEditorLabel.textContent = 'Texte de l’élément';
+  textEditorLabel.textContent = t('whiteboard.textLabel');
 
   const textEditorInput = document.createElement('textarea');
   textEditorInput.id = `${uid}-text-input`;
@@ -719,12 +725,12 @@ export function mountWhiteboardCanvas({
   const textApplyBtn = document.createElement('button');
   textApplyBtn.type = 'button';
   textApplyBtn.className = 'cv-btn cv-btn--primary cv-btn--sm';
-  textApplyBtn.textContent = 'Valider';
+  textApplyBtn.textContent = t('templates.confirm');
 
   const textCancelBtn = document.createElement('button');
   textCancelBtn.type = 'button';
   textCancelBtn.className = 'cv-btn cv-btn--sm';
-  textCancelBtn.textContent = 'Annuler';
+  textCancelBtn.textContent = t('common.cancel');
 
   textEditorActions.append(textCancelBtn, textApplyBtn);
   textEditorBar.append(textEditorLabel, textEditorInput, textEditorActions);
@@ -846,7 +852,9 @@ export function mountWhiteboardCanvas({
       'transform',
       `translate(${viewport.panX.toFixed(2)} ${viewport.panY.toFixed(2)}) scale(${viewport.zoom.toFixed(3)})`,
     );
-    zoomResetBtn.textContent = `${Math.round(viewport.zoom * 100)} %`;
+    zoomResetBtn.textContent = t('whiteboard.zoomPercent', {
+      value: Math.round(viewport.zoom * 100),
+    });
     if (emit) emitChange();
   }
 
@@ -872,9 +880,7 @@ export function mountWhiteboardCanvas({
     const rect = stage.getBoundingClientRect();
     const nextVp = computeFitViewport(elements, rect.width || 800, rect.height || 520, 48);
     setViewport(nextVp);
-    announce(
-      elements.length > 0 ? 'Vue ajustée au contenu du tableau' : 'Vue réinitialisée à 100 %',
-    );
+    announce(elements.length > 0 ? t('whiteboard.fitted') : t('whiteboard.viewReset'));
   }
 
   /**
@@ -943,7 +949,7 @@ export function mountWhiteboardCanvas({
     renderElements();
     syncToolbarState();
     emitChange();
-    announce('Action annulée');
+    announce(t('whiteboard.undone'));
   }
 
   function redo() {
@@ -957,7 +963,7 @@ export function mountWhiteboardCanvas({
     renderElements();
     syncToolbarState();
     emitChange();
-    announce('Action rétablie');
+    announce(t('whiteboard.redone'));
   }
 
   /** @param {'select' | 'marquee' | WhiteboardElementType} tool */
@@ -987,10 +993,7 @@ export function mountWhiteboardCanvas({
     root.dataset.wbMaximized = String(maximized);
     if (maximizeBtn) {
       maximizeBtn.setAttribute('aria-pressed', String(maximized));
-      setTooltip(
-        maximizeBtn,
-        maximized ? 'Quitter la taille maximum' : 'Afficher en taille maximum',
-      );
+      setTooltip(maximizeBtn, maximized ? t('whiteboard.unmaximize') : t('whiteboard.maximize'));
       const iconEl = maximizeBtn.querySelector('i');
       if (iconEl) {
         iconEl.className = `ph ${maximized ? 'ph-arrows-in-simple' : 'ph-arrows-out-simple'} cv-icon`;
@@ -1000,10 +1003,7 @@ export function mountWhiteboardCanvas({
     snapBtn.disabled = !editable;
     snapBtn.setAttribute('aria-pressed', String(snapToGrid));
     const centerType = activeTool === 'select' || activeTool === 'marquee' ? 'sticky' : activeTool;
-    setTooltip(
-      addCenterBtn,
-      `Ajouter (${TYPE_LABELS[centerType]}) au centre de la vue, sans glisser-déposer`,
-    );
+    setTooltip(addCenterBtn, t('whiteboard.addCenterTooltip', { type: TYPE_LABELS[centerType] }));
     for (const [tool, btn] of toolButtons) {
       btn.setAttribute('aria-pressed', String(tool === activeTool));
     }
@@ -1032,7 +1032,9 @@ export function mountWhiteboardCanvas({
     bringForwardBtn.disabled = !editable || !layerBounds.canBringForward;
     sendBackwardBtn.disabled = !editable || !layerBounds.canSendBackward;
     deleteElBtn.disabled = !editable || selectedCount === 0;
-    zoomResetBtn.textContent = `${Math.round(viewport.zoom * 100)} %`;
+    zoomResetBtn.textContent = t('whiteboard.zoomPercent', {
+      value: Math.round(viewport.zoom * 100),
+    });
     undoBtn.disabled = !editable || historyPast.length === 0;
     redoBtn.disabled = !editable || historyFuture.length === 0;
   }
@@ -1067,7 +1069,7 @@ export function mountWhiteboardCanvas({
           y: snapCoord(cy - 60),
           width: 180,
           height: 120,
-          text: 'Post-it',
+          text: t('whiteboard.type.sticky'),
           color: activeColor,
           ...(activeTransparentBg ? { transparentBg: true } : {}),
           zIndex,
@@ -1121,7 +1123,7 @@ export function mountWhiteboardCanvas({
           y: snapCoord(cy - 24),
           width: 160,
           height: 48,
-          text: 'Texte',
+          text: t('whiteboard.type.text'),
           color: activeColor,
           zIndex,
         };
@@ -1169,7 +1171,7 @@ export function mountWhiteboardCanvas({
     commitElements([...elements, el]);
     const node = renderedGroups.get(el.id);
     node?.focus({ preventScroll: true });
-    announce(`${TYPE_LABELS[el.type]} ajouté au tableau`);
+    announce(t('whiteboard.addedToBoard', { type: TYPE_LABELS[el.type] }));
   }
 
   function duplicateSelected() {
@@ -1184,9 +1186,7 @@ export function mountWhiteboardCanvas({
     if (primarySelectedId) {
       renderedGroups.get(primarySelectedId)?.focus({ preventScroll: true });
     }
-    announce(
-      createdIds.length > 1 ? `${createdIds.length} éléments dupliqués` : 'Élément dupliqué',
-    );
+    announce(t('whiteboard.duplicated', { count: createdIds.length }));
   }
 
   /**
@@ -1198,7 +1198,7 @@ export function mountWhiteboardCanvas({
     const result = stepWhiteboardElementLayer(elements, primarySelectedId, direction);
     if (!result.changed) return;
     commitElements([...result.elements]);
-    announce(direction === 1 ? 'Élément avancé d’un niveau' : 'Élément reculé d’un niveau');
+    announce(direction === 1 ? t('whiteboard.layerForward') : t('whiteboard.layerBackward'));
   }
 
   function deleteSelectedElements() {
@@ -1213,9 +1213,9 @@ export function mountWhiteboardCanvas({
     primarySelectedId = null;
     commitElements(elements.filter((el) => !toDelete.has(el.id)));
     if (deleted.length === 1 && deleted[0]) {
-      announce(`${TYPE_LABELS[deleted[0].type]} supprimé`);
+      announce(t('whiteboard.deletedOne', { type: TYPE_LABELS[deleted[0].type] }));
     } else {
-      announce(`${deleted.length} éléments supprimés`);
+      announce(t('whiteboard.deletedMany', { count: deleted.length }));
     }
     stage.focus({ preventScroll: true });
   }
@@ -1554,7 +1554,7 @@ export function mountWhiteboardCanvas({
     if (save && targetId) {
       const nextText = textEditorInput.value.slice(0, 500);
       commitElements(elements.map((el) => (el.id === targetId ? { ...el, text: nextText } : el)));
-      announce('Texte de l’élément mis à jour');
+      announce(t('whiteboard.textUpdated'));
     }
     if (targetId) {
       renderedGroups.get(targetId)?.focus({ preventScroll: true });
@@ -1676,7 +1676,7 @@ export function mountWhiteboardCanvas({
         setSelection(next, next.has(elId) ? elId : null);
         g.focus({ preventScroll: true });
         handlingElementPointer = false;
-        announce(`${next.size} élément(s) sélectionné(s)`);
+        announce(t('whiteboard.selected', { count: next.size }));
         return;
       }
 
@@ -1868,7 +1868,7 @@ export function mountWhiteboardCanvas({
           }),
         );
         const hasSnap = Boolean(state.startBinding || state.endBinding);
-        announce(hasSnap ? 'Extrémité de flèche aimantée' : 'Extrémité de flèche déplacée');
+        announce(hasSnap ? t('whiteboard.arrowSnapped') : t('whiteboard.arrowMoved'));
         return;
       }
 
@@ -1911,11 +1911,11 @@ export function mountWhiteboardCanvas({
       });
       commitElements(detachUnfollowedArrowBindings(movedElements, movedIds));
       if (origPositions.size > 1) {
-        announce(`${origPositions.size} éléments déplacés`);
+        announce(t('whiteboard.movedMany', { count: origPositions.size }));
       } else {
         const nextX = origPrimary ? Math.round(clamp(origPrimary.x + appliedDx, -10000, 10000)) : 0;
         const nextY = origPrimary ? Math.round(clamp(origPrimary.y + appliedDy, -10000, 10000)) : 0;
-        announce(`Élément déplacé à ${nextX}, ${nextY}`);
+        announce(t('whiteboard.movedTo', { x: nextX, y: nextY }));
       }
     };
 
@@ -1946,7 +1946,7 @@ export function mountWhiteboardCanvas({
           next.add(elId);
         }
         setSelection(next, next.has(elId) ? elId : null);
-        announce(`${next.size} élément(s) sélectionné(s)`);
+        announce(t('whiteboard.selected', { count: next.size }));
         return;
       }
 
@@ -1999,7 +1999,12 @@ export function mountWhiteboardCanvas({
           }
           const resized = resizeElement(target, nextW, nextH);
           commitElements(elements.map((el) => (el.id === elId ? resized : el)));
-          announce(`Taille ${Math.round(resized.width)} par ${Math.round(resized.height)}`);
+          announce(
+            t('whiteboard.size', {
+              width: Math.round(resized.width),
+              height: Math.round(resized.height),
+            }),
+          );
           return;
         }
 
@@ -2039,10 +2044,13 @@ export function mountWhiteboardCanvas({
         );
         commitElements(detachUnfollowedArrowBindings(movedElements, moveIds));
         if (moveIds.size > 1) {
-          announce(`${moveIds.size} éléments déplacés`);
+          announce(t('whiteboard.movedMany', { count: moveIds.size }));
         } else {
           announce(
-            `Position ${clamp(Math.round(target.x + dx), -10000, 10000)}, ${clamp(Math.round(target.y + dy), -10000, 10000)}`,
+            t('whiteboard.position', {
+              x: clamp(Math.round(target.x + dx), -10000, 10000),
+              y: clamp(Math.round(target.y + dy), -10000, 10000),
+            }),
           );
         }
         return;
@@ -2310,7 +2318,7 @@ export function mountWhiteboardCanvas({
       if (hitIds[0]) {
         renderedGroups.get(hitIds[0])?.focus({ preventScroll: true });
       }
-      announce(`${hitIds.length} élément(s) sélectionné(s)`);
+      announce(t('whiteboard.selected', { count: hitIds.length }));
       return;
     }
 
@@ -2384,7 +2392,12 @@ export function mountWhiteboardCanvas({
             minBox,
             snapToGrid ? snapValueToGrid(rawH, GRID_SIZE, true) : Math.round(rawH),
           ),
-          text: state.tool === 'sticky' ? 'Post-it' : state.tool === 'text' ? 'Texte' : '',
+          text:
+            state.tool === 'sticky'
+              ? t('whiteboard.type.sticky')
+              : state.tool === 'text'
+                ? t('whiteboard.type.text')
+                : '',
           color: activeColor,
           ...(activeTransparentBg && whiteboardElementSupportsBackground(state.tool)
             ? { transparentBg: true }
@@ -2396,7 +2409,7 @@ export function mountWhiteboardCanvas({
       selectedIds = new Set();
       primarySelectedId = null;
       commitElements([...elements, created]);
-      announce(`${TYPE_LABELS[created.type]} ajouté au tableau`);
+      announce(t('whiteboard.addedToBoard', { type: TYPE_LABELS[created.type] }));
       return;
     }
 
@@ -2407,7 +2420,7 @@ export function mountWhiteboardCanvas({
         selectedIds = new Set();
         primarySelectedId = null;
         commitElements([...elements, created]);
-        announce('Tracé libre ajouté au tableau');
+        announce(t('whiteboard.pathAdded'));
         return;
       }
       let minX = Infinity;
@@ -2437,7 +2450,7 @@ export function mountWhiteboardCanvas({
       selectedIds = new Set();
       primarySelectedId = null;
       commitElements([...elements, created]);
-      announce('Tracé libre ajouté au tableau');
+      announce(t('whiteboard.pathAdded'));
     }
   }
 
@@ -2511,7 +2524,7 @@ export function mountWhiteboardCanvas({
       }
       commitElements([...elements, ...added]);
       if (last) renderedGroups.get(last.id)?.focus({ preventScroll: true });
-      announce(`${added.length} image(s) locale(s) ajoutée(s)`);
+      announce(t('whiteboard.imagesAdded', { count: added.length }));
     }
   }
 
@@ -2546,7 +2559,7 @@ export function mountWhiteboardCanvas({
     if (hasRemoteHtmlImg || isRemoteImageUrl) {
       e.preventDefault();
       onBlockedRemoteImage?.();
-      announce('Image distante bloquée');
+      announce(t('editor.remoteImageBlocked'));
     }
   }
 
@@ -2591,7 +2604,7 @@ export function mountWhiteboardCanvas({
       e.preventDefault();
       const allIds = elements.map((el) => el.id);
       setSelection(allIds, allIds[0] ?? null);
-      announce(`${allIds.length} élément(s) sélectionné(s)`);
+      announce(t('whiteboard.selected', { count: allIds.length }));
     } else if (e.key === 'Escape') {
       if (pointerState) {
         e.preventDefault();
@@ -2604,10 +2617,10 @@ export function mountWhiteboardCanvas({
       }
       if (editable && activeTool !== 'select') {
         setActiveTool('select');
-        announce('Outil Sélectionner activé');
+        announce(t('whiteboard.selectToolOn'));
       } else if (selectedIds.size > 0) {
         setSelection([], null);
-        announce('Sélection effacée');
+        announce(t('whiteboard.selectionCleared'));
       }
     }
   });
@@ -2829,7 +2842,7 @@ export function mountWhiteboardCanvas({
             canvas.height = outH;
             const ctx = canvas.getContext('2d');
             if (!ctx) {
-              reject(new Error('Impossible d’initialiser le contexte 2D.'));
+              reject(new Error('Cannot initialize the 2D context.'));
               return;
             }
             ctx.drawImage(img, 0, 0, outW, outH);
@@ -2837,11 +2850,11 @@ export function mountWhiteboardCanvas({
               if (png) {
                 resolve(png);
               } else {
-                reject(new Error('Échec de la génération PNG.'));
+                reject(new Error('PNG generation failed.'));
               }
             }, 'image/png');
           };
-          img.onerror = () => reject(new Error('Impossible de rendre le SVG en PNG.'));
+          img.onerror = () => reject(new Error('Cannot render the SVG as PNG.'));
           img.src = svgUrl;
         });
         return /** @type {Blob} */ (blob);

@@ -8,6 +8,7 @@ import {
   MIN_TRASH_RETENTION_DAYS,
 } from '../../core/model.js';
 import { closeDialogById, openDialogById } from './app-shell.js';
+import { getLocaleChoice, saveLocaleChoice, t } from '../i18n.js';
 
 /**
  * Parse and validate an integer string within [min, max].
@@ -60,6 +61,20 @@ export function wirePreferencesModal({ store }) {
   );
   const retentionError = modalEl.querySelector('#pref-trash-retention-error');
   const openStatusesBtn = modalEl.querySelector('#btn-pref-open-statuses');
+  const languageSelect = /** @type {HTMLSelectElement | null} */ (
+    modalEl.querySelector('#pref-language')
+  );
+
+  // The language of the interface is saved apart from the other preferences (locavern-locale, in
+  // localStorage: the first paint needs it before the database is open). The page is built in one
+  // language, so a new choice reloads it.
+  if (languageSelect) {
+    languageSelect.value = getLocaleChoice() ?? 'auto';
+    languageSelect.addEventListener('change', () => {
+      saveLocaleChoice(languageSelect.value === 'auto' ? null : languageSelect.value);
+      location.reload();
+    });
+  }
 
   openStatusesBtn?.addEventListener('click', () => {
     closeDialogById('modal-preferences');
@@ -90,7 +105,10 @@ export function wirePreferencesModal({ store }) {
       durationError.replaceChildren(
         icon,
         document.createTextNode(
-          `Durée invalide : valeur hors plage ou non entière. Saisissez un entier entre ${MIN_TOAST_DURATION_SECONDS} et ${MAX_TOAST_DURATION_SECONDS} secondes.`,
+          t('prefs.toastDurationInvalid', {
+            min: MIN_TOAST_DURATION_SECONDS,
+            max: MAX_TOAST_DURATION_SECONDS,
+          }),
         ),
       );
       durationError.hidden = false;
@@ -121,7 +139,10 @@ export function wirePreferencesModal({ store }) {
       retentionError.replaceChildren(
         icon,
         document.createTextNode(
-          `Délai invalide : saisissez un entier entre ${MIN_TRASH_RETENTION_DAYS} et ${MAX_TRASH_RETENTION_DAYS} jours.`,
+          t('prefs.trashRetentionInvalid', {
+            min: MIN_TRASH_RETENTION_DAYS,
+            max: MAX_TRASH_RETENTION_DAYS,
+          }),
         ),
       );
       retentionError.hidden = false;

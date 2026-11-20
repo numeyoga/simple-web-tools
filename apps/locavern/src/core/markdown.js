@@ -1,5 +1,7 @@
 /** @import { Note, RichTextDoc, RichTextMark, RichTextNode } from '../types.d.ts' */
 
+import { frenchText } from './messages.js';
+
 /**
  * Apply ProseMirror/Tiptap inline marks around a text string cleanly in Markdown.
  * @param {string} rawText
@@ -67,9 +69,10 @@ function serializeInlineNodes(nodes) {
  * @param {RichTextNode} itemNode
  * @param {string} marker
  * @param {number} depth
+ * @param {import('./messages.js').TranslateFn} t
  * @returns {string}
  */
-function serializeListItem(itemNode, marker, depth) {
+function serializeListItem(itemNode, marker, depth, t) {
   const indent = '  '.repeat(depth);
   const children = Array.isArray(itemNode.content) ? itemNode.content : [];
   if (children.length === 0) {
@@ -98,9 +101,9 @@ function serializeListItem(itemNode, marker, depth) {
         lines.push(`${indent}${marker.trimEnd()}`);
         wroteFirst = true;
       }
-      lines.push(serializeListBlock(child, depth + 1));
+      lines.push(serializeListBlock(child, depth + 1, t));
     } else {
-      const nested = serializeBlockNode(child, depth + 1);
+      const nested = serializeBlockNode(child, depth + 1, t);
       if (!wroteFirst) {
         lines.push(`${indent}${marker}${nested}`);
         wroteFirst = true;
@@ -117,9 +120,10 @@ function serializeListItem(itemNode, marker, depth) {
  * Serialize a list container block (`bulletList`, `orderedList`, `taskList`).
  * @param {RichTextNode} listNode
  * @param {number} depth
+ * @param {import('./messages.js').TranslateFn} t
  * @returns {string}
  */
-function serializeListBlock(listNode, depth) {
+function serializeListBlock(listNode, depth, t) {
   const items = Array.isArray(listNode.content) ? listNode.content : [];
   /** @type {string[]} */
   const out = [];
@@ -127,13 +131,13 @@ function serializeListBlock(listNode, depth) {
 
   for (const item of items) {
     if (listNode.type === 'orderedList') {
-      out.push(serializeListItem(item, `${order}. `, depth));
+      out.push(serializeListItem(item, `${order}. `, depth, t));
       order += 1;
     } else if (listNode.type === 'taskList' || item.type === 'taskItem') {
       const checked = Boolean(item.attrs?.checked);
-      out.push(serializeListItem(item, checked ? '- [x] ' : '- [ ] ', depth));
+      out.push(serializeListItem(item, checked ? '- [x] ' : '- [ ] ', depth, t));
     } else {
-      out.push(serializeListItem(item, '- ', depth));
+      out.push(serializeListItem(item, '- ', depth, t));
     }
   }
 
@@ -144,9 +148,10 @@ function serializeListBlock(listNode, depth) {
  * Serialize a single block node to Markdown.
  * @param {RichTextNode} node
  * @param {number} [depth]
+ * @param {import('./messages.js').TranslateFn} [t]
  * @returns {string}
  */
-function serializeBlockNode(node, depth = 0) {
+function serializeBlockNode(node, depth = 0, t = frenchText) {
   if (node.type === 'heading') {
     const rawLevel = typeof node.attrs?.level === 'number' ? node.attrs.level : 2;
     const level = Math.min(3, Math.max(1, Math.trunc(rawLevel)));
@@ -157,12 +162,12 @@ function serializeBlockNode(node, depth = 0) {
     return serializeInlineNodes(node.content);
   }
   if (node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList') {
-    return serializeListBlock(node, depth);
+    return serializeListBlock(node, depth, t);
   }
   if (node.type === 'localImage') {
     const assetId = typeof node.attrs?.assetId === 'string' ? node.attrs.assetId.trim() : '';
     const rawAlt = typeof node.attrs?.alt === 'string' ? node.attrs.alt.trim() : '';
-    const alt = (rawAlt || 'Image locale').replace(/[\][]/g, '');
+    const alt = (rawAlt || t('common.localImage')).replace(/[\][]/g, '');
     return assetId ? `![${alt}](local-asset://${assetId})` : '';
   }
   if (Array.isArray(node.content)) {
@@ -174,14 +179,15 @@ function serializeBlockNode(node, depth = 0) {
 /**
  * Convert a Tiptap RichTextDoc into readable CommonMark/GFM Markdown.
  * @param {RichTextDoc | null | undefined} doc
+ * @param {import('./messages.js').TranslateFn} [t] the translator of the interface (French when omitted)
  * @returns {string}
  */
-export function richTextDocToMarkdown(doc) {
+export function richTextDocToMarkdown(doc, t = frenchText) {
   if (!doc || !Array.isArray(doc.content)) return '';
   /** @type {string[]} */
   const blocks = [];
   for (const node of doc.content) {
-    const rendered = serializeBlockNode(node, 0);
+    const rendered = serializeBlockNode(node, 0, t);
     if (rendered !== '') {
       blocks.push(rendered);
     }
@@ -192,26 +198,28 @@ export function richTextDocToMarkdown(doc) {
 /**
  * Build a standalone Markdown (.md) document for a Locavern note.
  * @param {Note} note
- * @param {{ projectName?: string | null }} [opts]
+ * @param {{ projectName?: string | null, t?: import('./messages.js').TranslateFn }} [opts]
+ *   `t` is the translator of the interface (French when omitted)
  * @returns {string}
  */
 export function noteToMarkdown(note, opts = {}) {
-  const title = note.title.trim() || 'Note sans titre';
+  const t = opts.t ?? frenchText;
+  const title = note.title.trim() || t('export.markdown.untitledNote');
   /** @type {string[]} */
   const sections = [`# ${title}`];
 
   const metaParts = [];
   if (opts.projectName) {
-    metaParts.push(`Projet : ${opts.projectName}`);
+    metaParts.push(t('export.markdown.project', { value: opts.projectName }));
   }
   if (note.updatedAt) {
-    metaParts.push(`Mise à jour : ${note.updatedAt.slice(0, 10)}`);
+    metaParts.push(t('export.markdown.updated', { value: note.updatedAt.slice(0, 10) }));
   }
   if (metaParts.length > 0) {
     sections.push(`> ${metaParts.join(' · ')}`);
   }
 
-  const body = richTextDocToMarkdown(note.contentDoc);
+  const body = richTextDocToMarkdown(note.contentDoc, t);
   if (body) {
     sections.push(body);
   }

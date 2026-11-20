@@ -18,12 +18,13 @@ import { confirmAction, initCovenant, notify } from './app-shell.js';
 import { initTooltips, setTooltip } from './tooltip.js';
 import { openStatusModal } from './status-modal.js';
 import { createTaskWorkspaceHeader } from './task-workspace-header.js';
+import { format, t } from '../i18n.js';
 
 /** @type {Record<TaskPriority, { label: string; badgeClass: string }>} */
 const PRIORITY_META = {
-  low: { label: 'Basse', badgeClass: 'cv-badge' },
-  medium: { label: 'Moyenne', badgeClass: 'cv-badge cv-badge--warning' },
-  high: { label: 'Haute', badgeClass: 'cv-badge cv-badge--danger' },
+  low: { label: t('priority.low'), badgeClass: 'cv-badge' },
+  medium: { label: t('priority.medium'), badgeClass: 'cv-badge cv-badge--warning' },
+  high: { label: t('priority.high'), badgeClass: 'cv-badge cv-badge--danger' },
 };
 
 /**
@@ -74,17 +75,14 @@ export function renderKanbanView({
     const title = document.createElement('p');
     title.className = 'cv-empty__title';
     title.textContent =
-      state.projects.length === 0
-        ? 'Créez un premier projet pour commencer'
-        : 'Aucun projet actif pour le moment';
+      state.projects.length === 0 ? t('common.createFirstProject') : t('common.noActiveProject');
     const desc = document.createElement('p');
-    desc.textContent =
-      'Le tableau Kanban organise les tâches de vos projets actifs par colonnes de statut.';
+    desc.textContent = t('kanban.emptyText');
     const cta = document.createElement('button');
     cta.type = 'button';
     cta.className = 'cv-btn cv-btn--primary';
     cta.disabled = state.readOnly;
-    cta.textContent = 'Créer un projet';
+    cta.textContent = t('projects.createCta');
     cta.addEventListener('click', onOpenNewProject);
     empty.append(iconBox, title, desc, cta);
     container.replaceChildren(header, empty);
@@ -99,7 +97,7 @@ export function renderKanbanView({
   const searchLabel = document.createElement('label');
   searchLabel.className = 'cv-label';
   searchLabel.htmlFor = 'kanban-search-input';
-  searchLabel.textContent = 'Rechercher sur le tableau';
+  searchLabel.textContent = t('kanban.search');
   const searchGroup = document.createElement('div');
   searchGroup.className = 'cv-input-group';
   const searchIcon = document.createElement('i');
@@ -109,7 +107,7 @@ export function renderKanbanView({
   searchInput.id = 'kanban-search-input';
   searchInput.type = 'search';
   searchInput.className = 'cv-input';
-  searchInput.placeholder = 'Titre, description, checklist';
+  searchInput.placeholder = t('common.searchPlaceholder');
   searchInput.value = filters.query;
   searchGroup.append(searchIcon, searchInput);
   searchField.append(searchLabel, searchGroup);
@@ -119,17 +117,17 @@ export function renderKanbanView({
   const priorityLabel = document.createElement('label');
   priorityLabel.className = 'cv-label';
   priorityLabel.htmlFor = 'kanban-priority-filter';
-  priorityLabel.textContent = 'Priorité';
+  priorityLabel.textContent = t('common.priority');
   const priorityWrap = document.createElement('div');
   priorityWrap.className = 'cv-select';
   const prioritySelect = document.createElement('select');
   prioritySelect.id = 'kanban-priority-filter';
   prioritySelect.className = 'cv-input';
   for (const [val, lbl] of /** @type {const} */ ([
-    ['all', 'Toutes les priorités'],
-    ['high', 'Haute'],
-    ['medium', 'Moyenne'],
-    ['low', 'Basse'],
+    ['all', t('common.allPriorities')],
+    ['high', t('priority.high')],
+    ['medium', t('priority.medium')],
+    ['low', t('priority.low')],
   ])) {
     const opt = document.createElement('option');
     opt.value = val;
@@ -145,18 +143,18 @@ export function renderKanbanView({
   const dueLabel = document.createElement('label');
   dueLabel.className = 'cv-label';
   dueLabel.htmlFor = 'kanban-due-filter';
-  dueLabel.textContent = 'Échéance';
+  dueLabel.textContent = t('common.dueDate');
   const dueWrap = document.createElement('div');
   dueWrap.className = 'cv-select';
   const dueSelect = document.createElement('select');
   dueSelect.id = 'kanban-due-filter';
   dueSelect.className = 'cv-input';
   for (const [val, lbl] of /** @type {const} */ ([
-    ['all', 'Toutes les échéances'],
-    ['overdue', 'En retard'],
-    ['today', 'Aujourd’hui'],
-    ['week', 'Sous 7 jours'],
-    ['undated', 'Sans échéance'],
+    ['all', t('kanban.allDueDates')],
+    ['overdue', t('common.overdue')],
+    ['today', t('common.today')],
+    ['week', t('common.within7Days')],
+    ['undated', t('common.noDueDate')],
   ])) {
     const opt = document.createElement('option');
     opt.value = val;
@@ -172,7 +170,7 @@ export function renderKanbanView({
   const tagLabel = document.createElement('label');
   tagLabel.className = 'cv-label';
   tagLabel.htmlFor = 'kanban-tag-filter';
-  tagLabel.textContent = 'Étiquette';
+  tagLabel.textContent = t('common.tag');
   const tagWrap = document.createElement('div');
   tagWrap.className = 'cv-select';
   const tagSelect = document.createElement('select');
@@ -181,7 +179,7 @@ export function renderKanbanView({
   const allTagsList = selectAllTags(state);
   const allTagOpt = document.createElement('option');
   allTagOpt.value = 'all';
-  allTagOpt.textContent = 'Toutes les étiquettes';
+  allTagOpt.textContent = t('common.allTags');
   tagSelect.append(allTagOpt);
   for (const tag of allTagsList) {
     const opt = document.createElement('option');
@@ -204,8 +202,7 @@ export function renderKanbanView({
   const hint = document.createElement('p');
   hint.className = 'cv-hint';
   hint.style.margin = '0 0 var(--cv-space-3)';
-  hint.textContent =
-    'Glissez-déposez une carte ou utilisez son menu Actions (ou Alt + flèches) pour la déplacer au clavier.';
+  hint.textContent = t('kanban.dragHelp');
 
   const boardSlot = document.createElement('div');
   /** @type {string | null} */
@@ -231,7 +228,7 @@ export function renderKanbanView({
     if (spawned) {
       notify({
         status: 'success',
-        title: 'Prochaine occurrence créée',
+        title: t('tasks.nextOccurrenceTitle'),
         text: spawned.dueDate ? `${spawned.title} (${spawned.dueDate})` : spawned.title,
       });
     }
@@ -261,15 +258,14 @@ export function renderKanbanView({
       iconBox.append(ic);
       const title = document.createElement('p');
       title.className = 'cv-empty__title';
-      title.textContent = 'Aucun statut configuré pour le Kanban';
+      title.textContent = t('kanban.noStatusTitle');
       const desc = document.createElement('p');
-      desc.textContent =
-        'Ajoutez au moins un statut ou restaurez les colonnes par défaut pour utiliser le tableau Kanban.';
+      desc.textContent = t('kanban.noStatusText');
       const cta = document.createElement('button');
       cta.type = 'button';
       cta.className = 'cv-btn cv-btn--primary';
       cta.disabled = currentState.readOnly;
-      cta.textContent = 'Configurer les statuts';
+      cta.textContent = t('kanban.configureStatuses');
       cta.addEventListener('click', openStatusModal);
       empty.append(iconBox, title, desc, cta);
       boardSlot.replaceChildren(empty);
@@ -295,7 +291,7 @@ export function renderKanbanView({
       alert.className = 'cv-alert cv-alert--warning lc-kanban-unmapped';
       alert.id = 'kanban-unmapped-alert';
       alert.setAttribute('role', 'region');
-      alert.setAttribute('aria-label', 'Tâches sans statut ou à statut inconnu');
+      alert.setAttribute('aria-label', t('kanban.unmappedLabel'));
 
       const icon = document.createElement('i');
       icon.className = 'ph ph-warning cv-icon';
@@ -308,15 +304,15 @@ export function renderKanbanView({
       lead.className = 'cv-alert__title';
       lead.textContent =
         unmappedTasks.length === 1
-          ? '1 tâche hors colonnes (sans statut ou à statut inconnu) :'
-          : `${unmappedTasks.length} tâches hors colonnes (sans statut ou à statut inconnu) :`;
+          ? t('kanban.unmapped', { count: 1 })
+          : t('kanban.unmapped', { count: unmappedTasks.length });
       body.append(lead);
 
       const list = document.createElement('ul');
       list.className = 'lc-kanban-unmapped__list';
 
       for (const task of unmappedTasks) {
-        const meta = getTaskStatusMeta(task.status, configuredStatuses);
+        const meta = getTaskStatusMeta(task.status, configuredStatuses, t);
         const li = document.createElement('li');
         li.className = 'lc-kanban-unmapped__item';
         li.dataset.unmappedTaskId = task.id;
@@ -344,8 +340,8 @@ export function renderKanbanView({
           const editUnmappedBtn = document.createElement('button');
           editUnmappedBtn.type = 'button';
           editUnmappedBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
-          editUnmappedBtn.setAttribute('aria-label', `Modifier « ${task.title} »`);
-          setTooltip(editUnmappedBtn, 'Modifier');
+          editUnmappedBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
+          setTooltip(editUnmappedBtn, t('common.edit'));
           const penIc = document.createElement('i');
           penIc.className = 'ph ph-pencil-simple cv-icon';
           penIc.setAttribute('aria-hidden', 'true');
@@ -357,11 +353,14 @@ export function renderKanbanView({
         const assignSelect = document.createElement('select');
         assignSelect.className = 'cv-input lc-kanban-unmapped__select';
         assignSelect.disabled = currentState.readOnly;
-        assignSelect.setAttribute('aria-label', `Assigner une colonne à « ${task.title} »`);
+        assignSelect.setAttribute(
+          'aria-label',
+          t('kanban.assignColumnNamed', { title: task.title }),
+        );
 
         const placeholder = document.createElement('option');
         placeholder.value = '';
-        placeholder.textContent = 'Placer dans une colonne…';
+        placeholder.textContent = t('kanban.placeInColumn');
         assignSelect.append(placeholder);
 
         for (const colCfg of configuredStatuses) {
@@ -378,7 +377,7 @@ export function renderKanbanView({
             (t) => t.projectId === task.projectId && t.status === targetStatus,
           ).length;
           dispatchMove(task.id, targetStatus, endPos);
-          notify({ status: 'success', title: 'Tâche replacée sur le Kanban', text: task.title });
+          notify({ status: 'success', title: t('kanban.taskRestored'), text: task.title });
         });
 
         li.append(info, assignSelect);
@@ -394,13 +393,17 @@ export function renderKanbanView({
     /** @type {Record<'overdue' | 'today' | 'this_week', { label: string; badgeClass: string; iconName: string }>} */
     const URGENCY_META = {
       overdue: {
-        label: 'En retard',
+        label: t('common.overdue'),
         badgeClass: 'cv-badge cv-badge--danger',
         iconName: 'ph-warning-circle',
       },
-      today: { label: 'Aujourd’hui', badgeClass: 'cv-badge cv-badge--warning', iconName: 'ph-sun' },
+      today: {
+        label: t('common.today'),
+        badgeClass: 'cv-badge cv-badge--warning',
+        iconName: 'ph-sun',
+      },
       this_week: {
-        label: 'Cette semaine',
+        label: t('common.thisWeek'),
         badgeClass: 'cv-badge cv-badge--accent',
         iconName: 'ph-calendar-blank',
       },
@@ -436,13 +439,13 @@ export function renderKanbanView({
         const roleBadge = document.createElement('span');
         roleBadge.className = 'cv-badge cv-badge--accent';
         roleBadge.dataset.statusRole = 'initial';
-        roleBadge.textContent = 'Initial';
+        roleBadge.textContent = t('common.initial');
         colTitleGroup.append(roleBadge);
       } else if (colRole === 'terminal') {
         const roleBadge = document.createElement('span');
         roleBadge.className = 'cv-badge cv-badge--success';
         roleBadge.dataset.statusRole = 'terminal';
-        roleBadge.textContent = 'Terminal';
+        roleBadge.textContent = t('common.terminal');
         colTitleGroup.append(roleBadge);
       }
 
@@ -456,8 +459,8 @@ export function renderKanbanView({
       quickAddBtn.type = 'button';
       quickAddBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
       quickAddBtn.disabled = currentState.readOnly;
-      quickAddBtn.setAttribute('aria-label', `Ajouter une tâche dans ${colMeta.label}`);
-      setTooltip(quickAddBtn, `Ajouter une tâche dans ${colMeta.label}`);
+      quickAddBtn.setAttribute('aria-label', t('kanban.addInColumn', { column: colMeta.label }));
+      setTooltip(quickAddBtn, t('kanban.addInColumn', { column: colMeta.label }));
       const addIc = document.createElement('i');
       addIc.className = 'ph ph-plus cv-icon';
       addIc.setAttribute('aria-hidden', 'true');
@@ -477,7 +480,7 @@ export function renderKanbanView({
       const colQuickLabel = document.createElement('label');
       colQuickLabel.className = 'lc-sr-only';
       colQuickLabel.htmlFor = `kanban-quick-add-${colMeta.id}`;
-      colQuickLabel.textContent = `Ajout rapide dans ${colMeta.label}`;
+      colQuickLabel.textContent = t('kanban.quickAddIn', { column: colMeta.label });
 
       const colQuickInput = document.createElement('input');
       colQuickInput.id = `kanban-quick-add-${colMeta.id}`;
@@ -485,14 +488,17 @@ export function renderKanbanView({
       colQuickInput.className = 'cv-input lc-kanban__quick-input';
       colQuickInput.maxLength = 200;
       colQuickInput.disabled = currentState.readOnly;
-      colQuickInput.placeholder = 'Ajout rapide…';
+      colQuickInput.placeholder = t('kanban.quickAddPlaceholder');
 
       const colQuickSubmit = document.createElement('button');
       colQuickSubmit.type = 'submit';
       colQuickSubmit.className = 'cv-btn cv-btn--sm';
       colQuickSubmit.disabled = currentState.readOnly;
-      colQuickSubmit.setAttribute('aria-label', `Ajouter rapidement dans ${colMeta.label}`);
-      colQuickSubmit.textContent = 'Ajouter';
+      colQuickSubmit.setAttribute(
+        'aria-label',
+        t('kanban.quickAddSubmit', { column: colMeta.label }),
+      );
+      colQuickSubmit.textContent = t('common.add');
 
       let colComposing = false;
       colQuickInput.addEventListener('compositionstart', () => {
@@ -527,7 +533,7 @@ export function renderKanbanView({
           dueDate: null,
           now: new Date().toISOString(),
         });
-        notify({ status: 'success', title: 'Tâche ajoutée', text: cleanTitle });
+        notify({ status: 'success', title: t('tasks.added'), text: cleanTitle });
         requestAnimationFrame(() => {
           document.getElementById(`kanban-quick-add-${colMeta.id}`)?.focus();
         });
@@ -684,8 +690,8 @@ export function renderKanbanView({
         menuBtn.setAttribute('popovertarget', menuId);
         menuBtn.setAttribute('aria-haspopup', 'menu');
         menuBtn.setAttribute('aria-expanded', 'false');
-        menuBtn.setAttribute('aria-label', `Actions pour « ${task.title} »`);
-        setTooltip(menuBtn, 'Actions sur la tâche');
+        menuBtn.setAttribute('aria-label', t('kanban.actionsFor', { title: task.title }));
+        setTooltip(menuBtn, t('kanban.taskActions'));
         const dotsIc = document.createElement('i');
         dotsIc.className = 'ph ph-dots-three-vertical cv-icon';
         dotsIc.setAttribute('aria-hidden', 'true');
@@ -696,7 +702,7 @@ export function renderKanbanView({
         menu.id = menuId;
         menu.setAttribute('popover', '');
         menu.setAttribute('role', 'menu');
-        menu.setAttribute('aria-label', `Actions sur ${task.title}`);
+        menu.setAttribute('aria-label', t('kanban.actionsOn', { title: task.title }));
 
         /**
          * @param {string} label
@@ -726,10 +732,10 @@ export function renderKanbanView({
           menu.append(item);
         };
 
-        addMenuItem('Consulter', () => onOpenTaskDrawer(task, { mode: 'view' }));
+        addMenuItem(t('common.consult'), () => onOpenTaskDrawer(task, { mode: 'view' }));
 
         if (!currentState.readOnly) {
-          addMenuItem('Modifier', () => onOpenTaskDrawer(task, { mode: 'edit' }));
+          addMenuItem(t('common.edit'), () => onOpenTaskDrawer(task, { mode: 'edit' }));
 
           const sep1 = document.createElement('hr');
           sep1.className = 'cv-menu__sep';
@@ -737,7 +743,7 @@ export function renderKanbanView({
 
           for (const targetCol of configuredStatuses) {
             if (targetCol.id !== task.status) {
-              addMenuItem(`Déplacer vers ${targetCol.label}`, () => {
+              addMenuItem(t('kanban.moveTo', { column: targetCol.label }), () => {
                 const endPos = currentState.tasks.filter(
                   (t) => t.projectId === task.projectId && t.status === targetCol.id,
                 ).length;
@@ -747,12 +753,12 @@ export function renderKanbanView({
           }
 
           if (siblingIndex > 0) {
-            addMenuItem('Monter dans la colonne', () => {
+            addMenuItem(t('kanban.moveUp'), () => {
               dispatchMove(task.id, colMeta.id, siblingIndex - 1, true);
             });
           }
           if (siblingIndex < projectSiblings.length - 1) {
-            addMenuItem('Descendre dans la colonne', () => {
+            addMenuItem(t('kanban.moveDown'), () => {
               dispatchMove(task.id, colMeta.id, siblingIndex + 1, true);
             });
           }
@@ -761,23 +767,23 @@ export function renderKanbanView({
           sep2.className = 'cv-menu__sep';
           menu.append(sep2);
 
-          addMenuItem('Archiver', () => {
+          addMenuItem(t('common.archive'), () => {
             store.dispatch({
               type: 'toggle_archive_task',
               id: task.id,
               archived: true,
               now: new Date().toISOString(),
             });
-            notify({ status: 'info', title: 'Tâche archivée', text: task.title });
+            notify({ status: 'info', title: t('tasks.archived'), text: task.title });
           });
 
           addMenuItem(
-            'Supprimer',
+            t('common.delete'),
             async () => {
               const confirmed = await confirmAction({
-                title: `Supprimer « ${task.title} » ?`,
-                message: 'Cette tâche sera déplacée dans la corbeille locale.',
-                confirmLabel: 'Supprimer',
+                title: t('common.deleteTitle', { title: task.title }),
+                message: t('tasks.deleteConfirm'),
+                confirmLabel: t('common.delete'),
                 danger: true,
               });
               if (!confirmed) return;
@@ -787,7 +793,7 @@ export function renderKanbanView({
                 trashId: crypto.randomUUID(),
                 now: new Date().toISOString(),
               });
-              notify({ status: 'info', title: 'Tâche placée dans la corbeille', text: task.title });
+              notify({ status: 'info', title: t('tasks.trashed'), text: task.title });
             },
             { danger: true },
           );
@@ -829,7 +835,9 @@ export function renderKanbanView({
         if (task.dueDate) {
           const dueTag = document.createElement('span');
           dueTag.className = 'cv-tag cv-tag--mono';
-          dueTag.textContent = task.dueTime ? `${task.dueDate} · ${task.dueTime}` : task.dueDate;
+          dueTag.textContent = task.dueTime
+            ? `${task.dueDate} · ${format.formatTimeOfDay(task.dueTime)}`
+            : task.dueDate;
           metaRow.append(dueTag);
           if (isOffHoursDueTime(task.dueTime)) {
             const nightBadge = document.createElement('span');
@@ -838,7 +846,7 @@ export function renderKanbanView({
             const nIc = document.createElement('i');
             nIc.className = 'ph ph-moon cv-icon';
             nIc.setAttribute('aria-hidden', 'true');
-            nightBadge.append(nIc, document.createTextNode(' 18h–7h'));
+            nightBadge.append(nIc, document.createTextNode(` ${t('common.offHoursRange')}`));
             metaRow.append(nightBadge);
           }
         }
@@ -852,7 +860,7 @@ export function renderKanbanView({
           rIc.setAttribute('aria-hidden', 'true');
           recBadge.append(
             rIc,
-            document.createTextNode(` ${getTaskRecurrenceLabel(task.recurrence)}`),
+            document.createTextNode(` ${getTaskRecurrenceLabel(task.recurrence, t)}`),
           );
           metaRow.append(recBadge);
         }

@@ -1,24 +1,26 @@
 /** @import { AppCommand, AppState, StoreEffect, TrashItem, TrashItemKind } from '../../types.d.ts' */
 
+import { errorText } from '../../core/messages.js';
 import { selectTrashItems } from '../../core/store.js';
 import { closeDialogById, confirmAction, notify, openDialogById } from './app-shell.js';
+import { i18n, t } from '../i18n.js';
 
 /** @type {Readonly<Record<TrashItemKind, { label: string; icon: string }>>} */
 const KIND_META = Object.freeze({
-  project: { label: 'Projet', icon: 'ph-folder-open' },
-  task: { label: 'Tâche', icon: 'ph-check-square' },
-  note: { label: 'Note', icon: 'ph-notebook' },
-  whiteboard: { label: 'Tableau blanc', icon: 'ph-chalkboard-simple' },
+  project: { label: t('common.project'), icon: 'ph-folder-open' },
+  task: { label: t('common.task'), icon: 'ph-check-square' },
+  note: { label: t('common.note'), icon: 'ph-notebook' },
+  whiteboard: { label: t('common.whiteboard'), icon: 'ph-chalkboard-simple' },
 });
 
 /**
- * Format ISO date string for French short display.
+ * Format an ISO timestamp as a short date in the language of the page.
  * @param {string} iso
  * @returns {string}
  */
 function formatShortDate(iso) {
   try {
-    return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(iso));
+    return i18n.formatDateTime(Date.parse(iso), { dateStyle: 'medium' });
   } catch {
     return iso.slice(0, 10);
   }
@@ -31,10 +33,10 @@ function formatShortDate(iso) {
  */
 function formatRemainingLabel(expiresAtIso) {
   const diffMs = Date.parse(expiresAtIso) - Date.now();
-  if (Number.isNaN(diffMs)) return 'Purge programmée';
-  if (diffMs <= 0) return 'Purge imminente';
+  if (Number.isNaN(diffMs)) return t('trash.purgeScheduled');
+  if (diffMs <= 0) return t('trash.purgeImminent');
   const daysLeft = Math.ceil(diffMs / 86_400_000);
-  return `Purge dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`;
+  return t('trash.purgeIn', { count: daysLeft });
 }
 
 /**
@@ -56,13 +58,13 @@ export function syncTrashBadge(state) {
  */
 function describeTrashItemMeta(item) {
   const parts = [
-    `Supprimé le ${formatShortDate(item.deletedAt)}`,
+    t('trash.deletedOn', { date: formatShortDate(item.deletedAt) }),
     formatRemainingLabel(item.expiresAt),
   ];
   if (item.kind === 'project') {
     const taskCount = item.tasks?.length ?? 0;
     if (taskCount > 0) {
-      parts.unshift(`${taskCount} tâche${taskCount > 1 ? 's' : ''}`);
+      parts.unshift(t('common.tasksCount', { count: taskCount }));
     }
   } else if (item.projectName) {
     parts.unshift(item.projectName);
@@ -105,7 +107,7 @@ export function wireTrashModal({ store }) {
     const retentionInfo = document.createElement('p');
     retentionInfo.className = 'cv-caption';
     retentionInfo.style.margin = '0';
-    retentionInfo.textContent = `Rétention configurée : ${retentionDays} jour${retentionDays > 1 ? 's' : ''} avant purge définitive.`;
+    retentionInfo.textContent = t('trash.retention', { count: retentionDays });
 
     const toolbarActions = document.createElement('div');
     toolbarActions.className = 'lc-table-actions';
@@ -114,7 +116,7 @@ export function wireTrashModal({ store }) {
     configBtn.type = 'button';
     configBtn.id = 'btn-trash-config-retention';
     configBtn.className = 'cv-btn cv-btn--sm';
-    configBtn.textContent = 'Configurer le délai';
+    configBtn.textContent = t('trash.configure');
     configBtn.addEventListener('click', () => {
       closeDialogById('modal-trash');
       openDialogById('modal-preferences');
@@ -127,21 +129,21 @@ export function wireTrashModal({ store }) {
     emptyBtn.id = 'btn-empty-trash';
     emptyBtn.className = 'cv-btn cv-btn--danger cv-btn--sm';
     emptyBtn.disabled = state.readOnly || items.length === 0;
-    emptyBtn.textContent = 'Vider la corbeille';
+    emptyBtn.textContent = t('trash.empty');
     emptyBtn.addEventListener('click', async () => {
       closeDialogById('modal-trash');
       const confirmed = await confirmAction({
-        title: 'Vider la corbeille ?',
-        message: `Les ${items.length} élément(s) présent(s) dans la corbeille et leurs images non partagées seront définitivement supprimés.`,
-        confirmLabel: 'Vider la corbeille',
+        title: t('trash.emptyTitle'),
+        message: t('trash.emptyConfirm', { count: items.length }),
+        confirmLabel: t('trash.empty'),
         danger: true,
       });
       if (!confirmed) return;
       store.dispatch({ type: 'empty_trash' });
       notify({
         status: 'info',
-        title: 'Corbeille vidée',
-        text: 'Tous les éléments supprimés ont été purgés définitivement.',
+        title: t('trash.emptied'),
+        text: t('trash.emptiedText'),
       });
     });
 
@@ -157,12 +159,11 @@ export function wireTrashModal({ store }) {
       const emptyTitle = document.createElement('p');
       emptyTitle.className = 'cv-h4';
       emptyTitle.style.margin = '0';
-      emptyTitle.textContent = 'La corbeille est vide';
+      emptyTitle.textContent = t('trash.isEmpty');
       const emptyDesc = document.createElement('p');
       emptyDesc.className = 'cv-caption';
       emptyDesc.style.margin = '0';
-      emptyDesc.textContent =
-        'Les projets, tâches, notes et tableaux blancs supprimés restent récupérables ici pendant le délai configuré.';
+      emptyDesc.textContent = t('trash.isEmptyText');
       emptyState.append(emptyIcon, emptyTitle, emptyDesc);
       modalBody.replaceChildren(headerRow, emptyState);
       return;
@@ -210,8 +211,8 @@ export function wireTrashModal({ store }) {
       restoreBtn.className = 'cv-btn cv-btn--sm';
       restoreBtn.disabled = state.readOnly;
       restoreBtn.setAttribute('data-restore-trash-id', item.id);
-      restoreBtn.setAttribute('aria-label', `Restaurer ${item.title}`);
-      restoreBtn.textContent = 'Restaurer';
+      restoreBtn.setAttribute('aria-label', t('trash.restoreNamed', { title: item.title }));
+      restoreBtn.textContent = t('trash.restore');
       restoreBtn.addEventListener('click', () => {
         try {
           store.dispatch({
@@ -221,15 +222,15 @@ export function wireTrashModal({ store }) {
           });
           notify({
             status: 'success',
-            title: 'Élément restauré',
-            text: `« ${item.title} » a été restauré depuis la corbeille.`,
+            title: t('trash.restored'),
+            text: t('trash.restoredText', { title: item.title }),
           });
           renderTrashBody();
         } catch (err) {
           notify({
             status: 'warning',
-            title: 'Restauration impossible',
-            text: err instanceof Error ? err.message : 'Impossible de restaurer cet élément.',
+            title: t('trash.restoreImpossible'),
+            text: errorText(err, t, 'trash.restoreFailed'),
           });
         }
       });
@@ -239,22 +240,22 @@ export function wireTrashModal({ store }) {
       purgeBtn.className = 'cv-btn cv-btn--danger cv-btn--sm';
       purgeBtn.disabled = state.readOnly;
       purgeBtn.setAttribute('data-purge-trash-id', item.id);
-      purgeBtn.setAttribute('aria-label', `Supprimer définitivement ${item.title}`);
-      purgeBtn.textContent = 'Purger';
+      purgeBtn.setAttribute('aria-label', t('trash.purgeNamed', { title: item.title }));
+      purgeBtn.textContent = t('trash.purge');
       purgeBtn.addEventListener('click', async () => {
         closeDialogById('modal-trash');
         const confirmed = await confirmAction({
-          title: 'Supprimer définitivement ?',
-          message: `« ${item.title} » et ses images locales non partagées seront définitivement effacés.`,
-          confirmLabel: 'Supprimer définitivement',
+          title: t('trash.purgeTitle'),
+          message: t('trash.purgeConfirm', { title: item.title }),
+          confirmLabel: t('trash.purgeLabel'),
           danger: true,
         });
         if (!confirmed) return;
         store.dispatch({ type: 'purge_trash_item', id: item.id });
         notify({
           status: 'info',
-          title: 'Élément purgé',
-          text: `« ${item.title} » a été définitivement supprimé.`,
+          title: t('trash.purged'),
+          text: t('trash.purgedText', { title: item.title }),
         });
       });
 

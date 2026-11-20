@@ -1,6 +1,5 @@
 /** @import { AppCommand, AppState, LocalRef, Note, RichTextDoc, StoreEffect } from '../../types.d.ts' */
 
-import { formatShortDateFr } from '../../core/dates.js';
 import { collectDocAssetIds } from '../../core/model.js';
 import { noteToMarkdown } from '../../core/markdown.js';
 import { extractRichTextPlainText } from '../../core/search.js';
@@ -19,6 +18,8 @@ import { mountRichTextEditor } from '../rich-text-tiptap.js';
 import { confirmAction, notify } from './app-shell.js';
 import { createLinkEditor } from './link-editor.js';
 import { createTagEditor } from './tag-editor.js';
+import { builtinTemplates, format, t } from '../i18n.js';
+import { errorText } from '../../core/messages.js';
 
 /**
  * Render the standalone Notes view with Tiptap rich text and local images.
@@ -67,14 +68,14 @@ export function renderNotesView({
   const projectFilter = document.createElement('select');
   projectFilter.id = 'notes-project-filter';
   projectFilter.className = 'cv-input';
-  projectFilter.setAttribute('aria-label', 'Filtrer les notes par projet');
+  projectFilter.setAttribute('aria-label', t('notes.filterByProject'));
 
   const optAll = document.createElement('option');
   optAll.value = 'all';
-  optAll.textContent = 'Toutes les notes';
+  optAll.textContent = t('notes.all');
   const optNone = document.createElement('option');
   optNone.value = 'none';
-  optNone.textContent = 'Sans projet';
+  optNone.textContent = t('common.noProject');
   projectFilter.append(optAll, optNone);
   for (const p of initialActiveProjects) {
     const opt = document.createElement('option');
@@ -101,8 +102,8 @@ export function renderNotesView({
   searchInput.id = 'notes-search-input';
   searchInput.type = 'search';
   searchInput.className = 'cv-input';
-  searchInput.placeholder = 'Rechercher titre ou contenu';
-  searchInput.setAttribute('aria-label', 'Rechercher une note');
+  searchInput.placeholder = t('notes.searchPlaceholder');
+  searchInput.setAttribute('aria-label', t('notes.searchLabel'));
   searchInput.value = filters.query;
   searchGroup.append(searchIcon, searchInput);
 
@@ -111,13 +112,13 @@ export function renderNotesView({
   const tagFilter = document.createElement('select');
   tagFilter.id = 'notes-tag-filter';
   tagFilter.className = 'cv-input';
-  tagFilter.setAttribute('aria-label', 'Filtrer les notes par étiquette');
+  tagFilter.setAttribute('aria-label', t('notes.filterByTag'));
   function rebuildNotesTagOptions() {
     const allTags = selectAllTags(store.getState());
     tagFilter.replaceChildren();
     const allTagOpt = document.createElement('option');
     allTagOpt.value = 'all';
-    allTagOpt.textContent = 'Toutes les étiquettes';
+    allTagOpt.textContent = t('common.allTags');
     tagFilter.append(allTagOpt);
     for (const tag of allTags) {
       const opt = document.createElement('option');
@@ -146,7 +147,7 @@ export function renderNotesView({
   const plusIc = document.createElement('i');
   plusIc.className = 'ph ph-plus cv-icon';
   plusIc.setAttribute('aria-hidden', 'true');
-  newNoteBtn.append(plusIc, document.createTextNode(' Nouvelle note'));
+  newNoteBtn.append(plusIc, document.createTextNode(` ${t('notes.new')}`));
 
   header.append(leftGroup, newNoteBtn);
 
@@ -185,7 +186,7 @@ export function renderNotesView({
     const projName = fresh.projectId
       ? (selectProjectById(store.getState(), fresh.projectId)?.name ?? null)
       : null;
-    const md = noteToMarkdown(fresh, { projectName: projName });
+    const md = noteToMarkdown(fresh, { projectName: projName, t });
     const slug =
       fresh.title
         .normalize('NFD')
@@ -199,19 +200,19 @@ export function renderNotesView({
       const saved = await saveArchiveBlob(blob, filename, {
         pickerTypes: [
           {
-            description: 'Document Markdown (.md)',
+            description: t('export.markdownDescription'),
             accept: { 'text/markdown': ['.md'] },
           },
         ],
       });
       if (saved.saved) {
-        notify({ status: 'success', title: 'Note exportée en Markdown', text: filename });
+        notify({ status: 'success', title: t('notes.exported'), text: filename });
       }
     } catch {
       notify({
         status: 'danger',
-        title: 'Échec de l’export Markdown',
-        text: 'Impossible d’enregistrer le fichier localement.',
+        title: t('notes.exportFailed'),
+        text: t('notes.exportFailedText'),
       });
     }
   }
@@ -248,15 +249,14 @@ export function renderNotesView({
       iconBox.append(ic);
       const title = document.createElement('p');
       title.className = 'cv-empty__title';
-      title.textContent = 'Aucune note disponible';
+      title.textContent = t('notes.emptyTitle');
       const desc = document.createElement('p');
-      desc.textContent =
-        'Rédigez des notes locales avec mise en forme, listes de contrôle et images stockées dans IndexedDB.';
+      desc.textContent = t('notes.emptyText');
       const cta = document.createElement('button');
       cta.type = 'button';
       cta.className = 'cv-btn cv-btn--primary';
       cta.disabled = readOnly;
-      cta.textContent = 'Créer une note';
+      cta.textContent = t('notes.createCta');
       cta.addEventListener('click', openNewNoteDialog);
       empty.append(iconBox, title, desc, cta);
       bodySlot.replaceChildren(empty);
@@ -269,7 +269,7 @@ export function renderNotesView({
     const listEl = document.createElement('div');
     listEl.className = 'lc-notes-list';
     listEl.setAttribute('role', 'navigation');
-    listEl.setAttribute('aria-label', 'Liste des notes');
+    listEl.setAttribute('aria-label', t('notes.listLabel'));
 
     /** @type {Map<string, HTMLElement>} */
     const listTitleEls = new Map();
@@ -317,8 +317,8 @@ export function renderNotesView({
         const editRowBtn = document.createElement('button');
         editRowBtn.type = 'button';
         editRowBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-note-row__edit';
-        editRowBtn.setAttribute('aria-label', `Modifier la note « ${note.title} »`);
-        setTooltip(editRowBtn, 'Modifier la note');
+        editRowBtn.setAttribute('aria-label', t('notes.editNamed', { title: note.title }));
+        setTooltip(editRowBtn, t('notes.editTitle'));
         const penIc = document.createElement('i');
         penIc.className = 'ph ph-pencil-simple cv-icon';
         penIc.setAttribute('aria-hidden', 'true');
@@ -344,7 +344,7 @@ export function renderNotesView({
     if (activeNote && effectiveMode === 'view') {
       const currentNote = activeNote;
       editorCard.className = 'cv-card lc-consult-card';
-      editorCard.setAttribute('aria-label', 'Consultation de note');
+      editorCard.setAttribute('aria-label', t('notes.viewCardLabel'));
 
       const consultHead = document.createElement('div');
       consultHead.className = 'lc-view-header';
@@ -359,16 +359,18 @@ export function renderNotesView({
 
       const modeBadge = document.createElement('span');
       modeBadge.className = 'cv-badge';
-      modeBadge.textContent = 'Consultation';
+      modeBadge.textContent = t('common.viewing');
 
       const proj = currentNote.projectId ? selectProjectById(state, currentNote.projectId) : null;
       const projBadge = document.createElement('span');
       projBadge.className = 'cv-badge cv-badge--accent';
-      projBadge.textContent = proj ? proj.name : 'Sans projet';
+      projBadge.textContent = proj ? proj.name : t('common.noProject');
 
       const dateBadge = document.createElement('span');
       dateBadge.className = 'cv-caption';
-      dateBadge.textContent = `Mis à jour le ${formatShortDateFr(currentNote.updatedAt.slice(0, 10), true)}`;
+      dateBadge.textContent = t('common.updatedOn', {
+        date: format.formatShortDate(currentNote.updatedAt.slice(0, 10), true),
+      });
 
       titleWrap.append(titleH3, modeBadge, projBadge, dateBadge);
 
@@ -383,8 +385,8 @@ export function renderNotesView({
       const exportIc = document.createElement('i');
       exportIc.className = 'ph ph-download-simple cv-icon';
       exportIc.setAttribute('aria-hidden', 'true');
-      exportMdBtn.append(exportIc, document.createTextNode(' Exporter (.md)'));
-      exportMdBtn.setAttribute('aria-label', `Exporter « ${currentNote.title} » en Markdown (.md)`);
+      exportMdBtn.append(exportIc, document.createTextNode(` ${t('notes.exportMd')}`));
+      exportMdBtn.setAttribute('aria-label', t('notes.exportNamed', { title: currentNote.title }));
       exportMdBtn.addEventListener('click', () => void exportNoteMarkdown(currentNote));
       headActions.append(exportMdBtn);
 
@@ -396,7 +398,7 @@ export function renderNotesView({
         const editIc = document.createElement('i');
         editIc.className = 'ph ph-pencil-simple cv-icon';
         editIc.setAttribute('aria-hidden', 'true');
-        switchEditBtn.append(editIc, document.createTextNode(' Modifier'));
+        switchEditBtn.append(editIc, document.createTextNode(` ${t('common.edit')}`));
         switchEditBtn.addEventListener('click', () => {
           modeState.noteId = currentNote.id;
           modeState.mode = 'edit';
@@ -409,7 +411,7 @@ export function renderNotesView({
 
       const tagEditor = createTagEditor({
         idPrefix: 'note-tags',
-        labelText: 'Étiquettes',
+        labelText: t('common.tags'),
         initialTags: currentNote.tags ?? [],
         readOnly,
         viewOnly: true,
@@ -438,7 +440,7 @@ export function renderNotesView({
           container: editorHost,
           initialDoc: currentNote.contentDoc,
           editable: false,
-          ariaLabel: `Contenu de la note ${currentNote.title}`,
+          ariaLabel: t('notes.contentNamed', { title: currentNote.title }),
           resolveAssetUrl,
           onUploadImage: async () => null,
           onChange() {},
@@ -447,7 +449,7 @@ export function renderNotesView({
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'cv-caption';
         emptyMsg.style.margin = '0';
-        emptyMsg.textContent = 'Cette note ne contient aucun texte pour le moment.';
+        emptyMsg.textContent = t('notes.emptyView');
         editorHost.append(emptyMsg);
       }
 
@@ -455,7 +457,7 @@ export function renderNotesView({
     } else if (activeNote) {
       const currentNote = activeNote;
       editorCard.className = 'cv-card';
-      editorCard.setAttribute('aria-label', 'Éditeur de note');
+      editorCard.setAttribute('aria-label', t('notes.editorCardLabel'));
 
       const metaRow = document.createElement('div');
       metaRow.className = 'lc-view-header';
@@ -466,7 +468,7 @@ export function renderNotesView({
       const titleLabel = document.createElement('label');
       titleLabel.className = 'cv-label';
       titleLabel.htmlFor = 'note-title-input';
-      titleLabel.textContent = 'Titre de la note';
+      titleLabel.textContent = t('notes.titleLabel');
       const titleInput = document.createElement('input');
       titleInput.id = 'note-title-input';
       titleInput.type = 'text';
@@ -482,7 +484,7 @@ export function renderNotesView({
       const projLabel = document.createElement('label');
       projLabel.className = 'cv-label';
       projLabel.htmlFor = 'note-project-select';
-      projLabel.textContent = 'Projet associé';
+      projLabel.textContent = t('common.linkedProject');
       const projWrap = document.createElement('div');
       projWrap.className = 'cv-select';
       const projSelect = document.createElement('select');
@@ -491,7 +493,7 @@ export function renderNotesView({
       projSelect.disabled = readOnly;
       const noProjOpt = document.createElement('option');
       noProjOpt.value = '';
-      noProjOpt.textContent = 'Sans projet';
+      noProjOpt.textContent = t('common.noProject');
       projSelect.append(noProjOpt);
       for (const p of selectProjects(state)) {
         const opt = document.createElement('option');
@@ -507,7 +509,7 @@ export function renderNotesView({
 
       const tagEditor = createTagEditor({
         idPrefix: 'note-tags',
-        labelText: 'Étiquettes',
+        labelText: t('common.tags'),
         initialTags: currentNote.tags ?? [],
         suggestions: selectAllTags(state),
         readOnly,
@@ -540,7 +542,7 @@ export function renderNotesView({
       const statusNote = document.createElement('span');
       statusNote.className = 'cv-caption';
       statusNote.id = 'note-save-status';
-      statusNote.textContent = 'Enregistrée localement';
+      statusNote.textContent = t('notes.savedLocally');
 
       function saveNow(showToast = false) {
         if (readOnly) return;
@@ -555,7 +557,7 @@ export function renderNotesView({
         const assetIds = collectDocAssetIds(doc);
         const projectId = projSelect.value ? projSelect.value : null;
         dirty = false;
-        statusNote.textContent = 'Enregistrée localement';
+        statusNote.textContent = t('notes.savedLocally');
         const listTitle = listTitleEls.get(currentNote.id);
         if (listTitle) listTitle.textContent = cleanTitle;
         dispatchingInlineUpdate = true;
@@ -576,15 +578,15 @@ export function renderNotesView({
         } catch (err) {
           notify({
             status: 'danger',
-            title: 'Enregistrement impossible',
-            text: err instanceof Error ? err.message : 'Erreur de validation.',
+            title: t('common.saveFailed'),
+            text: errorText(err, t, 'errors.validation'),
           });
           return;
         } finally {
           dispatchingInlineUpdate = false;
         }
         if (showToast) {
-          notify({ status: 'success', title: 'Note enregistrée', text: cleanTitle });
+          notify({ status: 'success', title: t('notes.saved'), text: cleanTitle });
         }
       }
 
@@ -597,7 +599,7 @@ export function renderNotesView({
       function scheduleSave() {
         if (readOnly) return;
         dirty = true;
-        statusNote.textContent = 'Modifications en cours';
+        statusNote.textContent = t('common.changesInProgress');
         if (saveTimer !== null) window.clearTimeout(saveTimer);
         saveTimer = window.setTimeout(() => saveNow(false), 200);
       }
@@ -606,21 +608,21 @@ export function renderNotesView({
         container: editorHost,
         initialDoc: currentNote.contentDoc,
         editable: !readOnly,
-        ariaLabel: `Contenu de la note ${currentNote.title}`,
+        ariaLabel: t('notes.contentNamed', { title: currentNote.title }),
         resolveAssetUrl,
         onUploadImage: uploadLocalImage,
         onBlockedRemoteImage: () => {
           notify({
             status: 'warning',
-            title: 'Image distante bloquée',
-            text: 'Seules les images locales enregistrées sur cet appareil sont autorisées.',
+            title: t('editor.remoteImageBlocked'),
+            text: t('editor.remoteImageBlockedText'),
           });
         },
         onRejectedLink: () => {
           notify({
             status: 'warning',
-            title: 'Lien refusé',
-            text: 'Seuls les liens https:// et mailto: sont acceptés.',
+            title: t('editor.linkRejected'),
+            text: t('editor.linkRejectedText'),
           });
         },
         onChange(nextDoc) {
@@ -651,7 +653,7 @@ export function renderNotesView({
       const eyeIc = document.createElement('i');
       eyeIc.className = 'ph ph-eye cv-icon';
       eyeIc.setAttribute('aria-hidden', 'true');
-      consultBtn.append(eyeIc, document.createTextNode(' Consulter'));
+      consultBtn.append(eyeIc, document.createTextNode(` ${t('common.consult')}`));
       consultBtn.addEventListener('click', () => {
         flushPending?.();
         modeState.noteId = currentNote.id;
@@ -667,14 +669,17 @@ export function renderNotesView({
       const dupIc = document.createElement('i');
       dupIc.className = 'ph ph-copy cv-icon';
       dupIc.setAttribute('aria-hidden', 'true');
-      duplicateBtn.append(dupIc, document.createTextNode(' Dupliquer'));
-      duplicateBtn.setAttribute('aria-label', `Dupliquer la note « ${currentNote.title} »`);
+      duplicateBtn.append(dupIc, document.createTextNode(` ${t('notes.duplicate')}`));
+      duplicateBtn.setAttribute(
+        'aria-label',
+        t('notes.duplicateNamed', { title: currentNote.title }),
+      );
       duplicateBtn.addEventListener('click', () => {
         if (readOnly) return;
         flushPending?.();
         const fresh = store.getState().notes.find((n) => n.id === currentNote.id) ?? currentNote;
         const copyId = crypto.randomUUID();
-        const copyTitle = `${fresh.title} (copie)`.slice(0, 200);
+        const copyTitle = t('notes.copyOf', { title: fresh.title }).slice(0, 200);
         const clonedDoc = /** @type {RichTextDoc} */ (structuredClone(fresh.contentDoc));
         const clonedAssetIds = [...fresh.assetIds];
         const now = new Date().toISOString();
@@ -689,7 +694,7 @@ export function renderNotesView({
           now,
         });
         store.dispatch({ type: 'select_note', noteId: copyId });
-        notify({ status: 'success', title: 'Note dupliquée', text: copyTitle });
+        notify({ status: 'success', title: t('notes.duplicated'), text: copyTitle });
       });
 
       const exportMdBtn = document.createElement('button');
@@ -699,8 +704,8 @@ export function renderNotesView({
       const exportIc = document.createElement('i');
       exportIc.className = 'ph ph-download-simple cv-icon';
       exportIc.setAttribute('aria-hidden', 'true');
-      exportMdBtn.append(exportIc, document.createTextNode(' Exporter (.md)'));
-      exportMdBtn.setAttribute('aria-label', `Exporter « ${currentNote.title} » en Markdown (.md)`);
+      exportMdBtn.append(exportIc, document.createTextNode(` ${t('notes.exportMd')}`));
+      exportMdBtn.setAttribute('aria-label', t('notes.exportNamed', { title: currentNote.title }));
       exportMdBtn.addEventListener('click', () => {
         flushPending?.();
         void exportNoteMarkdown(currentNote);
@@ -710,8 +715,11 @@ export function renderNotesView({
       openDialogBtn.type = 'button';
       openDialogBtn.id = 'btn-open-note-dialog';
       openDialogBtn.className = 'cv-btn cv-btn--sm';
-      openDialogBtn.textContent = 'Ouvrir la saisie';
-      openDialogBtn.setAttribute('aria-label', `Ouvrir la saisie pour « ${currentNote.title} »`);
+      openDialogBtn.textContent = t('common.openEditor');
+      openDialogBtn.setAttribute(
+        'aria-label',
+        t('common.openEditorNamed', { title: currentNote.title }),
+      );
       openDialogBtn.addEventListener('click', () => {
         flushPending?.();
         const freshNote =
@@ -724,8 +732,8 @@ export function renderNotesView({
       archiveBtn.id = 'btn-archive-note';
       archiveBtn.className = 'cv-btn cv-btn--sm';
       archiveBtn.disabled = readOnly;
-      archiveBtn.textContent = 'Archiver';
-      archiveBtn.setAttribute('aria-label', `Archiver la note « ${currentNote.title} »`);
+      archiveBtn.textContent = t('common.archive');
+      archiveBtn.setAttribute('aria-label', t('notes.archiveNamed', { title: currentNote.title }));
       archiveBtn.addEventListener('click', () => {
         flushPending?.();
         store.dispatch({
@@ -736,8 +744,8 @@ export function renderNotesView({
         });
         notify({
           status: 'info',
-          title: 'Note archivée',
-          text: `${currentNote.title} déplacée vers les archives.`,
+          title: t('notes.archivedTitle'),
+          text: t('notes.archivedText', { title: currentNote.title }),
         });
       });
 
@@ -746,7 +754,7 @@ export function renderNotesView({
       saveBtn.id = 'btn-save-note';
       saveBtn.className = 'cv-btn cv-btn--primary cv-btn--sm';
       saveBtn.disabled = readOnly;
-      saveBtn.textContent = 'Enregistrer';
+      saveBtn.textContent = t('common.save');
       saveBtn.addEventListener('click', () => saveNow(true));
 
       const deleteBtn = document.createElement('button');
@@ -754,12 +762,12 @@ export function renderNotesView({
       deleteBtn.id = 'btn-delete-note';
       deleteBtn.className = 'cv-btn cv-btn--danger cv-btn--sm';
       deleteBtn.disabled = readOnly;
-      deleteBtn.textContent = 'Supprimer';
+      deleteBtn.textContent = t('common.delete');
       deleteBtn.addEventListener('click', async () => {
         const confirmed = await confirmAction({
-          title: `Supprimer « ${currentNote.title} » ?`,
-          message: 'Cette note sera déplacée dans la corbeille locale.',
-          confirmLabel: 'Supprimer la note',
+          title: t('common.deleteTitle', { title: currentNote.title }),
+          message: t('notes.deleteConfirm'),
+          confirmLabel: t('notes.deleteLabel'),
           danger: true,
         });
         if (!confirmed) return;
@@ -774,13 +782,13 @@ export function renderNotesView({
           trashId: crypto.randomUUID(),
           now: new Date().toISOString(),
         });
-        notify({ status: 'info', title: 'Note placée dans la corbeille', text: currentNote.title });
+        notify({ status: 'info', title: t('notes.trashed'), text: currentNote.title });
       });
 
       const noteTemplatePicker = createTemplatePicker({
         idPrefix: 'note-tpl',
-        labelText: 'Modèles de trame',
-        templates: selectTemplates(store.getState(), 'note'),
+        labelText: t('notes.templatesLabel'),
+        templates: selectTemplates(store.getState(), 'note', builtinTemplates),
         readOnly,
         showSave: true,
         async onApply(tpl) {
@@ -790,9 +798,9 @@ export function renderNotesView({
             collectDocAssetIds(currentDoc).length > 0;
           if (hasContent) {
             const confirmed = await confirmAction({
-              title: `Appliquer la trame « ${tpl.name} » ?`,
-              message: 'Le contenu actuel de cette note sera remplacé par le modèle sélectionné.',
-              confirmLabel: 'Appliquer le modèle',
+              title: t('notes.applyTemplateTitle', { name: tpl.name }),
+              message: t('notes.applyTemplateText'),
+              confirmLabel: t('templates.applyLabel'),
             });
             if (!confirmed) return;
           }
@@ -800,7 +808,7 @@ export function renderNotesView({
           latestDoc = nextDoc;
           editorHandle?.setDoc(nextDoc);
           saveNow(false);
-          notify({ status: 'success', title: 'Trame appliquée', text: tpl.name });
+          notify({ status: 'success', title: t('notes.templateApplied'), text: tpl.name });
         },
         onSaveNew(name) {
           const doc = editorHandle ? editorHandle.getDoc() : latestDoc;
@@ -813,14 +821,19 @@ export function renderNotesView({
             contentDoc: doc,
             now: new Date().toISOString(),
           });
-          noteTemplatePicker.setTemplates(selectTemplates(store.getState(), 'note'), id);
-          notify({ status: 'success', title: 'Modèle de note enregistré', text: name });
+          noteTemplatePicker.setTemplates(
+            selectTemplates(store.getState(), 'note', builtinTemplates),
+            id,
+          );
+          notify({ status: 'success', title: t('notes.templateSaved'), text: name });
           return id;
         },
         onDeleteCustom(tpl) {
           store.dispatch({ type: 'delete_template', id: tpl.id });
-          noteTemplatePicker.setTemplates(selectTemplates(store.getState(), 'note'));
-          notify({ status: 'info', title: 'Modèle supprimé', text: tpl.name });
+          noteTemplatePicker.setTemplates(
+            selectTemplates(store.getState(), 'note', builtinTemplates),
+          );
+          notify({ status: 'info', title: t('templates.deleted'), text: tpl.name });
         },
       });
 

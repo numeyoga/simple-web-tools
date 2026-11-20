@@ -1,6 +1,7 @@
 /** @import { ActiveView, AllowedImageMimeType, ArrowEndpointBinding, ArrowSnapAnchor, ChecklistItem, LocalEntityKind, LocalRef, InputPresentation, InputPresentationMap, Note, Project, RichTextDoc, RichTextMark, RichTextNode, Task, TaskPriority, TaskRecurrence, TaskStatus, TaskStatusConfig, TaskStatusRole, Whiteboard, WhiteboardColorToken, WhiteboardElement, WhiteboardElementType, WhiteboardViewport } from '../types.d.ts' */
 
 import { parseTimeHhMm } from './dates.js';
+import { LocavernError, frenchText } from './messages.js';
 
 /** @type {readonly import('../types.d.ts').InputPresentationScreen[]} */
 export const INPUT_PRESENTATION_SCREENS = Object.freeze([
@@ -109,22 +110,38 @@ export function normalizeToastDurationSeconds(raw) {
   return Math.max(MIN_TOAST_DURATION_SECONDS, Math.min(MAX_TOAST_DURATION_SECONDS, rounded));
 }
 
+/**
+ * The three statuses a new workspace starts with, named in the language of `t`. They are data
+ * the user can rename: once stored, they keep the name they were created with.
+ * @param {import('./messages.js').TranslateFn} [t] the translator of the interface (French when omitted)
+ * @returns {readonly TaskStatusConfig[]}
+ */
+export function createDefaultTaskStatuses(t = frenchText) {
+  return Object.freeze([
+    Object.freeze({ id: 'todo', label: t('statuses.todo'), isInitial: true }),
+    Object.freeze({ id: 'in_progress', label: t('statuses.inProgress') }),
+    Object.freeze({ id: 'done', label: t('statuses.done'), isTerminal: true }),
+  ]);
+}
+
 /** @type {readonly TaskStatusConfig[]} */
-export const DEFAULT_TASK_STATUSES = Object.freeze([
-  Object.freeze({ id: 'todo', label: 'À faire', isInitial: true }),
-  Object.freeze({ id: 'in_progress', label: 'En cours' }),
-  Object.freeze({ id: 'done', label: 'Terminé', isTerminal: true }),
-]);
+export const DEFAULT_TASK_STATUSES = createDefaultTaskStatuses(frenchText);
 
 /** @type {readonly TaskStatus[]} */
 export const TASK_STATUSES = Object.freeze(['todo', 'in_progress', 'done']);
 
-/** @type {Readonly<Record<string, string>>} */
-const BUILTIN_STATUS_LABELS = Object.freeze({
-  todo: 'À faire',
-  in_progress: 'En cours',
-  done: 'Terminé',
-});
+/**
+ * The name of a built-in status, `null` for any other id.
+ * @param {string} id
+ * @param {import('./messages.js').TranslateFn} t
+ * @returns {string | null}
+ */
+function builtinStatusName(id, t) {
+  if (id === 'todo') return t('statuses.todo');
+  if (id === 'in_progress') return t('statuses.inProgress');
+  if (id === 'done') return t('statuses.done');
+  return null;
+}
 
 /** @type {ReadonlySet<string>} */
 const RESERVED_STATUS_IDS = new Set(['all', '__none__', '__unknown__']);
@@ -270,15 +287,16 @@ export function createTaskStatusId(label, existingIds = []) {
  * Resolve presentation metadata for a task's status against the configured Kanban statuses.
  * @param {TaskStatus | null | undefined} status
  * @param {readonly TaskStatusConfig[]} [taskStatuses]
+ * @param {import('./messages.js').TranslateFn} [t] the translator of the interface (French when omitted)
  * @returns {{ known: boolean; kind: 'known' | 'missing' | 'unknown'; label: string; badgeClass: string }}
  */
-export function getTaskStatusMeta(status, taskStatuses = DEFAULT_TASK_STATUSES) {
+export function getTaskStatusMeta(status, taskStatuses = DEFAULT_TASK_STATUSES, t = frenchText) {
   const clean = typeof status === 'string' ? status.trim() : '';
   if (!clean) {
     return {
       known: false,
       kind: 'missing',
-      label: 'Sans statut',
+      label: t('statuses.none'),
       badgeClass: 'cv-badge cv-badge--warning',
     };
   }
@@ -298,11 +316,11 @@ export function getTaskStatusMeta(status, taskStatuses = DEFAULT_TASK_STATUSES) 
       badgeClass,
     };
   }
-  const fallbackName = BUILTIN_STATUS_LABELS[clean] ?? clean;
+  const fallbackName = builtinStatusName(clean, t) ?? clean;
   return {
     known: false,
     kind: 'unknown',
-    label: `Statut inconnu (${fallbackName})`,
+    label: t('statuses.unknown', { name: fallbackName }),
     badgeClass: 'cv-badge cv-badge--warning',
   };
 }
@@ -326,14 +344,15 @@ export function normalizeTaskRecurrence(value) {
 }
 
 /**
- * Return a human-readable French label for a task recurrence cadence.
+ * Return a human-readable label for a task recurrence cadence.
  * @param {TaskRecurrence | null | undefined} recurrence
+ * @param {import('./messages.js').TranslateFn} [t] the translator of the interface (French when omitted)
  * @returns {string}
  */
-export function getTaskRecurrenceLabel(recurrence) {
-  if (recurrence === 'daily') return 'Quotidienne';
-  if (recurrence === 'weekly') return 'Hebdomadaire';
-  if (recurrence === 'monthly') return 'Mensuelle';
+export function getTaskRecurrenceLabel(recurrence, t = frenchText) {
+  if (recurrence === 'daily') return t('recurrence.daily');
+  if (recurrence === 'weekly') return t('recurrence.weekly');
+  if (recurrence === 'monthly') return t('recurrence.monthly');
   return '';
 }
 
@@ -590,7 +609,7 @@ export function normalizeDueDate(value) {
       return trimmed;
     }
   }
-  throw new Error('Date d’échéance invalide. Utilisez le format AAAA-MM-JJ.');
+  throw new LocavernError('errors.model.dueDateInvalid');
 }
 
 /**
@@ -604,7 +623,7 @@ export function normalizeDueTime(value) {
   if (!trimmed) return null;
   const parsed = parseTimeHhMm(trimmed);
   if (!parsed) {
-    throw new Error('Heure d’échéance invalide. Utilisez le format HH:MM.');
+    throw new LocavernError('errors.model.dueTimeInvalid');
   }
   return parsed.normalized;
 }
@@ -913,13 +932,13 @@ export function createProject({
   const cleanId = id.trim();
   const cleanName = name.trim();
   if (!cleanId) {
-    throw new Error('Identifiant de projet requis.');
+    throw new LocavernError('errors.model.projectIdRequired');
   }
   if (!cleanName) {
-    throw new Error('Le nom du projet ne peut pas être vide.');
+    throw new LocavernError('errors.model.projectNameEmpty');
   }
   if (cleanName.length > 120) {
-    throw new Error('Le nom du projet ne peut pas dépasser 120 caractères.');
+    throw new LocavernError('errors.model.projectNameTooLong', { max: 120 });
   }
   const isArchived = Boolean(archived);
   const cleanArchivedAt = isArchived ? (archivedAt ?? now) : null;
@@ -1046,18 +1065,18 @@ export function createTask({
   const cleanId = id.trim();
   const cleanProjectId = projectId.trim();
   const cleanTitle = title.trim();
-  if (!cleanId) throw new Error('Identifiant de tâche requis.');
-  if (!cleanProjectId) throw new Error('Une tâche doit être rattachée à un projet.');
-  if (!cleanTitle) throw new Error('Le titre de la tâche ne peut pas être vide.');
+  if (!cleanId) throw new LocavernError('errors.model.taskIdRequired');
+  if (!cleanProjectId) throw new LocavernError('errors.model.taskNeedsProject');
+  if (!cleanTitle) throw new LocavernError('errors.model.taskTitleEmpty');
   if (cleanTitle.length > 200) {
-    throw new Error('Le titre de la tâche ne peut pas dépasser 200 caractères.');
+    throw new LocavernError('errors.model.taskTitleTooLong', { max: 200 });
   }
   const cleanStatus = typeof status === 'string' ? status.trim() || null : null;
   if (cleanStatus !== null && !allowedStatuses.includes(cleanStatus)) {
-    throw new Error(`Statut de tâche invalide : ${String(status)}.`);
+    throw new LocavernError('errors.model.taskStatusInvalid', { status: String(status) });
   }
   if (!TASK_PRIORITIES.includes(priority)) {
-    throw new Error(`Priorité de tâche invalide : ${priority}.`);
+    throw new LocavernError('errors.model.taskPriorityInvalid', { priority });
   }
 
   const cleanDueDate = normalizeDueDate(dueDate);
@@ -1122,10 +1141,10 @@ export function createNote({
 }) {
   const cleanId = id.trim();
   const cleanTitle = title.trim();
-  if (!cleanId) throw new Error('Identifiant de note requis.');
-  if (!cleanTitle) throw new Error('Le titre de la note ne peut pas être vide.');
+  if (!cleanId) throw new LocavernError('errors.model.noteIdRequired');
+  if (!cleanTitle) throw new LocavernError('errors.model.noteTitleEmpty');
   if (cleanTitle.length > 200) {
-    throw new Error('Le titre de la note ne peut pas dépasser 200 caractères.');
+    throw new LocavernError('errors.model.noteTitleTooLong', { max: 200 });
   }
   const cleanDoc = sanitizeRichTextDoc(contentDoc);
   const derivedAssetIds = collectDocAssetIds(cleanDoc);
@@ -1179,10 +1198,10 @@ export function createWhiteboard({
 }) {
   const cleanId = id.trim();
   const cleanTitle = title.trim();
-  if (!cleanId) throw new Error('Identifiant de tableau blanc requis.');
-  if (!cleanTitle) throw new Error('Le titre du tableau blanc ne peut pas être vide.');
+  if (!cleanId) throw new LocavernError('errors.model.whiteboardIdRequired');
+  if (!cleanTitle) throw new LocavernError('errors.model.whiteboardTitleEmpty');
   if (cleanTitle.length > 200) {
-    throw new Error('Le titre du tableau blanc ne peut pas dépasser 200 caractères.');
+    throw new LocavernError('errors.model.whiteboardTitleTooLong', { max: 200 });
   }
   const cleanViewport = sanitizeWhiteboardViewport(viewport);
   const cleanElements = sanitizeWhiteboardElements(elements);

@@ -1,6 +1,5 @@
 /** @import { AppCommand, AppState, LocalRef, StoreEffect, Whiteboard, WhiteboardElement, WhiteboardViewport } from '../../types.d.ts' */
 
-import { formatShortDateFr } from '../../core/dates.js';
 import { collectWhiteboardAssetIds } from '../../core/model.js';
 import {
   selectProjectById,
@@ -16,6 +15,8 @@ import { ensureExportDirectoryPermission } from '../export-directory.js';
 import { mountWhiteboardCanvas } from '../whiteboard-canvas.js';
 import { closeDialogById, confirmAction, notify, openDialogById } from './app-shell.js';
 import { createLinkEditor } from './link-editor.js';
+import { builtinTemplates, format, t } from '../i18n.js';
+import { errorText } from '../../core/messages.js';
 
 /**
  * Sanitize a whiteboard title into a safe local filename stem.
@@ -29,7 +30,7 @@ function toSafeFileStem(title) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return clean || 'tableau-blanc';
+  return clean || t('export.slug.whiteboard');
 }
 
 /**
@@ -102,14 +103,14 @@ export function renderWhiteboardView({
   const projectFilter = document.createElement('select');
   projectFilter.id = 'whiteboards-project-filter';
   projectFilter.className = 'cv-input';
-  projectFilter.setAttribute('aria-label', 'Filtrer les tableaux blancs par projet');
+  projectFilter.setAttribute('aria-label', t('whiteboards.filterByProject'));
 
   const optAll = document.createElement('option');
   optAll.value = 'all';
-  optAll.textContent = 'Tous les tableaux';
+  optAll.textContent = t('whiteboards.all');
   const optNone = document.createElement('option');
   optNone.value = 'none';
-  optNone.textContent = 'Sans projet';
+  optNone.textContent = t('common.noProject');
   projectFilter.append(optAll, optNone);
   for (const p of initialActiveProjects) {
     const opt = document.createElement('option');
@@ -136,8 +137,8 @@ export function renderWhiteboardView({
   searchInput.id = 'whiteboards-search-input';
   searchInput.type = 'search';
   searchInput.className = 'cv-input';
-  searchInput.placeholder = 'Rechercher titre ou texte du tableau';
-  searchInput.setAttribute('aria-label', 'Rechercher un tableau blanc');
+  searchInput.placeholder = t('whiteboards.searchPlaceholder');
+  searchInput.setAttribute('aria-label', t('whiteboards.searchLabel'));
   searchInput.value = filters.query;
   searchGroup.append(searchIcon, searchInput);
 
@@ -151,7 +152,7 @@ export function renderWhiteboardView({
   const plusIc = document.createElement('i');
   plusIc.className = 'ph ph-plus cv-icon';
   plusIc.setAttribute('aria-hidden', 'true');
-  newWbBtn.append(plusIc, document.createTextNode(' Nouveau tableau blanc'));
+  newWbBtn.append(plusIc, document.createTextNode(` ${t('whiteboards.new')}`));
 
   header.append(leftGroup, newWbBtn);
 
@@ -349,21 +350,21 @@ export function renderWhiteboardView({
       const stem = toSafeFileStem(getTitle());
       const ext = fmt;
       const mime = fmt === 'svg' ? 'image/svg+xml' : 'image/png';
-      const desc = fmt === 'svg' ? 'Image SVG' : 'Image PNG';
+      const desc = fmt === 'svg' ? t('export.svgDescription') : t('export.pngDescription');
       const result = await saveArchiveBlob(blob, `${stem}.${ext}`, {
         pickerTypes: [{ description: desc, accept: { [mime]: [`.${ext}`] } }],
       });
       if (!result.saved) return;
       notify({
         status: 'success',
-        title: `Export ${fmt.toUpperCase()} prêt`,
+        title: t('whiteboards.exportReady', { format: fmt.toUpperCase() }),
         text: `${stem}.${ext}`,
       });
     } catch {
       notify({
         status: 'danger',
-        title: `Échec de l’export ${fmt.toUpperCase()}`,
-        text: `Impossible de générer le fichier ${fmt.toUpperCase()}.`,
+        title: t('whiteboards.exportFailed', { format: fmt.toUpperCase() }),
+        text: t('whiteboards.exportFailedText', { format: fmt.toUpperCase() }),
       });
     }
   }
@@ -400,15 +401,14 @@ export function renderWhiteboardView({
       iconBox.append(ic);
       const title = document.createElement('p');
       title.className = 'cv-empty__title';
-      title.textContent = 'Aucun tableau blanc disponible';
+      title.textContent = t('whiteboards.emptyTitle');
       const desc = document.createElement('p');
-      desc.textContent =
-        'Créez des schémas, post-it, tracés libres et images locales stockés dans IndexedDB.';
+      desc.textContent = t('whiteboards.emptyText');
       const cta = document.createElement('button');
       cta.type = 'button';
       cta.className = 'cv-btn cv-btn--primary';
       cta.disabled = readOnly;
-      cta.textContent = 'Créer un tableau blanc';
+      cta.textContent = t('whiteboards.createCta');
       cta.addEventListener('click', openNewWhiteboardDialog);
       empty.append(iconBox, title, desc, cta);
       bodySlot.replaceChildren(empty);
@@ -421,7 +421,7 @@ export function renderWhiteboardView({
     const listEl = document.createElement('div');
     listEl.className = 'lc-notes-list';
     listEl.setAttribute('role', 'navigation');
-    listEl.setAttribute('aria-label', 'Liste des tableaux blancs');
+    listEl.setAttribute('aria-label', t('whiteboards.listLabel'));
 
     /** @type {Map<string, HTMLElement>} */
     const listTitleEls = new Map();
@@ -467,8 +467,8 @@ export function renderWhiteboardView({
         const editRowBtn = document.createElement('button');
         editRowBtn.type = 'button';
         editRowBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-note-row__edit';
-        editRowBtn.setAttribute('aria-label', `Modifier le tableau blanc « ${wb.title} »`);
-        setTooltip(editRowBtn, 'Modifier le tableau blanc');
+        editRowBtn.setAttribute('aria-label', t('whiteboards.editNamed', { title: wb.title }));
+        setTooltip(editRowBtn, t('whiteboards.editTitle'));
         const penIc = document.createElement('i');
         penIc.className = 'ph ph-pencil-simple cv-icon';
         penIc.setAttribute('aria-hidden', 'true');
@@ -494,7 +494,7 @@ export function renderWhiteboardView({
     if (activeWb && effectiveMode === 'view') {
       const currentWb = activeWb;
       editorCard.className = 'cv-card lc-consult-card';
-      editorCard.setAttribute('aria-label', 'Consultation de tableau blanc');
+      editorCard.setAttribute('aria-label', t('whiteboards.viewCardLabel'));
 
       const consultHead = document.createElement('div');
       consultHead.className = 'lc-view-header';
@@ -509,17 +509,20 @@ export function renderWhiteboardView({
 
       const modeBadge = document.createElement('span');
       modeBadge.className = 'cv-badge';
-      modeBadge.textContent = 'Consultation';
+      modeBadge.textContent = t('common.viewing');
 
       const proj = currentWb.projectId ? selectProjectById(state, currentWb.projectId) : null;
       const projBadge = document.createElement('span');
       projBadge.className = 'cv-badge cv-badge--accent';
-      projBadge.textContent = proj ? proj.name : 'Sans projet';
+      projBadge.textContent = proj ? proj.name : t('common.noProject');
 
       const elCount = currentWb.elements.length;
       const countBadge = document.createElement('span');
       countBadge.className = 'cv-caption cv-num';
-      countBadge.textContent = `${elCount} élément${elCount > 1 ? 's' : ''} · Mis à jour le ${formatShortDateFr(currentWb.updatedAt.slice(0, 10), true)}`;
+      countBadge.textContent = t('whiteboards.countLine', {
+        count: elCount,
+        date: format.formatShortDate(currentWb.updatedAt.slice(0, 10), true),
+      });
 
       titleWrap.append(titleH3, modeBadge, projBadge, countBadge);
 
@@ -531,14 +534,14 @@ export function renderWhiteboardView({
       exportSvgBtn.type = 'button';
       exportSvgBtn.id = 'btn-export-wb-svg';
       exportSvgBtn.className = 'cv-btn cv-btn--sm';
-      exportSvgBtn.textContent = 'Exporter SVG';
+      exportSvgBtn.textContent = t('whiteboards.exportSvg');
       exportSvgBtn.addEventListener('click', () => void exportCanvas(() => currentWb.title, 'svg'));
 
       const exportPngBtn = document.createElement('button');
       exportPngBtn.type = 'button';
       exportPngBtn.id = 'btn-export-wb-png';
       exportPngBtn.className = 'cv-btn cv-btn--sm';
-      exportPngBtn.textContent = 'Exporter PNG';
+      exportPngBtn.textContent = t('whiteboards.exportPng');
       exportPngBtn.addEventListener('click', () => void exportCanvas(() => currentWb.title, 'png'));
 
       headActions.append(exportSvgBtn, exportPngBtn);
@@ -551,7 +554,7 @@ export function renderWhiteboardView({
         const editIc = document.createElement('i');
         editIc.className = 'ph ph-pencil-simple cv-icon';
         editIc.setAttribute('aria-hidden', 'true');
-        switchEditBtn.append(editIc, document.createTextNode(' Modifier'));
+        switchEditBtn.append(editIc, document.createTextNode(` ${t('common.edit')}`));
         switchEditBtn.addEventListener('click', () => {
           modeState.whiteboardId = currentWb.id;
           modeState.mode = 'edit';
@@ -582,7 +585,7 @@ export function renderWhiteboardView({
         initialViewport: currentWb.viewport,
         initialElements: currentWb.elements,
         editable: false,
-        ariaLabel: `Canevas du tableau blanc ${currentWb.title}`,
+        ariaLabel: t('whiteboards.canvasNamed', { title: currentWb.title }),
         resolveAssetUrl,
         onUploadImage: async () => null,
         onToggleMaximize: toggleMax,
@@ -593,7 +596,7 @@ export function renderWhiteboardView({
     } else if (activeWb) {
       const currentWb = activeWb;
       editorCard.className = 'cv-card';
-      editorCard.setAttribute('aria-label', 'Éditeur de tableau blanc');
+      editorCard.setAttribute('aria-label', t('whiteboards.editorCardLabel'));
 
       const metaRow = document.createElement('div');
       metaRow.className = 'lc-view-header';
@@ -604,7 +607,7 @@ export function renderWhiteboardView({
       const titleLabel = document.createElement('label');
       titleLabel.className = 'cv-label';
       titleLabel.htmlFor = 'whiteboard-title-input';
-      titleLabel.textContent = 'Titre du tableau blanc';
+      titleLabel.textContent = t('whiteboards.titleLabel');
       const titleInput = document.createElement('input');
       titleInput.id = 'whiteboard-title-input';
       titleInput.type = 'text';
@@ -620,7 +623,7 @@ export function renderWhiteboardView({
       const projLabel = document.createElement('label');
       projLabel.className = 'cv-label';
       projLabel.htmlFor = 'whiteboard-project-select';
-      projLabel.textContent = 'Projet associé';
+      projLabel.textContent = t('common.linkedProject');
       const projSelectWrap = document.createElement('div');
       projSelectWrap.className = 'cv-select';
       const projSelect = document.createElement('select');
@@ -629,7 +632,7 @@ export function renderWhiteboardView({
       projSelect.disabled = readOnly;
       const noProjOpt = document.createElement('option');
       noProjOpt.value = '';
-      noProjOpt.textContent = 'Sans projet';
+      noProjOpt.textContent = t('common.noProject');
       projSelect.append(noProjOpt);
       for (const p of selectProjects(state)) {
         const opt = document.createElement('option');
@@ -668,7 +671,7 @@ export function renderWhiteboardView({
       const statusEl = document.createElement('span');
       statusEl.className = 'cv-caption';
       statusEl.id = 'whiteboard-save-status';
-      statusEl.textContent = 'Enregistré localement';
+      statusEl.textContent = t('whiteboards.savedLocally');
 
       function saveNow(showToast = false) {
         if (readOnly) return;
@@ -684,7 +687,7 @@ export function renderWhiteboardView({
         const assetIds = collectWhiteboardAssetIds(snapshot.elements);
         const projectId = projSelect.value ? projSelect.value : null;
         dirty = false;
-        statusEl.textContent = 'Enregistré localement';
+        statusEl.textContent = t('whiteboards.savedLocally');
         const listTitle = listTitleEls.get(currentWb.id);
         if (listTitle) listTitle.textContent = cleanTitle;
         dispatchingInlineUpdate = true;
@@ -705,15 +708,15 @@ export function renderWhiteboardView({
         } catch (err) {
           notify({
             status: 'danger',
-            title: 'Enregistrement impossible',
-            text: err instanceof Error ? err.message : 'Erreur de validation.',
+            title: t('common.saveFailed'),
+            text: errorText(err, t, 'errors.validation'),
           });
           return;
         } finally {
           dispatchingInlineUpdate = false;
         }
         if (showToast) {
-          notify({ status: 'success', title: 'Tableau blanc enregistré', text: cleanTitle });
+          notify({ status: 'success', title: t('whiteboards.saved'), text: cleanTitle });
         }
       }
 
@@ -726,7 +729,7 @@ export function renderWhiteboardView({
       function scheduleSave() {
         if (readOnly) return;
         dirty = true;
-        statusEl.textContent = 'Modifications en cours';
+        statusEl.textContent = t('common.changesInProgress');
         if (saveTimer !== null) window.clearTimeout(saveTimer);
         saveTimer = window.setTimeout(() => saveNow(false), 200);
       }
@@ -741,14 +744,14 @@ export function renderWhiteboardView({
         initialViewport: currentWb.viewport,
         initialElements: currentWb.elements,
         editable: !readOnly,
-        ariaLabel: `Canevas du tableau blanc ${currentWb.title}`,
+        ariaLabel: t('whiteboards.canvasNamed', { title: currentWb.title }),
         resolveAssetUrl,
         onUploadImage: uploadLocalImage,
         onBlockedRemoteImage: () => {
           notify({
             status: 'warning',
-            title: 'Image distante bloquée',
-            text: 'Seules les images locales enregistrées sur cet appareil sont autorisées.',
+            title: t('editor.remoteImageBlocked'),
+            text: t('editor.remoteImageBlockedText'),
           });
         },
         onToggleMaximize: toggleMax,
@@ -781,7 +784,7 @@ export function renderWhiteboardView({
       const eyeIc = document.createElement('i');
       eyeIc.className = 'ph ph-eye cv-icon';
       eyeIc.setAttribute('aria-hidden', 'true');
-      consultBtn.append(eyeIc, document.createTextNode(' Consulter'));
+      consultBtn.append(eyeIc, document.createTextNode(` ${t('common.consult')}`));
       consultBtn.addEventListener('click', () => {
         flushPending?.();
         modeState.whiteboardId = currentWb.id;
@@ -793,8 +796,11 @@ export function renderWhiteboardView({
       openDialogBtn.type = 'button';
       openDialogBtn.id = 'btn-open-whiteboard-dialog';
       openDialogBtn.className = 'cv-btn cv-btn--sm';
-      openDialogBtn.textContent = 'Ouvrir la saisie';
-      openDialogBtn.setAttribute('aria-label', `Ouvrir la saisie pour « ${currentWb.title} »`);
+      openDialogBtn.textContent = t('common.openEditor');
+      openDialogBtn.setAttribute(
+        'aria-label',
+        t('common.openEditorNamed', { title: currentWb.title }),
+      );
       openDialogBtn.addEventListener('click', () => {
         flushPending?.();
         const freshWb =
@@ -806,7 +812,7 @@ export function renderWhiteboardView({
       exportSvgBtn.type = 'button';
       exportSvgBtn.id = 'btn-export-wb-svg';
       exportSvgBtn.className = 'cv-btn cv-btn--sm';
-      exportSvgBtn.textContent = 'Exporter SVG';
+      exportSvgBtn.textContent = t('whiteboards.exportSvg');
       exportSvgBtn.addEventListener(
         'click',
         () => void exportCanvas(() => titleInput.value.trim() || currentWb.title, 'svg'),
@@ -816,7 +822,7 @@ export function renderWhiteboardView({
       exportPngBtn.type = 'button';
       exportPngBtn.id = 'btn-export-wb-png';
       exportPngBtn.className = 'cv-btn cv-btn--sm';
-      exportPngBtn.textContent = 'Exporter PNG';
+      exportPngBtn.textContent = t('whiteboards.exportPng');
       exportPngBtn.addEventListener(
         'click',
         () => void exportCanvas(() => titleInput.value.trim() || currentWb.title, 'png'),
@@ -827,8 +833,11 @@ export function renderWhiteboardView({
       archiveBtn.id = 'btn-archive-whiteboard';
       archiveBtn.className = 'cv-btn cv-btn--sm';
       archiveBtn.disabled = readOnly;
-      archiveBtn.textContent = 'Archiver';
-      archiveBtn.setAttribute('aria-label', `Archiver le tableau blanc « ${currentWb.title} »`);
+      archiveBtn.textContent = t('common.archive');
+      archiveBtn.setAttribute(
+        'aria-label',
+        t('whiteboards.archiveNamed', { title: currentWb.title }),
+      );
       archiveBtn.addEventListener('click', () => {
         flushPending?.();
         store.dispatch({
@@ -839,8 +848,8 @@ export function renderWhiteboardView({
         });
         notify({
           status: 'info',
-          title: 'Tableau blanc archivé',
-          text: `${currentWb.title} déplacé vers les archives.`,
+          title: t('whiteboards.archivedTitle'),
+          text: t('whiteboards.archivedText', { title: currentWb.title }),
         });
       });
 
@@ -849,7 +858,7 @@ export function renderWhiteboardView({
       saveBtn.id = 'btn-save-whiteboard';
       saveBtn.className = 'cv-btn cv-btn--primary cv-btn--sm';
       saveBtn.disabled = readOnly;
-      saveBtn.textContent = 'Enregistrer';
+      saveBtn.textContent = t('common.save');
       saveBtn.addEventListener('click', () => saveNow(true));
 
       const deleteBtn = document.createElement('button');
@@ -857,12 +866,12 @@ export function renderWhiteboardView({
       deleteBtn.id = 'btn-delete-whiteboard';
       deleteBtn.className = 'cv-btn cv-btn--danger cv-btn--sm';
       deleteBtn.disabled = readOnly;
-      deleteBtn.textContent = 'Supprimer';
+      deleteBtn.textContent = t('common.delete');
       deleteBtn.addEventListener('click', async () => {
         const confirmed = await confirmAction({
-          title: `Supprimer « ${currentWb.title} » ?`,
-          message: 'Ce tableau blanc sera déplacé dans la corbeille locale.',
-          confirmLabel: 'Supprimer le tableau blanc',
+          title: t('common.deleteTitle', { title: currentWb.title }),
+          message: t('whiteboards.deleteConfirm'),
+          confirmLabel: t('whiteboards.deleteLabel'),
           danger: true,
         });
         if (!confirmed) return;
@@ -879,15 +888,15 @@ export function renderWhiteboardView({
         });
         notify({
           status: 'info',
-          title: 'Tableau blanc placé dans la corbeille',
+          title: t('whiteboards.trashed'),
           text: currentWb.title,
         });
       });
 
       const wbTemplatePicker = createTemplatePicker({
         idPrefix: 'wb-tpl',
-        labelText: 'Modèles de canevas',
-        templates: selectTemplates(store.getState(), 'whiteboard'),
+        labelText: t('whiteboards.templatesLabel'),
+        templates: selectTemplates(store.getState(), 'whiteboard', builtinTemplates),
         readOnly,
         showSave: true,
         async onApply(tpl) {
@@ -896,13 +905,9 @@ export function renderWhiteboardView({
             : { viewport: latestViewport, elements: [...latestElements] };
           if (snapshot.elements.length > 0) {
             const confirmed = await confirmAction({
-              title: `Appliquer le modèle « ${tpl.name} » ?`,
-              message:
-                'Les éléments actuels du tableau blanc seront remplacéspar ceux du modèle.'.replace(
-                  'remplacéspar',
-                  'remplacés par',
-                ),
-              confirmLabel: 'Appliquer le modèle',
+              title: t('whiteboards.applyTemplateTitle', { name: tpl.name }),
+              message: t('whiteboards.applyTemplateText'),
+              confirmLabel: t('templates.applyLabel'),
             });
             if (!confirmed) return;
           }
@@ -928,7 +933,7 @@ export function renderWhiteboardView({
             },
             now: new Date().toISOString(),
           });
-          notify({ status: 'success', title: 'Modèle de canevas appliqué', text: tpl.name });
+          notify({ status: 'success', title: t('whiteboards.templateApplied'), text: tpl.name });
         },
         onSaveNew(name) {
           const snapshot = canvasHandle
@@ -938,8 +943,8 @@ export function renderWhiteboardView({
           if (reusable.length === 0) {
             notify({
               status: 'warning',
-              title: 'Canevas vide',
-              text: 'Ajoutez au moins une forme, un post-it ou une flèche avant d’enregistrer un modèle.',
+              title: t('whiteboards.canvasEmpty'),
+              text: t('whiteboards.canvasEmptyText'),
             });
             return false;
           }
@@ -953,14 +958,19 @@ export function renderWhiteboardView({
             viewport: snapshot.viewport,
             now: new Date().toISOString(),
           });
-          wbTemplatePicker.setTemplates(selectTemplates(store.getState(), 'whiteboard'), id);
-          notify({ status: 'success', title: 'Modèle de canevas enregistré', text: name });
+          wbTemplatePicker.setTemplates(
+            selectTemplates(store.getState(), 'whiteboard', builtinTemplates),
+            id,
+          );
+          notify({ status: 'success', title: t('whiteboards.templateSaved'), text: name });
           return id;
         },
         onDeleteCustom(tpl) {
           store.dispatch({ type: 'delete_template', id: tpl.id });
-          wbTemplatePicker.setTemplates(selectTemplates(store.getState(), 'whiteboard'));
-          notify({ status: 'info', title: 'Modèle supprimé', text: tpl.name });
+          wbTemplatePicker.setTemplates(
+            selectTemplates(store.getState(), 'whiteboard', builtinTemplates),
+          );
+          notify({ status: 'info', title: t('templates.deleted'), text: tpl.name });
         },
       });
 

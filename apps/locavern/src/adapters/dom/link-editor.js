@@ -8,12 +8,13 @@ import {
   selectEntityLinkEntries,
 } from '../../core/store.js';
 import { initTooltips, setTooltip } from './tooltip.js';
+import { t } from '../i18n.js';
 
 /** @type {Readonly<Record<LocalEntityKind, { icon: string; label: string }>>} */
 const KIND_META = {
-  task: { icon: 'ph-check-square', label: 'Tâche' },
-  note: { icon: 'ph-notebook', label: 'Note' },
-  whiteboard: { icon: 'ph-chalkboard-simple', label: 'Tableau' },
+  task: { icon: 'ph-check-square', label: t('common.task') },
+  note: { icon: 'ph-notebook', label: t('common.note') },
+  whiteboard: { icon: 'ph-chalkboard-simple', label: t('links.kindWhiteboard') },
 };
 
 /**
@@ -64,7 +65,7 @@ export function createLinkEditor({
   if (!viewOnly && label instanceof HTMLLabelElement) {
     label.htmlFor = `${idPrefix}-select`;
   }
-  label.textContent = 'Éléments liés';
+  label.textContent = t('links.label');
 
   const outgoingList = document.createElement('div');
   outgoingList.id = `${idPrefix}-list`;
@@ -82,21 +83,20 @@ export function createLinkEditor({
   select.id = `${idPrefix}-select`;
   select.className = 'cv-input';
   select.disabled = readOnly || terminalLocked;
-  select.setAttribute('aria-label', 'Sélectionner une tâche, note ou tableau blanc à lier');
+  select.setAttribute('aria-label', t('links.selectAria'));
 
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
   addBtn.id = `${idPrefix}-add`;
   addBtn.className = 'cv-btn cv-btn--sm';
   addBtn.disabled = readOnly || terminalLocked;
-  addBtn.textContent = 'Lier';
+  addBtn.textContent = t('links.add');
 
   const terminalHint = document.createElement('p');
   terminalHint.id = `${idPrefix}-terminal-hint`;
   terminalHint.className = 'cv-hint';
   terminalHint.style.margin = '0';
-  terminalHint.textContent =
-    'Statut terminal : il n’est plus possible d’ajouter de nouveaux liens à cette tâche.';
+  terminalHint.textContent = t('links.terminalHint');
   terminalHint.hidden = !terminalLocked;
 
   /**
@@ -130,7 +130,10 @@ export function createLinkEditor({
       ? `${meta.label} · ${entry.title} (${entry.projectName})`
       : `${meta.label} · ${entry.title}`;
     openBtn.append(ic, txt);
-    openBtn.setAttribute('aria-label', `Ouvrir ${meta.label.toLowerCase()} « ${entry.title} »`);
+    openBtn.setAttribute(
+      'aria-label',
+      t('links.open', { kind: meta.label.toLowerCase(), title: entry.title }),
+    );
     openBtn.addEventListener('click', () => {
       onNavigate?.({ kind: entry.kind, id: entry.id });
     });
@@ -140,14 +143,14 @@ export function createLinkEditor({
     if (entry.terminal) {
       const termBadge = document.createElement('span');
       termBadge.className = 'cv-badge cv-badge--success';
-      termBadge.textContent = 'Terminal';
+      termBadge.textContent = t('common.terminal');
       chip.append(termBadge);
     }
 
     if (entry.archived) {
       const archBadge = document.createElement('span');
       archBadge.className = 'cv-badge';
-      archBadge.textContent = 'Archivé';
+      archBadge.textContent = t('common.archived');
       chip.append(archBadge);
     }
 
@@ -155,8 +158,8 @@ export function createLinkEditor({
       const removeBtn = document.createElement('button');
       removeBtn.type = 'button';
       removeBtn.className = 'lc-tag-chip__remove';
-      removeBtn.setAttribute('aria-label', `Retirer le lien vers « ${entry.title} »`);
-      setTooltip(removeBtn, 'Retirer le lien');
+      removeBtn.setAttribute('aria-label', t('links.removeNamed', { title: entry.title }));
+      setTooltip(removeBtn, t('links.remove'));
       const xIc = document.createElement('i');
       xIc.className = 'ph ph-x cv-icon';
       xIc.setAttribute('aria-hidden', 'true');
@@ -180,9 +183,7 @@ export function createLinkEditor({
     select.replaceChildren();
     const emptyOpt = document.createElement('option');
     emptyOpt.value = '';
-    emptyOpt.textContent = terminalLocked
-      ? 'Liaison bloquée (statut terminal)'
-      : 'Choisir un élément à lier…';
+    emptyOpt.textContent = terminalLocked ? t('links.blocked') : t('links.choose');
     select.append(emptyOpt);
 
     const configuredStatuses = state.preferences.taskStatuses;
@@ -202,9 +203,9 @@ export function createLinkEditor({
     );
 
     const groups = /** @type {const} */ ([
-      ['Tâches', 'task', activeTasks],
-      ['Notes', 'note', activeNotes],
-      ['Tableaux blancs', 'whiteboard', activeWhiteboards],
+      [t('common.tasks'), 'task', activeTasks],
+      [t('common.notes'), 'note', activeNotes],
+      [t('common.whiteboards'), 'whiteboard', activeWhiteboards],
     ]);
 
     let availableCount = 0;
@@ -239,7 +240,7 @@ export function createLinkEditor({
         outgoingList.hidden = false;
         const emptyMsg = document.createElement('span');
         emptyMsg.className = 'cv-caption';
-        emptyMsg.textContent = 'Aucun élément lié.';
+        emptyMsg.textContent = t('links.none');
         outgoingList.append(emptyMsg);
       } else {
         outgoingList.hidden = true;
@@ -258,7 +259,7 @@ export function createLinkEditor({
       backlinksWrap.hidden = false;
       const backLabel = document.createElement('span');
       backLabel.className = 'cv-caption';
-      backLabel.textContent = 'Lié depuis :';
+      backLabel.textContent = t('links.linkedFrom');
       backlinksWrap.append(backLabel);
       for (const entry of resolved.incoming) {
         backlinksWrap.append(makeLinkPill(entry, false));

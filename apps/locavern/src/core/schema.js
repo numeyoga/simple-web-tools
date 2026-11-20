@@ -15,6 +15,7 @@ import {
   sanitizeWhiteboardElements,
   sanitizeWhiteboardViewport,
 } from './model.js';
+import { failure } from './messages.js';
 
 export const CURRENT_SCHEMA_VERSION = 2;
 export const MAX_IMPORT_RECORDS = 10_000;
@@ -283,27 +284,18 @@ function parseAssetMeta(raw) {
 /**
  * Validate a schema v2 BackupData object strictly.
  * @param {unknown} raw
- * @returns {{ ok: true; data: BackupData } | { ok: false; error: string }}
+ * @returns {{ ok: true; data: BackupData } | import('./messages.js').Failure}
  */
 export function validateBackupData(raw) {
   if (!isRecord(raw)) {
-    return {
-      ok: false,
-      error: 'Impossible de lire la sauvegarde. Le contenu JSON est invalide.',
-    };
+    return failure('errors.backup.invalidJson');
   }
   if (raw.schemaVersion !== CURRENT_SCHEMA_VERSION) {
-    return {
-      ok: false,
-      error: `Version de schéma non prise en charge (${String(raw.schemaVersion)}).`,
-    };
+    return failure('errors.backup.schemaVersion', { version: String(raw.schemaVersion) });
   }
   const exportedAt = asNonEmptyString(raw.exportedAt);
   if (!exportedAt) {
-    return {
-      ok: false,
-      error: 'Impossible de valider la sauvegarde. La date d’export est absente.',
-    };
+    return failure('errors.backup.noExportDate');
   }
   if (
     !Array.isArray(raw.projects) ||
@@ -312,10 +304,7 @@ export function validateBackupData(raw) {
     !Array.isArray(raw.whiteboards) ||
     !Array.isArray(raw.assets)
   ) {
-    return {
-      ok: false,
-      error: 'Impossible de valider la sauvegarde. Collections attendues manquantes.',
-    };
+    return failure('errors.backup.missingCollections');
   }
 
   const totalCount =
@@ -325,10 +314,7 @@ export function validateBackupData(raw) {
     raw.whiteboards.length +
     raw.assets.length;
   if (totalCount > MAX_IMPORT_RECORDS) {
-    return {
-      ok: false,
-      error: `La sauvegarde dépasse la limite de ${MAX_IMPORT_RECORDS} enregistrements.`,
-    };
+    return failure('errors.backup.tooManyRecords', { limit: MAX_IMPORT_RECORDS });
   }
 
   /** @type {Project[]} */
@@ -338,7 +324,7 @@ export function validateBackupData(raw) {
   for (const item of raw.projects) {
     const p = parseProject(item);
     if (!p || projectIds.has(p.id)) {
-      return { ok: false, error: 'Données de projet invalides ou dupliquées dans la sauvegarde.' };
+      return failure('errors.backup.invalidProject');
     }
     projectIds.add(p.id);
     projects.push(p);
@@ -351,10 +337,7 @@ export function validateBackupData(raw) {
   for (const item of raw.tasks) {
     const t = parseTask(item);
     if (!t || taskIds.has(t.id) || !projectIds.has(t.projectId)) {
-      return {
-        ok: false,
-        error: 'Données de tâche invalides ou rattachées à un projet inexistant.',
-      };
+      return failure('errors.backup.invalidTask');
     }
     taskIds.add(t.id);
     tasks.push(t);
@@ -367,10 +350,7 @@ export function validateBackupData(raw) {
   for (const item of raw.notes) {
     const n = parseNote(item);
     if (!n || noteIds.has(n.id) || (n.projectId !== null && !projectIds.has(n.projectId))) {
-      return {
-        ok: false,
-        error: 'Données de note invalides ou rattachées à un projet inexistant.',
-      };
+      return failure('errors.backup.invalidNote');
     }
     noteIds.add(n.id);
     notes.push(n);
@@ -383,10 +363,7 @@ export function validateBackupData(raw) {
   for (const item of raw.whiteboards) {
     const w = parseWhiteboard(item);
     if (!w || whiteboardIds.has(w.id) || (w.projectId !== null && !projectIds.has(w.projectId))) {
-      return {
-        ok: false,
-        error: 'Données de tableau blanc invalides ou rattachées à un projet inexistant.',
-      };
+      return failure('errors.backup.invalidWhiteboard');
     }
     whiteboardIds.add(w.id);
     whiteboards.push(w);
@@ -399,10 +376,7 @@ export function validateBackupData(raw) {
   for (const item of raw.assets) {
     const a = parseAssetMeta(item);
     if (!a || assetIds.has(a.id)) {
-      return {
-        ok: false,
-        error: 'Métadonnées d’image invalides ou type MIME non autorisé dans la sauvegarde.',
-      };
+      return failure('errors.backup.invalidAsset');
     }
     assetIds.add(a.id);
     assets.push(a);
@@ -432,27 +406,18 @@ export function validateBackupData(raw) {
  * Pure migration pipeline from older supported schema versions to CURRENT_SCHEMA_VERSION.
  * Rejects unknown future versions or corrupted payloads cleanly.
  * @param {unknown} raw
- * @returns {{ ok: true; data: BackupData } | { ok: false; error: string }}
+ * @returns {{ ok: true; data: BackupData } | import('./messages.js').Failure}
  */
 export function migrateBackupData(raw) {
   if (!isRecord(raw)) {
-    return {
-      ok: false,
-      error: 'Impossible de lire les données. Le document JSON est mal formé.',
-    };
+    return failure('errors.backup.malformedDocument');
   }
   const version = raw.schemaVersion;
   if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
-    return {
-      ok: false,
-      error: 'Version de schéma absente ou invalide dans la sauvegarde.',
-    };
+    return failure('errors.backup.schemaVersionMissing');
   }
   if (version > CURRENT_SCHEMA_VERSION) {
-    return {
-      ok: false,
-      error: `Cette sauvegarde utilise une version de schéma future (${version}) non supportée par cette version de Locavern.`,
-    };
+    return failure('errors.backup.futureSchema', { version });
   }
   if (version === 1) {
     const migrated = {

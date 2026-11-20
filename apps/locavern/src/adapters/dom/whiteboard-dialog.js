@@ -1,6 +1,5 @@
 /** @import { AppCommand, AppState, StoreEffect, Whiteboard } from '../../types.d.ts' */
 
-import { formatShortDateFr } from '../../core/dates.js';
 import { DEFAULT_WHITEBOARD_VIEWPORT } from '../../core/model.js';
 import { selectProjectById, selectProjects, selectTemplates } from '../../core/store.js';
 import { instantiateWhiteboardTemplate } from '../../core/templates.js';
@@ -11,6 +10,7 @@ import {
   notify,
   openDialogById,
 } from './app-shell.js';
+import { builtinTemplates, format, t } from '../i18n.js';
 
 /** @type {(() => void) | null} */
 let activeWhiteboardDialogCleanup = null;
@@ -48,7 +48,7 @@ export function openWhiteboardDialog(opts) {
   const effectiveMode = !isEdit ? 'edit' : readOnly ? 'view' : (mode ?? 'view');
 
   if (effectiveMode === 'view' && whiteboard) {
-    titleEl.textContent = 'Consulter le tableau blanc';
+    titleEl.textContent = t('whiteboards.consultTitle');
 
     const panel = document.createElement('div');
     panel.id = 'whiteboard-consult-view';
@@ -65,7 +65,7 @@ export function openWhiteboardDialog(opts) {
     if (whiteboard.archived) {
       const archBadge = document.createElement('span');
       archBadge.className = 'cv-badge';
-      archBadge.textContent = 'Archivé';
+      archBadge.textContent = t('common.archived');
       headRow.append(archBadge);
     }
 
@@ -86,9 +86,16 @@ export function openWhiteboardDialog(opts) {
       meta.append(row);
     };
 
-    addRow('Projet', proj ? (proj.archived ? `${proj.name} (archivé)` : proj.name) : 'Sans projet');
-    addRow('Éléments', `${elCount} élément${elCount > 1 ? 's' : ''} sur le canevas`);
-    addRow('Mise à jour', formatShortDateFr(whiteboard.updatedAt.slice(0, 10), true));
+    addRow(
+      t('common.project'),
+      proj
+        ? proj.archived
+          ? t('common.archivedName', { name: proj.name })
+          : proj.name
+        : t('common.noProject'),
+    );
+    addRow(t('common.elements'), t('whiteboards.onCanvas', { count: elCount }));
+    addRow(t('common.updatedAt'), format.formatShortDate(whiteboard.updatedAt.slice(0, 10), true));
 
     panel.append(headRow, meta);
     bodyEl.replaceChildren(panel);
@@ -97,7 +104,7 @@ export function openWhiteboardDialog(opts) {
     closeBtn.type = 'button';
     closeBtn.className = 'cv-btn';
     closeBtn.setAttribute('data-cv-close', '');
-    closeBtn.textContent = 'Fermer';
+    closeBtn.textContent = t('common.close');
 
     /** @type {HTMLElement[]} */
     const footerBtns = [closeBtn];
@@ -109,7 +116,7 @@ export function openWhiteboardDialog(opts) {
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
-      switchEditBtn.append(editIc, document.createTextNode(' Modifier'));
+      switchEditBtn.append(editIc, document.createTextNode(` ${t('common.edit')}`));
       switchEditBtn.addEventListener('click', () => {
         const fresh =
           store.getState().whiteboards.find((w) => w.id === whiteboard.id) ?? whiteboard;
@@ -143,7 +150,7 @@ export function openWhiteboardDialog(opts) {
     return;
   }
 
-  titleEl.textContent = isEdit ? 'Modifier le tableau blanc' : 'Nouveau tableau blanc';
+  titleEl.textContent = isEdit ? t('whiteboards.editTitle') : t('whiteboards.new');
 
   const form = document.createElement('form');
   form.id = 'form-whiteboard-dialog';
@@ -157,7 +164,7 @@ export function openWhiteboardDialog(opts) {
   const titleLabel = document.createElement('label');
   titleLabel.className = 'cv-label';
   titleLabel.htmlFor = 'whiteboard-dialog-title-input';
-  titleLabel.textContent = 'Titre du tableau blanc';
+  titleLabel.textContent = t('whiteboards.titleLabel');
   const req = document.createElement('span');
   req.className = 'cv-required';
   req.setAttribute('aria-hidden', 'true');
@@ -181,7 +188,7 @@ export function openWhiteboardDialog(opts) {
   titleErrIcon.className = 'ph ph-warning-circle cv-icon';
   titleErrIcon.setAttribute('aria-hidden', 'true');
   const titleErrText = document.createElement('span');
-  titleErrText.textContent = 'Saisissez un titre de tableau blanc.';
+  titleErrText.textContent = t('whiteboards.titleRequired');
   titleError.append(titleErrIcon, titleErrText);
   titleField.append(titleLabel, titleInput, titleError);
 
@@ -196,7 +203,7 @@ export function openWhiteboardDialog(opts) {
   const projectLabel = document.createElement('label');
   projectLabel.className = 'cv-label';
   projectLabel.htmlFor = 'whiteboard-dialog-project-select';
-  projectLabel.textContent = 'Projet associé';
+  projectLabel.textContent = t('common.linkedProject');
   const projectSelectWrap = document.createElement('div');
   projectSelectWrap.className = 'cv-select';
   const projectSelect = document.createElement('select');
@@ -205,12 +212,12 @@ export function openWhiteboardDialog(opts) {
   projectSelect.disabled = readOnly;
   const noProjOpt = document.createElement('option');
   noProjOpt.value = '';
-  noProjOpt.textContent = 'Sans projet';
+  noProjOpt.textContent = t('common.noProject');
   projectSelect.append(noProjOpt);
   for (const p of projectChoices) {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = p.archived ? `${p.name} (archivé)` : p.name;
+    opt.textContent = p.archived ? t('common.archivedName', { name: p.name }) : p.name;
     projectSelect.append(opt);
   }
   const preferredProj =
@@ -231,7 +238,7 @@ export function openWhiteboardDialog(opts) {
     const tplLabel = document.createElement('label');
     tplLabel.className = 'cv-label';
     tplLabel.htmlFor = 'whiteboard-dialog-template-select';
-    tplLabel.textContent = 'Modèle de canevas';
+    tplLabel.textContent = t('whiteboards.templateLabel');
     const tplWrap = document.createElement('div');
     tplWrap.className = 'cv-select';
     templateSelect = document.createElement('select');
@@ -240,12 +247,12 @@ export function openWhiteboardDialog(opts) {
     templateSelect.disabled = readOnly;
     const blankOpt = document.createElement('option');
     blankOpt.value = '';
-    blankOpt.textContent = 'Canevas vierge';
+    blankOpt.textContent = t('whiteboards.blankCanvas');
     templateSelect.append(blankOpt);
-    for (const tpl of selectTemplates(state, 'whiteboard')) {
+    for (const tpl of selectTemplates(state, 'whiteboard', builtinTemplates)) {
       const opt = document.createElement('option');
       opt.value = tpl.id;
-      opt.textContent = tpl.builtin ? tpl.name : `${tpl.name} (modèle local)`;
+      opt.textContent = tpl.builtin ? tpl.name : t('templates.localName', { name: tpl.name });
       templateSelect.append(opt);
     }
     tplWrap.append(templateSelect);
@@ -260,14 +267,14 @@ export function openWhiteboardDialog(opts) {
   cancelBtn.type = 'button';
   cancelBtn.className = 'cv-btn';
   cancelBtn.setAttribute('data-cv-close', '');
-  cancelBtn.textContent = 'Annuler';
+  cancelBtn.textContent = t('common.cancel');
 
   const saveBtn = document.createElement('button');
   saveBtn.type = 'submit';
   saveBtn.setAttribute('form', 'form-whiteboard-dialog');
   saveBtn.className = 'cv-btn cv-btn--primary';
   saveBtn.disabled = readOnly;
-  saveBtn.textContent = isEdit ? 'Enregistrer' : 'Créer le tableau blanc';
+  saveBtn.textContent = isEdit ? t('common.save') : t('whiteboards.create');
 
   /** @type {HTMLElement[]} */
   const footerButtons = [];
@@ -275,13 +282,13 @@ export function openWhiteboardDialog(opts) {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'cv-btn cv-btn--danger';
-    deleteBtn.textContent = 'Supprimer';
+    deleteBtn.textContent = t('common.delete');
     deleteBtn.addEventListener('click', async () => {
       closeDialogById('dialog-whiteboard');
       const confirmed = await confirmAction({
-        title: `Supprimer « ${whiteboard.title} » ?`,
-        message: 'Ce tableau blanc sera déplacé dans la corbeille locale.',
-        confirmLabel: 'Supprimer le tableau blanc',
+        title: t('common.deleteTitle', { title: whiteboard.title }),
+        message: t('whiteboards.deleteConfirm'),
+        confirmLabel: t('whiteboards.deleteLabel'),
         danger: true,
       });
       if (confirmed) {
@@ -293,7 +300,7 @@ export function openWhiteboardDialog(opts) {
         });
         notify({
           status: 'info',
-          title: 'Tableau blanc placé dans la corbeille',
+          title: t('whiteboards.trashed'),
           text: whiteboard.title,
         });
       }
@@ -304,7 +311,7 @@ export function openWhiteboardDialog(opts) {
     archiveBtn.id = 'btn-dialog-archive-whiteboard';
     archiveBtn.className = 'cv-btn';
     archiveBtn.style.marginRight = 'auto';
-    archiveBtn.textContent = whiteboard.archived ? 'Désarchiver' : 'Archiver';
+    archiveBtn.textContent = whiteboard.archived ? t('common.unarchive') : t('common.archive');
     archiveBtn.addEventListener('click', () => {
       const nextArchived = !whiteboard.archived;
       store.dispatch({
@@ -317,8 +324,10 @@ export function openWhiteboardDialog(opts) {
       cleanup();
       notify({
         status: 'info',
-        title: nextArchived ? 'Tableau blanc archivé' : 'Tableau blanc désarchivé',
-        text: nextArchived ? `${whiteboard.title} déplacé vers les archives.` : whiteboard.title,
+        title: nextArchived ? t('whiteboards.archivedTitle') : t('whiteboards.unarchivedTitle'),
+        text: nextArchived
+          ? t('whiteboards.archivedText', { title: whiteboard.title })
+          : whiteboard.title,
       });
     });
 
@@ -326,7 +335,7 @@ export function openWhiteboardDialog(opts) {
     consultBtn.type = 'button';
     consultBtn.id = 'btn-switch-whiteboard-dialog-view';
     consultBtn.className = 'cv-btn';
-    consultBtn.textContent = 'Consulter';
+    consultBtn.textContent = t('common.consult');
     consultBtn.addEventListener('click', () => {
       const fresh = store.getState().whiteboards.find((w) => w.id === whiteboard.id) ?? whiteboard;
       openWhiteboardDialog({ ...opts, whiteboard: fresh, mode: 'view' });
@@ -366,11 +375,13 @@ export function openWhiteboardDialog(opts) {
         },
         now,
       });
-      notify({ status: 'success', title: 'Tableau blanc enregistré', text: cleanTitle });
+      notify({ status: 'success', title: t('whiteboards.saved'), text: cleanTitle });
     } else {
       const selectedTplId = templateSelect?.value ?? '';
       const selectedTpl = selectedTplId
-        ? selectTemplates(store.getState(), 'whiteboard').find((t) => t.id === selectedTplId)
+        ? selectTemplates(store.getState(), 'whiteboard', builtinTemplates).find(
+            (t) => t.id === selectedTplId,
+          )
         : undefined;
       const instantiated = selectedTpl
         ? instantiateWhiteboardTemplate(selectedTpl, () => crypto.randomUUID())
@@ -386,7 +397,7 @@ export function openWhiteboardDialog(opts) {
         assetIds: [],
         now,
       });
-      notify({ status: 'success', title: 'Tableau blanc créé', text: cleanTitle });
+      notify({ status: 'success', title: t('whiteboards.created'), text: cleanTitle });
       onAfterCreate?.(id);
     }
 

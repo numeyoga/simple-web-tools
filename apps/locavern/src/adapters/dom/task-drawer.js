@@ -1,6 +1,6 @@
 /** @import { AppCommand, AppState, ChecklistItem, LocalRef, RichTextDoc, StoreEffect, Task, TaskPriority, TaskRecurrence, TaskStatus } from '../../types.d.ts' */
 
-import { formatShortDateFr, isOffHoursDueTime } from '../../core/dates.js';
+import { isOffHoursDueTime } from '../../core/dates.js';
 import {
   EMPTY_RICH_DOC,
   TASK_RECURRENCES,
@@ -34,12 +34,14 @@ import {
   notify,
   openDialogById,
 } from './app-shell.js';
+import { builtinTemplates, format, t } from '../i18n.js';
+import { errorText } from '../../core/messages.js';
 
 /** @type {Readonly<Record<TaskPriority, { label: string; badgeClass: string }>>} */
 const PRIORITY_META = {
-  low: { label: 'Basse', badgeClass: 'cv-badge' },
-  medium: { label: 'Moyenne', badgeClass: 'cv-badge cv-badge--warning' },
-  high: { label: 'Haute', badgeClass: 'cv-badge cv-badge--danger' },
+  low: { label: t('priority.low'), badgeClass: 'cv-badge' },
+  medium: { label: t('priority.medium'), badgeClass: 'cv-badge cv-badge--warning' },
+  high: { label: t('priority.high'), badgeClass: 'cv-badge cv-badge--danger' },
 };
 
 /** @type {(() => void) | null} */
@@ -102,14 +104,14 @@ export function openTaskDrawer(opts) {
   const effectiveMode = !isEdit ? 'edit' : readOnly ? 'view' : (mode ?? 'view');
 
   if (effectiveMode === 'view' && task) {
-    titleEl.textContent = 'Consulter la tâche';
+    titleEl.textContent = t('tasks.consultTitle');
 
     const panel = document.createElement('div');
     panel.id = 'task-consult-view';
     panel.className = 'lc-consult-panel';
 
     const configuredStatuses = state.preferences.taskStatuses;
-    const statusMeta = getTaskStatusMeta(task.status, configuredStatuses);
+    const statusMeta = getTaskStatusMeta(task.status, configuredStatuses, t);
     const statusRole = getTaskStatusRole(task.status, configuredStatuses);
     const prioInfo = PRIORITY_META[task.priority];
 
@@ -133,7 +135,8 @@ export function openTaskDrawer(opts) {
       roleBadge.className =
         statusRole === 'terminal' ? 'cv-badge cv-badge--success' : 'cv-badge cv-badge--accent';
       roleBadge.dataset.statusRole = statusRole;
-      roleBadge.textContent = statusRole === 'terminal' ? 'Terminal' : 'Initial';
+      roleBadge.textContent =
+        statusRole === 'terminal' ? t('common.terminal') : t('common.initial');
       badgesRow.append(roleBadge);
     }
 
@@ -145,7 +148,7 @@ export function openTaskDrawer(opts) {
     if (task.archived) {
       const archBadge = document.createElement('span');
       archBadge.className = 'cv-badge';
-      archBadge.textContent = 'Archivée';
+      archBadge.textContent = t('common.archivedFeminine');
       badgesRow.append(archBadge);
     }
 
@@ -172,8 +175,12 @@ export function openTaskDrawer(opts) {
 
     const proj = selectProjectById(state, task.projectId);
     addMetaRow(
-      'Projet',
-      proj ? (proj.archived ? `${proj.name} (archivé)` : proj.name) : 'Sans projet',
+      t('common.project'),
+      proj
+        ? proj.archived
+          ? t('common.archivedName', { name: proj.name })
+          : proj.name
+        : t('common.noProject'),
     );
 
     if (task.dueDate) {
@@ -181,7 +188,12 @@ export function openTaskDrawer(opts) {
       dueVal.className = 'lc-archive-inline-badges';
       dueVal.append(
         document.createTextNode(
-          `${formatShortDateFr(task.dueDate, true)}${task.dueTime ? ` à ${task.dueTime}` : ''}`,
+          task.dueTime
+            ? t('tasks.dueDateTime', {
+                date: format.formatShortDate(task.dueDate, true),
+                time: format.formatTimeOfDay(task.dueTime),
+              })
+            : format.formatShortDate(task.dueDate, true),
         ),
       );
       if (isOffHoursDueTime(task.dueTime)) {
@@ -190,19 +202,22 @@ export function openTaskDrawer(opts) {
         const moonIc = document.createElement('i');
         moonIc.className = 'ph ph-moon cv-icon';
         moonIc.setAttribute('aria-hidden', 'true');
-        offBadge.append(moonIc, document.createTextNode(' Créneau 18h–7h'));
+        offBadge.append(moonIc, document.createTextNode(` ${t('common.offHoursSlot')}`));
         dueVal.append(offBadge);
       }
-      addMetaRow('Échéance', dueVal);
+      addMetaRow(t('common.dueDate'), dueVal);
     } else {
-      addMetaRow('Échéance', 'Aucune');
+      addMetaRow(t('common.dueDate'), t('common.none'));
     }
 
-    addMetaRow('Récurrence', task.recurrence ? getTaskRecurrenceLabel(task.recurrence) : 'Aucune');
+    addMetaRow(
+      t('tasks.recurrence'),
+      task.recurrence ? getTaskRecurrenceLabel(task.recurrence, t) : t('common.none'),
+    );
 
     const tagEditor = createTagEditor({
       idPrefix: 'task-tags',
-      labelText: 'Étiquettes',
+      labelText: t('common.tags'),
       initialTags: task.tags ?? [],
       readOnly,
       viewOnly: true,
@@ -231,15 +246,15 @@ export function openTaskDrawer(opts) {
     const doneCount = checklistItems.filter((item) => item.done).length;
     checklistLabel.textContent =
       checklistItems.length > 0
-        ? `Liste de contrôle (${doneCount}/${checklistItems.length})`
-        : 'Liste de contrôle';
+        ? t('tasks.checklistProgress', { done: doneCount, total: checklistItems.length })
+        : t('tasks.checklist');
     checklistField.append(checklistLabel);
 
     if (checklistItems.length === 0) {
       const emptyCk = document.createElement('p');
       emptyCk.className = 'cv-caption';
       emptyCk.style.margin = '0';
-      emptyCk.textContent = 'Aucune étape.';
+      emptyCk.textContent = t('tasks.noSteps');
       checklistField.append(emptyCk);
     } else {
       const ul = document.createElement('ul');
@@ -254,7 +269,7 @@ export function openTaskDrawer(opts) {
         ic.setAttribute('aria-hidden', 'true');
         const sr = document.createElement('span');
         sr.className = 'lc-sr-only';
-        sr.textContent = item.done ? 'Fait : ' : 'À faire : ';
+        sr.textContent = item.done ? `${t('tasks.stepDone')} ` : `${t('tasks.stepTodo')} `;
         const txt = document.createElement('span');
         txt.className = 'lc-consult-checklist__text';
         txt.textContent = item.text;
@@ -270,7 +285,7 @@ export function openTaskDrawer(opts) {
     const descLabel = document.createElement('span');
     descLabel.className = 'cv-label';
     descLabel.id = 'task-desc-label';
-    descLabel.textContent = 'Description';
+    descLabel.textContent = t('common.description');
     descField.append(descLabel);
 
     /** @type {ReturnType<typeof mountRichTextEditor> | null} */
@@ -283,7 +298,7 @@ export function openTaskDrawer(opts) {
         container: editorHost,
         initialDoc: task.descriptionDoc,
         editable: false,
-        ariaLabel: 'Description de la tâche',
+        ariaLabel: t('tasks.descriptionAria'),
         resolveAssetUrl,
         onUploadImage: async () => null,
         onChange() {},
@@ -292,7 +307,7 @@ export function openTaskDrawer(opts) {
       const emptyDesc = document.createElement('p');
       emptyDesc.className = 'cv-caption';
       emptyDesc.style.margin = '0';
-      emptyDesc.textContent = 'Aucune description.';
+      emptyDesc.textContent = t('common.noDescription');
       descField.append(emptyDesc);
     }
 
@@ -310,7 +325,7 @@ export function openTaskDrawer(opts) {
     closeBtn.type = 'button';
     closeBtn.className = 'cv-btn';
     closeBtn.setAttribute('data-cv-close', '');
-    closeBtn.textContent = 'Fermer';
+    closeBtn.textContent = t('common.close');
 
     /** @type {HTMLElement[]} */
     const footerBtns = [closeBtn];
@@ -322,7 +337,7 @@ export function openTaskDrawer(opts) {
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
-      switchEditBtn.append(editIc, document.createTextNode(' Modifier'));
+      switchEditBtn.append(editIc, document.createTextNode(` ${t('common.edit')}`));
       switchEditBtn.addEventListener('click', () => {
         const freshTask = store.getState().tasks.find((t) => t.id === task.id) ?? task;
         openTaskDrawer({ ...opts, task: freshTask, mode: 'edit' });
@@ -357,7 +372,7 @@ export function openTaskDrawer(opts) {
     return;
   }
 
-  titleEl.textContent = isEdit ? 'Modifier la tâche' : 'Nouvelle tâche';
+  titleEl.textContent = isEdit ? t('tasks.editTitle') : t('tasks.new');
 
   const form = document.createElement('form');
   form.id = 'form-task-drawer';
@@ -372,7 +387,7 @@ export function openTaskDrawer(opts) {
   const titleLabel = document.createElement('label');
   titleLabel.className = 'cv-label';
   titleLabel.htmlFor = 'task-title-input';
-  titleLabel.textContent = 'Titre';
+  titleLabel.textContent = t('tasks.titleLabel');
   const req = document.createElement('span');
   req.className = 'cv-required';
   req.setAttribute('aria-hidden', 'true');
@@ -396,7 +411,7 @@ export function openTaskDrawer(opts) {
   titleErrIcon.className = 'ph ph-warning-circle cv-icon';
   titleErrIcon.setAttribute('aria-hidden', 'true');
   const titleErrText = document.createElement('span');
-  titleErrText.textContent = 'Saisissez un titre de tâche.';
+  titleErrText.textContent = t('tasks.titleRequired');
   titleError.append(titleErrIcon, titleErrText);
   titleField.append(titleLabel, titleInput, titleError);
 
@@ -412,7 +427,7 @@ export function openTaskDrawer(opts) {
   const projectLabel = document.createElement('label');
   projectLabel.className = 'cv-label';
   projectLabel.htmlFor = 'task-project-select';
-  projectLabel.textContent = 'Projet';
+  projectLabel.textContent = t('common.project');
   const projectSelectWrap = document.createElement('div');
   projectSelectWrap.className = 'cv-select';
   const projectSelect = document.createElement('select');
@@ -422,7 +437,7 @@ export function openTaskDrawer(opts) {
   for (const p of projectChoices) {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = p.archived ? `${p.name} (archivé)` : p.name;
+    opt.textContent = p.archived ? t('common.archivedName', { name: p.name }) : p.name;
     projectSelect.append(opt);
   }
   const preferredProject =
@@ -444,7 +459,7 @@ export function openTaskDrawer(opts) {
   const statusLabel = document.createElement('label');
   statusLabel.className = 'cv-label';
   statusLabel.htmlFor = 'task-status-select';
-  statusLabel.textContent = 'Statut';
+  statusLabel.textContent = t('common.status');
   const statusRoleBadge = document.createElement('span');
   statusRoleBadge.id = 'task-status-role-badge';
   statusRoleBadge.className = 'cv-badge';
@@ -458,7 +473,7 @@ export function openTaskDrawer(opts) {
   statusSelect.className = 'cv-input';
   statusSelect.disabled = readOnly;
 
-  const currentStatusMeta = task ? getTaskStatusMeta(task.status, configuredStatuses) : null;
+  const currentStatusMeta = task ? getTaskStatusMeta(task.status, configuredStatuses, t) : null;
   if (currentStatusMeta?.kind === 'unknown' && task?.status) {
     const unknownOpt = document.createElement('option');
     unknownOpt.value = task.status;
@@ -469,7 +484,7 @@ export function openTaskDrawer(opts) {
 
   const noneOpt = document.createElement('option');
   noneOpt.value = '';
-  noneOpt.textContent = 'Sans statut';
+  noneOpt.textContent = t('statuses.none');
   statusSelect.append(noneOpt);
 
   for (const statusCfg of configuredStatuses) {
@@ -496,7 +511,7 @@ export function openTaskDrawer(opts) {
   const priorityLabel = document.createElement('label');
   priorityLabel.className = 'cv-label';
   priorityLabel.htmlFor = 'task-priority-select';
-  priorityLabel.textContent = 'Priorité';
+  priorityLabel.textContent = t('common.priority');
   const priorityWrap = document.createElement('div');
   priorityWrap.className = 'cv-select';
   const prioritySelect = document.createElement('select');
@@ -505,9 +520,9 @@ export function openTaskDrawer(opts) {
   prioritySelect.disabled = readOnly;
   /** @type {Array<[TaskPriority, string]>} */
   const priorityOptions = [
-    ['low', 'Basse'],
-    ['medium', 'Moyenne'],
-    ['high', 'Haute'],
+    ['low', t('priority.low')],
+    ['medium', t('priority.medium')],
+    ['high', t('priority.high')],
   ];
   for (const [val, label] of priorityOptions) {
     const opt = document.createElement('option');
@@ -525,7 +540,7 @@ export function openTaskDrawer(opts) {
   const dueLabel = document.createElement('label');
   dueLabel.className = 'cv-label';
   dueLabel.htmlFor = 'task-due-input';
-  dueLabel.textContent = 'Échéance et heure';
+  dueLabel.textContent = t('tasks.dueAndTime');
 
   const dueInputsRow = document.createElement('div');
   dueInputsRow.className = 'lc-due-inputs';
@@ -541,7 +556,7 @@ export function openTaskDrawer(opts) {
   timeInput.id = 'task-due-time-input';
   timeInput.type = 'time';
   timeInput.className = 'cv-input lc-due-inputs__time';
-  timeInput.setAttribute('aria-label', 'Heure d’échéance');
+  timeInput.setAttribute('aria-label', t('tasks.dueTimeLabel'));
   const initialTime = task ? (task.dueTime ?? '') : (normalizeDueTime(defaultDueTime) ?? '');
   timeInput.value = dueInput.value ? initialTime : '';
 
@@ -551,7 +566,7 @@ export function openTaskDrawer(opts) {
   const moonIc = document.createElement('i');
   moonIc.className = 'ph ph-moon cv-icon';
   moonIc.setAttribute('aria-hidden', 'true');
-  offHoursHint.append(moonIc, document.createTextNode(' Créneau 18h–7h'));
+  offHoursHint.append(moonIc, document.createTextNode(` ${t('common.offHoursSlot')}`));
 
   function syncDueTimeState() {
     if (!dueInput.value) {
@@ -578,7 +593,7 @@ export function openTaskDrawer(opts) {
   const recurrenceLabel = document.createElement('label');
   recurrenceLabel.className = 'cv-label';
   recurrenceLabel.htmlFor = 'task-recurrence-select';
-  recurrenceLabel.textContent = 'Récurrence';
+  recurrenceLabel.textContent = t('tasks.recurrence');
   const recurrenceWrap = document.createElement('div');
   recurrenceWrap.className = 'cv-select';
   const recurrenceSelect = document.createElement('select');
@@ -587,25 +602,24 @@ export function openTaskDrawer(opts) {
   recurrenceSelect.disabled = readOnly;
   const noRecOpt = document.createElement('option');
   noRecOpt.value = '';
-  noRecOpt.textContent = 'Aucune';
+  noRecOpt.textContent = t('common.none');
   recurrenceSelect.append(noRecOpt);
   for (const rec of TASK_RECURRENCES) {
     const opt = document.createElement('option');
     opt.value = rec;
-    opt.textContent = getTaskRecurrenceLabel(rec);
+    opt.textContent = getTaskRecurrenceLabel(rec, t);
     recurrenceSelect.append(opt);
   }
   recurrenceSelect.value = task?.recurrence ?? '';
   recurrenceWrap.append(recurrenceSelect);
   const recurrenceHint = document.createElement('span');
   recurrenceHint.className = 'cv-hint';
-  recurrenceHint.textContent =
-    'Lorsque la tâche passe à un statut terminal, l’occurrence suivante est créée automatiquement.';
+  recurrenceHint.textContent = t('tasks.recurrenceHint');
   recurrenceField.append(recurrenceLabel, recurrenceWrap, recurrenceHint);
 
   const tagEditor = createTagEditor({
     idPrefix: 'task-tags',
-    labelText: 'Étiquettes',
+    labelText: t('common.tags'),
     initialTags: task?.tags ?? [],
     suggestions: selectAllTags(state),
     readOnly,
@@ -633,12 +647,12 @@ export function openTaskDrawer(opts) {
       statusRoleBadge.hidden = false;
       statusRoleBadge.className = 'cv-badge cv-badge--accent';
       statusRoleBadge.dataset.statusRole = 'initial';
-      statusRoleBadge.textContent = 'Initial';
+      statusRoleBadge.textContent = t('common.initial');
     } else if (role === 'terminal') {
       statusRoleBadge.hidden = false;
       statusRoleBadge.className = 'cv-badge cv-badge--success';
       statusRoleBadge.dataset.statusRole = 'terminal';
-      statusRoleBadge.textContent = 'Terminal';
+      statusRoleBadge.textContent = t('common.terminal');
     } else {
       statusRoleBadge.hidden = true;
       delete statusRoleBadge.dataset.statusRole;
@@ -656,7 +670,7 @@ export function openTaskDrawer(opts) {
   checklistFieldset.className = 'cv-fieldset';
   const checklistLegend = document.createElement('legend');
   checklistLegend.className = 'cv-label';
-  checklistLegend.textContent = 'Liste de contrôle';
+  checklistLegend.textContent = t('tasks.checklist');
   const checklistList = document.createElement('div');
   checklistList.className = 'lc-checklist';
 
@@ -666,14 +680,14 @@ export function openTaskDrawer(opts) {
   checklistInput.id = 'task-checklist-new';
   checklistInput.type = 'text';
   checklistInput.className = 'cv-input';
-  checklistInput.placeholder = 'Ajouter une étape';
-  checklistInput.setAttribute('aria-label', 'Nouvelle étape de la liste de contrôle');
+  checklistInput.placeholder = t('tasks.addStep');
+  checklistInput.setAttribute('aria-label', t('tasks.newStepLabel'));
   checklistInput.disabled = readOnly;
 
   const checklistAddBtn = document.createElement('button');
   checklistAddBtn.type = 'button';
   checklistAddBtn.className = 'cv-btn';
-  checklistAddBtn.textContent = 'Ajouter';
+  checklistAddBtn.textContent = t('common.add');
   checklistAddBtn.disabled = readOnly;
 
   function renderChecklist() {
@@ -698,8 +712,8 @@ export function openTaskDrawer(opts) {
       const rmBtn = document.createElement('button');
       rmBtn.type = 'button';
       rmBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
-      rmBtn.setAttribute('aria-label', `Retirer ${item.text}`);
-      setTooltip(rmBtn, 'Retirer l’étape');
+      rmBtn.setAttribute('aria-label', t('tasks.removeStepNamed', { name: item.text }));
+      setTooltip(rmBtn, t('tasks.removeStep'));
       rmBtn.disabled = readOnly;
       const rmIcon = document.createElement('i');
       rmIcon.className = 'ph ph-x cv-icon';
@@ -726,8 +740,8 @@ export function openTaskDrawer(opts) {
 
   const checklistTemplatePicker = createTemplatePicker({
     idPrefix: 'task-checklist-tpl',
-    labelText: 'Modèles de checklist',
-    templates: selectTemplates(store.getState(), 'checklist'),
+    labelText: t('tasks.checklistTemplates'),
+    templates: selectTemplates(store.getState(), 'checklist', builtinTemplates),
     readOnly,
     showSave: true,
     onApply(tpl) {
@@ -735,15 +749,15 @@ export function openTaskDrawer(opts) {
       if (added.length === 0) return;
       checklist = [...checklist, ...added];
       renderChecklist();
-      notify({ status: 'success', title: 'Modèle de checklist appliqué', text: tpl.name });
+      notify({ status: 'success', title: t('tasks.checklistTemplateApplied'), text: tpl.name });
     },
     onSaveNew(name) {
       const texts = checklist.map((item) => item.text.trim()).filter(Boolean);
       if (texts.length === 0) {
         notify({
           status: 'warning',
-          title: 'Liste de contrôle vide',
-          text: 'Ajoutez au moins une étape avant d’enregistrer un modèle.',
+          title: t('tasks.checklistEmpty'),
+          text: t('tasks.checklistEmptyText'),
         });
         return false;
       }
@@ -756,14 +770,19 @@ export function openTaskDrawer(opts) {
         checklistItems: texts,
         now: new Date().toISOString(),
       });
-      checklistTemplatePicker.setTemplates(selectTemplates(store.getState(), 'checklist'), id);
-      notify({ status: 'success', title: 'Modèle de checklist enregistré', text: name });
+      checklistTemplatePicker.setTemplates(
+        selectTemplates(store.getState(), 'checklist', builtinTemplates),
+        id,
+      );
+      notify({ status: 'success', title: t('tasks.checklistTemplateSaved'), text: name });
       return id;
     },
     onDeleteCustom(tpl) {
       store.dispatch({ type: 'delete_template', id: tpl.id });
-      checklistTemplatePicker.setTemplates(selectTemplates(store.getState(), 'checklist'));
-      notify({ status: 'info', title: 'Modèle supprimé', text: tpl.name });
+      checklistTemplatePicker.setTemplates(
+        selectTemplates(store.getState(), 'checklist', builtinTemplates),
+      );
+      notify({ status: 'info', title: t('templates.deleted'), text: tpl.name });
     },
   });
 
@@ -782,7 +801,7 @@ export function openTaskDrawer(opts) {
   const descLabel = document.createElement('span');
   descLabel.className = 'cv-label';
   descLabel.id = 'task-desc-label';
-  descLabel.textContent = 'Description';
+  descLabel.textContent = t('common.description');
   const editorHost = document.createElement('div');
   descField.append(descLabel, editorHost);
 
@@ -801,21 +820,21 @@ export function openTaskDrawer(opts) {
     container: editorHost,
     initialDoc,
     editable: !readOnly,
-    ariaLabel: 'Description de la tâche',
+    ariaLabel: t('tasks.descriptionAria'),
     resolveAssetUrl,
     onUploadImage: handleUploadImage,
     onBlockedRemoteImage: () => {
       notify({
         status: 'warning',
-        title: 'Image distante bloquée',
-        text: 'Seules les images locales enregistrées sur cet appareil sont autorisées.',
+        title: t('editor.remoteImageBlocked'),
+        text: t('editor.remoteImageBlockedText'),
       });
     },
     onRejectedLink: () => {
       notify({
         status: 'warning',
-        title: 'Lien refusé',
-        text: 'Seuls les liens https:// et mailto: sont acceptés.',
+        title: t('editor.linkRejected'),
+        text: t('editor.linkRejectedText'),
       });
     },
     onChange() {},
@@ -840,14 +859,14 @@ export function openTaskDrawer(opts) {
   cancelBtn.type = 'button';
   cancelBtn.className = 'cv-btn';
   cancelBtn.setAttribute('data-cv-close', '');
-  cancelBtn.textContent = 'Annuler';
+  cancelBtn.textContent = t('common.cancel');
 
   const saveBtn = document.createElement('button');
   saveBtn.type = 'submit';
   saveBtn.setAttribute('form', 'form-task-drawer');
   saveBtn.className = 'cv-btn cv-btn--primary';
   saveBtn.disabled = readOnly;
-  saveBtn.textContent = isEdit ? 'Enregistrer' : 'Créer la tâche';
+  saveBtn.textContent = isEdit ? t('common.save') : t('tasks.create');
 
   /** @type {HTMLElement[]} */
   const footerButtons = [];
@@ -855,13 +874,13 @@ export function openTaskDrawer(opts) {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'cv-btn cv-btn--danger';
-    deleteBtn.textContent = 'Supprimer';
+    deleteBtn.textContent = t('common.delete');
     deleteBtn.addEventListener('click', async () => {
       closeDialogById('drawer-task');
       const confirmed = await confirmAction({
-        title: `Supprimer « ${task.title} » ?`,
-        message: 'Cette tâche sera déplacée dans la corbeille locale.',
-        confirmLabel: 'Supprimer la tâche',
+        title: t('common.deleteTitle', { title: task.title }),
+        message: t('tasks.deleteConfirm'),
+        confirmLabel: t('tasks.deleteLabel'),
         danger: true,
       });
       if (confirmed) {
@@ -871,7 +890,7 @@ export function openTaskDrawer(opts) {
           trashId: crypto.randomUUID(),
           now: new Date().toISOString(),
         });
-        notify({ status: 'info', title: 'Tâche placée dans la corbeille', text: task.title });
+        notify({ status: 'info', title: t('tasks.trashed'), text: task.title });
       }
     });
 
@@ -880,7 +899,7 @@ export function openTaskDrawer(opts) {
     archiveBtn.id = 'btn-archive-task';
     archiveBtn.className = 'cv-btn';
     archiveBtn.style.marginRight = 'auto';
-    archiveBtn.textContent = task.archived ? 'Désarchiver' : 'Archiver';
+    archiveBtn.textContent = task.archived ? t('common.unarchive') : t('common.archive');
     archiveBtn.addEventListener('click', () => {
       const nextArchived = !task.archived;
       store.dispatch({
@@ -893,8 +912,8 @@ export function openTaskDrawer(opts) {
       cleanup();
       notify({
         status: 'info',
-        title: nextArchived ? 'Tâche archivée' : 'Tâche désarchivée',
-        text: nextArchived ? `${task.title} déplacée vers les archives.` : task.title,
+        title: nextArchived ? t('tasks.archived') : t('tasks.unarchived'),
+        text: nextArchived ? t('tasks.archivedText', { title: task.title }) : task.title,
       });
     });
 
@@ -902,7 +921,7 @@ export function openTaskDrawer(opts) {
     consultBtn.type = 'button';
     consultBtn.id = 'btn-switch-task-view';
     consultBtn.className = 'cv-btn';
-    consultBtn.textContent = 'Consulter';
+    consultBtn.textContent = t('common.consult');
     consultBtn.addEventListener('click', () => {
       const freshTask = store.getState().tasks.find((t) => t.id === task.id) ?? task;
       openTaskDrawer({ ...opts, task: freshTask, mode: 'view' });
@@ -984,11 +1003,11 @@ export function openTaskDrawer(opts) {
         if (spawned) {
           notify({
             status: 'success',
-            title: 'Prochaine occurrence créée',
+            title: t('tasks.nextOccurrenceTitle'),
             text: spawned.dueDate ? `${spawned.title} (${spawned.dueDate})` : spawned.title,
           });
         } else {
-          notify({ status: 'success', title: 'Tâche enregistrée', text: cleanTitle });
+          notify({ status: 'success', title: t('tasks.saved'), text: cleanTitle });
         }
       } else {
         store.dispatch({
@@ -1008,13 +1027,13 @@ export function openTaskDrawer(opts) {
           assetIds,
           now,
         });
-        notify({ status: 'success', title: 'Tâche créée', text: cleanTitle });
+        notify({ status: 'success', title: t('tasks.created'), text: cleanTitle });
       }
     } catch (err) {
       notify({
         status: 'danger',
-        title: 'Enregistrement impossible',
-        text: err instanceof Error ? err.message : 'Erreur de validation.',
+        title: t('common.saveFailed'),
+        text: errorText(err, t, 'errors.validation'),
       });
       return;
     }

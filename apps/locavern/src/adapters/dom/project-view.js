@@ -1,6 +1,5 @@
 /** @import { AppCommand, AppState, Project, StoreEffect } from '../../types.d.ts' */
 
-import { formatShortDateFr } from '../../core/dates.js';
 import { selectProjects } from '../../core/store.js';
 import {
   applyDialogPresentation,
@@ -9,6 +8,7 @@ import {
   notify,
   openDialogById,
 } from './app-shell.js';
+import { describeCounts, format, t } from '../i18n.js';
 
 /**
  * Open the Covenant dialog (modal or drawer per user preference) to consult, create, or edit a project.
@@ -44,7 +44,7 @@ export function openProjectModal({
   const effectiveMode = !isExisting ? 'edit' : readOnly ? 'view' : (mode ?? 'view');
 
   if (effectiveMode === 'view' && project) {
-    titleEl.textContent = 'Consulter le projet';
+    titleEl.textContent = t('projects.consultTitle');
 
     const panel = document.createElement('div');
     panel.id = 'project-consult-view';
@@ -61,7 +61,10 @@ export function openProjectModal({
     badge.className = project.archived ? 'cv-badge cv-badge--warning' : 'cv-badge cv-badge--accent';
     const dot = document.createElement('span');
     dot.className = 'cv-badge__dot';
-    badge.append(dot, document.createTextNode(project.archived ? 'Archivé' : 'Actif'));
+    badge.append(
+      dot,
+      document.createTextNode(project.archived ? t('common.archived') : t('common.active')),
+    );
     headRow.append(projHeading, badge);
 
     const taskCount = state.tasks.filter((t) => t.projectId === project.id && !t.archived).length;
@@ -85,12 +88,9 @@ export function openProjectModal({
       meta.append(row);
     };
 
-    addRow('Description', project.description || 'Aucune description.');
-    addRow(
-      'Éléments actifs',
-      `${taskCount} tâche${taskCount > 1 ? 's' : ''} · ${noteCount} note${noteCount > 1 ? 's' : ''} · ${wbCount} tableau${wbCount > 1 ? 'x' : ''} blanc${wbCount > 1 ? 's' : ''}`,
-    );
-    addRow('Mise à jour', formatShortDateFr(project.updatedAt.slice(0, 10), true));
+    addRow(t('common.description'), project.description || t('common.noDescription'));
+    addRow(t('projects.activeItems'), describeCounts(taskCount, noteCount, wbCount));
+    addRow(t('common.updatedAt'), format.formatShortDate(project.updatedAt.slice(0, 10), true));
 
     const quickNav = document.createElement('div');
     quickNav.className = 'lc-consult-actions';
@@ -98,7 +98,7 @@ export function openProjectModal({
     const tasksBtn = document.createElement('button');
     tasksBtn.type = 'button';
     tasksBtn.className = 'cv-btn cv-btn--sm';
-    tasksBtn.textContent = 'Ouvrir les tâches';
+    tasksBtn.textContent = t('projects.openTasks');
     tasksBtn.addEventListener('click', () => {
       closeDialogById('modal-project');
       store.dispatch({ type: 'select_project', projectId: project.id });
@@ -108,7 +108,7 @@ export function openProjectModal({
     const notesBtn = document.createElement('button');
     notesBtn.type = 'button';
     notesBtn.className = 'cv-btn cv-btn--sm';
-    notesBtn.textContent = 'Ouvrir les notes';
+    notesBtn.textContent = t('projects.openNotes');
     notesBtn.addEventListener('click', () => {
       closeDialogById('modal-project');
       if (onOpenProjectNotes) {
@@ -122,7 +122,7 @@ export function openProjectModal({
     const wbBtn = document.createElement('button');
     wbBtn.type = 'button';
     wbBtn.className = 'cv-btn cv-btn--sm';
-    wbBtn.textContent = 'Ouvrir les tableaux blancs';
+    wbBtn.textContent = t('projects.openWhiteboards');
     wbBtn.addEventListener('click', () => {
       closeDialogById('modal-project');
       if (onOpenProjectWhiteboards) {
@@ -141,7 +141,7 @@ export function openProjectModal({
     closeBtn.type = 'button';
     closeBtn.className = 'cv-btn';
     closeBtn.setAttribute('data-cv-close', '');
-    closeBtn.textContent = 'Fermer';
+    closeBtn.textContent = t('common.close');
 
     /** @type {HTMLElement[]} */
     const footerBtns = [closeBtn];
@@ -153,7 +153,7 @@ export function openProjectModal({
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
-      switchEditBtn.append(editIc, document.createTextNode(' Modifier'));
+      switchEditBtn.append(editIc, document.createTextNode(` ${t('common.edit')}`));
       switchEditBtn.addEventListener('click', () => {
         const fresh = store.getState().projects.find((p) => p.id === project.id) ?? project;
         openProjectModal({
@@ -184,7 +184,7 @@ export function openProjectModal({
   }
 
   const isEdit = Boolean(project);
-  titleEl.textContent = isEdit ? 'Modifier le projet' : 'Nouveau projet';
+  titleEl.textContent = isEdit ? t('projects.editTitle') : t('projects.newTitle');
 
   const form = document.createElement('form');
   form.id = 'form-project';
@@ -195,7 +195,7 @@ export function openProjectModal({
   const nameLabel = document.createElement('label');
   nameLabel.className = 'cv-label';
   nameLabel.htmlFor = 'project-name-input';
-  nameLabel.textContent = 'Nom du projet';
+  nameLabel.textContent = t('projects.nameLabel');
   const reqStar = document.createElement('span');
   reqStar.className = 'cv-required';
   reqStar.setAttribute('aria-hidden', 'true');
@@ -220,7 +220,7 @@ export function openProjectModal({
   errIcon.className = 'ph ph-warning-circle cv-icon';
   errIcon.setAttribute('aria-hidden', 'true');
   const errText = document.createElement('span');
-  errText.textContent = 'Saisissez un nom de projet non vide.';
+  errText.textContent = t('projects.nameRequired');
   nameError.append(errIcon, errText);
 
   nameField.append(nameLabel, nameInput, nameError);
@@ -230,7 +230,7 @@ export function openProjectModal({
   const descLabel = document.createElement('label');
   descLabel.className = 'cv-label';
   descLabel.htmlFor = 'project-desc-input';
-  descLabel.textContent = 'Description';
+  descLabel.textContent = t('common.description');
   const descInput = document.createElement('textarea');
   descInput.id = 'project-desc-input';
   descInput.className = 'cv-input';
@@ -251,14 +251,14 @@ export function openProjectModal({
   cancelBtn.type = 'button';
   cancelBtn.className = 'cv-btn';
   cancelBtn.setAttribute('data-cv-close', '');
-  cancelBtn.textContent = 'Annuler';
+  cancelBtn.textContent = t('common.cancel');
 
   const saveBtn = document.createElement('button');
   saveBtn.type = 'submit';
   saveBtn.setAttribute('form', 'form-project');
   saveBtn.className = 'cv-btn cv-btn--primary';
   saveBtn.disabled = readOnly;
-  saveBtn.textContent = isEdit ? 'Enregistrer' : 'Créer le projet';
+  saveBtn.textContent = isEdit ? t('common.save') : t('projects.create');
 
   /** @type {HTMLElement[]} */
   const footerButtons = [];
@@ -268,7 +268,7 @@ export function openProjectModal({
     consultBtn.id = 'btn-switch-project-view';
     consultBtn.className = 'cv-btn';
     consultBtn.style.marginRight = 'auto';
-    consultBtn.textContent = 'Consulter';
+    consultBtn.textContent = t('common.consult');
     consultBtn.addEventListener('click', () => {
       const fresh = store.getState().projects.find((p) => p.id === project.id) ?? project;
       openProjectModal({
@@ -309,7 +309,7 @@ export function openProjectModal({
         description: descInput.value,
         now,
       });
-      notify({ status: 'success', title: 'Projet mis à jour', text: cleanName });
+      notify({ status: 'success', title: t('projects.updated'), text: cleanName });
     } else {
       store.dispatch({
         type: 'create_project',
@@ -318,7 +318,7 @@ export function openProjectModal({
         description: descInput.value,
         now,
       });
-      notify({ status: 'success', title: 'Projet créé', text: cleanName });
+      notify({ status: 'success', title: t('projects.created'), text: cleanName });
     }
     closeDialogById('modal-project');
   });
@@ -367,7 +367,7 @@ export function renderProjectsView({
   const heading = document.createElement('h2');
   heading.className = 'cv-h2';
   heading.style.margin = '0';
-  heading.textContent = 'Vos projets';
+  heading.textContent = t('projects.heading');
   leftGroup.append(heading);
 
   const newBtn = document.createElement('button');
@@ -378,7 +378,7 @@ export function renderProjectsView({
   const plusIcon = document.createElement('i');
   plusIcon.className = 'ph ph-plus cv-icon';
   plusIcon.setAttribute('aria-hidden', 'true');
-  newBtn.append(plusIcon, document.createTextNode(' Nouveau projet'));
+  newBtn.append(plusIcon, document.createTextNode(` ${t('projects.newButton')}`));
   newBtn.addEventListener('click', () =>
     openProjectModal({ store, onOpenProjectNotes, onOpenProjectWhiteboards }),
   );
@@ -399,16 +399,16 @@ export function renderProjectsView({
 
     const title = document.createElement('p');
     title.className = 'cv-empty__title';
-    title.textContent = 'Aucun projet pour le moment';
+    title.textContent = t('projects.emptyTitle');
 
     const desc = document.createElement('p');
-    desc.textContent = 'Créez un projet pour organiser vos tâches et vos notes.';
+    desc.textContent = t('projects.emptyText');
 
     const cta = document.createElement('button');
     cta.type = 'button';
     cta.className = 'cv-btn cv-btn--primary';
     cta.disabled = state.readOnly;
-    cta.textContent = 'Créer un projet';
+    cta.textContent = t('projects.createCta');
     cta.addEventListener('click', () =>
       openProjectModal({ store, onOpenProjectNotes, onOpenProjectWhiteboards }),
     );
@@ -430,11 +430,10 @@ export function renderProjectsView({
 
     const title = document.createElement('p');
     title.className = 'cv-empty__title';
-    title.textContent = 'Tous vos projets sont archivés';
+    title.textContent = t('projects.allArchivedTitle');
 
     const desc = document.createElement('p');
-    desc.textContent =
-      'Consultez l’écran Archives pour retrouver et désarchiver vos anciens projets, ou créez un nouveau projet actif.';
+    desc.textContent = t('projects.allArchivedText');
 
     const emptyActions = document.createElement('div');
     emptyActions.className = 'lc-view-header__group';
@@ -442,7 +441,7 @@ export function renderProjectsView({
     const archivesBtn = document.createElement('button');
     archivesBtn.type = 'button';
     archivesBtn.className = 'cv-btn';
-    archivesBtn.textContent = 'Ouvrir les archives';
+    archivesBtn.textContent = t('projects.openArchives');
     archivesBtn.addEventListener('click', () => {
       store.dispatch({ type: 'set_view', view: 'archives' });
     });
@@ -451,7 +450,7 @@ export function renderProjectsView({
     cta.type = 'button';
     cta.className = 'cv-btn cv-btn--primary';
     cta.disabled = state.readOnly;
-    cta.textContent = 'Créer un projet';
+    cta.textContent = t('projects.createCta');
     cta.addEventListener('click', () =>
       openProjectModal({ store, onOpenProjectNotes, onOpenProjectWhiteboards }),
     );
@@ -480,13 +479,13 @@ export function renderProjectsView({
     badge.className = 'cv-badge cv-badge--accent';
     const dot = document.createElement('span');
     dot.className = 'cv-badge__dot';
-    badge.append(dot, document.createTextNode('Actif'));
+    badge.append(dot, document.createTextNode(t('common.active')));
 
     cardHead.append(title, badge);
 
     const desc = document.createElement('p');
     desc.className = 'lc-project-card__desc';
-    desc.textContent = project.description || 'Aucune description.';
+    desc.textContent = project.description || t('common.noDescription');
 
     const taskCount = state.tasks.filter((t) => t.projectId === project.id && !t.archived).length;
     const totalTaskCount = state.tasks.filter((t) => t.projectId === project.id).length;
@@ -496,7 +495,7 @@ export function renderProjectsView({
     ).length;
     const meta = document.createElement('div');
     meta.className = 'cv-card__meta cv-num';
-    meta.textContent = `${taskCount} tâche${taskCount > 1 ? 's' : ''} · ${noteCount} note${noteCount > 1 ? 's' : ''} · ${wbCount} tableau${wbCount > 1 ? 'x' : ''} blanc${wbCount > 1 ? 's' : ''}`;
+    meta.textContent = describeCounts(taskCount, noteCount, wbCount);
 
     const footer = document.createElement('div');
     footer.className = 'cv-card__footer lc-project-card__footer';
@@ -507,8 +506,8 @@ export function renderProjectsView({
     const openTasksBtn = document.createElement('button');
     openTasksBtn.type = 'button';
     openTasksBtn.className = 'cv-btn cv-btn--sm';
-    openTasksBtn.textContent = 'Ouvrir les tâches';
-    openTasksBtn.setAttribute('aria-label', `Ouvrir les tâches de ${project.name}`);
+    openTasksBtn.textContent = t('projects.openTasks');
+    openTasksBtn.setAttribute('aria-label', t('projects.openTasksNamed', { name: project.name }));
     openTasksBtn.addEventListener('click', () => {
       store.dispatch({ type: 'select_project', projectId: project.id });
       store.dispatch({ type: 'set_view', view: 'tasks' });
@@ -517,8 +516,8 @@ export function renderProjectsView({
     const openNotesBtn = document.createElement('button');
     openNotesBtn.type = 'button';
     openNotesBtn.className = 'cv-btn cv-btn--sm';
-    openNotesBtn.textContent = 'Ouvrir les notes';
-    openNotesBtn.setAttribute('aria-label', `Ouvrir les notes de ${project.name}`);
+    openNotesBtn.textContent = t('projects.openNotes');
+    openNotesBtn.setAttribute('aria-label', t('projects.openNotesNamed', { name: project.name }));
     openNotesBtn.addEventListener('click', () => {
       if (onOpenProjectNotes) {
         onOpenProjectNotes(project.id);
@@ -531,8 +530,11 @@ export function renderProjectsView({
     const openWhiteboardsBtn = document.createElement('button');
     openWhiteboardsBtn.type = 'button';
     openWhiteboardsBtn.className = 'cv-btn cv-btn--sm';
-    openWhiteboardsBtn.textContent = 'Ouvrir les tableaux blancs';
-    openWhiteboardsBtn.setAttribute('aria-label', `Ouvrir les tableaux blancs de ${project.name}`);
+    openWhiteboardsBtn.textContent = t('projects.openWhiteboards');
+    openWhiteboardsBtn.setAttribute(
+      'aria-label',
+      t('projects.openWhiteboardsNamed', { name: project.name }),
+    );
     openWhiteboardsBtn.addEventListener('click', () => {
       if (onOpenProjectWhiteboards) {
         onOpenProjectWhiteboards(project.id);
@@ -550,8 +552,8 @@ export function renderProjectsView({
     const consultBtn = document.createElement('button');
     consultBtn.type = 'button';
     consultBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
-    consultBtn.textContent = 'Consulter';
-    consultBtn.setAttribute('aria-label', `Consulter ${project.name}`);
+    consultBtn.textContent = t('common.consult');
+    consultBtn.setAttribute('aria-label', t('common.consultNamed', { name: project.name }));
     consultBtn.addEventListener('click', () =>
       openProjectModal({
         store,
@@ -566,8 +568,8 @@ export function renderProjectsView({
     editBtn.type = 'button';
     editBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
     editBtn.disabled = state.readOnly;
-    editBtn.textContent = 'Modifier';
-    editBtn.setAttribute('aria-label', `Modifier ${project.name}`);
+    editBtn.textContent = t('common.edit');
+    editBtn.setAttribute('aria-label', t('common.editNamed2', { name: project.name }));
     editBtn.addEventListener('click', () =>
       openProjectModal({
         store,
@@ -582,8 +584,8 @@ export function renderProjectsView({
     archiveBtn.type = 'button';
     archiveBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
     archiveBtn.disabled = state.readOnly;
-    archiveBtn.textContent = 'Archiver';
-    archiveBtn.setAttribute('aria-label', `Archiver ${project.name}`);
+    archiveBtn.textContent = t('common.archive');
+    archiveBtn.setAttribute('aria-label', t('common.archiveNamed', { name: project.name }));
     archiveBtn.addEventListener('click', () => {
       store.dispatch({
         type: 'toggle_archive_project',
@@ -593,8 +595,8 @@ export function renderProjectsView({
       });
       notify({
         status: 'info',
-        title: 'Projet archivé',
-        text: `${project.name} déplacé vers les archives.`,
+        title: t('projects.archivedTitle'),
+        text: t('projects.archivedText', { name: project.name }),
       });
     });
 
@@ -602,13 +604,13 @@ export function renderProjectsView({
     deleteBtn.type = 'button';
     deleteBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
     deleteBtn.disabled = state.readOnly;
-    deleteBtn.textContent = 'Supprimer';
-    deleteBtn.setAttribute('aria-label', `Supprimer ${project.name}`);
+    deleteBtn.textContent = t('common.delete');
+    deleteBtn.setAttribute('aria-label', t('common.deleteNamed', { name: project.name }));
     deleteBtn.addEventListener('click', async () => {
       const confirmed = await confirmAction({
-        title: `Supprimer « ${project.name} » ?`,
-        message: `Ce projet et ses ${totalTaskCount} tâche(s) seront déplacés dans la corbeille locale. Les notes et tableaux blancs associés resteront accessibles sans projet.`,
-        confirmLabel: 'Supprimer le projet',
+        title: t('projects.deleteTitle', { name: project.name }),
+        message: t('projects.deleteConfirm', { count: totalTaskCount }),
+        confirmLabel: t('projects.deleteLabel'),
         danger: true,
       });
       if (!confirmed) return;
@@ -618,7 +620,7 @@ export function renderProjectsView({
         trashId: crypto.randomUUID(),
         now: new Date().toISOString(),
       });
-      notify({ status: 'info', title: 'Projet placé dans la corbeille', text: project.name });
+      notify({ status: 'info', title: t('projects.trashed'), text: project.name });
     });
 
     actionsGroup.append(consultBtn, editBtn, archiveBtn, deleteBtn);
