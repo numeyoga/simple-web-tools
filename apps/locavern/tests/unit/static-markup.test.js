@@ -11,15 +11,35 @@ const html = Object.values(page)[0] ?? '';
 // Texts that are names of keys or of the application, not words of a language.
 const KEY_LABELS = new Set(['Ctrl+K', 'esc', 'Locavern']);
 
+/**
+ * Removes HTML comments. A single pass can leave a new `<!--` behind when comments are nested or
+ * overlap (`<!-<!-- x -->- y -->`), so it repeats until the text no longer changes.
+ * @param {string} markup
+ */
+function stripComments(markup) {
+  let previous;
+  let current = markup;
+  do {
+    previous = current;
+    current = current.replace(/<!--[\s\S]*?-->/g, '');
+  } while (current !== previous);
+  return current;
+}
+
 describe('index.html', () => {
   test('there is markup to check', () => {
     expect(html).toContain('data-i18n=');
   });
 
   test('has no text node with words, but the key labels', () => {
-    const body = html.replace(/<!--[\s\S]*?-->/g, '');
+    const body = stripComments(html);
     const texts = [...body.matchAll(/>([^<>]*\p{L}{2,}[^<>]*)</gu)].map((m) => (m[1] ?? '').trim());
     expect(texts.filter((text) => !KEY_LABELS.has(text))).toEqual([]);
+  });
+
+  test('strips nested comments completely', () => {
+    expect(stripComments('a<!-<!-- x -->- y -->b')).toBe('ab');
+    expect(stripComments('<!-<!-- x -->- y -->')).not.toContain('<!--');
   });
 
   test('writes no text in an attribute either', () => {

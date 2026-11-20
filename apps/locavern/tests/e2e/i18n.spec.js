@@ -328,7 +328,7 @@ test.describe('browser in English (en-US)', () => {
     await expect(
       backup
         .locator('.lc-stat__value')
-        .filter({ hasText: /KiB|MiB|\d B$/ })
+        .filter({ hasText: /(?:KiB|MiB|\d B)$/ })
         .first(),
     ).toBeVisible();
     await expect(backup.getByText('Protect the archive with a password (AES-GCM)')).toBeVisible();
