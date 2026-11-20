@@ -109,4 +109,43 @@ test.describe('CSP stricte & fonctionnement hors ligne PWA (Étape 6)', () => {
     expect(controllerUrl).toContain('sw.js?v=2');
     expect(pageErrors).toEqual([]);
   });
+
+  test('à l’activation, le Service Worker ne supprime que ses propres anciens caches', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) {
+        await new Promise((resolve) => {
+          navigator.serviceWorker.addEventListener('controllerchange', () => resolve(undefined), {
+            once: true,
+          });
+        });
+      }
+    });
+
+    // Le stockage des caches est partagé par toutes les applications de l’origine (décision 0005).
+    await page.evaluate(async () => {
+      const foreign = await caches.open('chrono-shell-test');
+      await foreign.put('./foreign.txt', new Response('foreign'));
+      await caches.open('locavern-old');
+    });
+
+    // Une nouvelle version s’installe, puis s’active quand on accepte de recharger.
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.register('./sw.js?v=3', { scope: './' });
+    });
+    await expect(page.locator('#sw-update-banner')).toBeVisible();
+    await Promise.all([page.waitForEvent('load'), page.locator('#btn-sw-reload').click()]);
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+
+    await expect.poll(() => page.evaluate(() => caches.keys())).not.toContain('locavern-old');
+    const names = await page.evaluate(() => caches.keys());
+    expect(names).toContain('chrono-shell-test');
+    expect(names.filter((name) => name.startsWith('locavern-'))).toHaveLength(1);
+    await page.evaluate(() => caches.delete('chrono-shell-test'));
+  });
 });
