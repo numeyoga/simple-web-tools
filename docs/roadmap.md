@@ -42,9 +42,8 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 - [ ] English identifiers; English and French interface. English identifiers done; interface
       translation comes with i18n.
 - [x] Single-writer multi-tab model; storage on `packages/storage`.
-- [ ] Unit tests moved from `node:test` to Vitest; Playwright and axe journeys added.
-      The move to Vitest is done; Playwright journeys exist (a safety net without axe), the axe
-      assertions come with the Covenant port.
+- [x] Unit tests moved from `node:test` to Vitest; Playwright and axe journeys added.
+      Axe (WCAG 2.2 AA) runs on the four views and every dialog, in both themes, at 1280 and 390 px.
 - [ ] Bundled fonts, strict CSP, PWA. Chrono's typecheck already covers all of `src` and the unit tests (views included).
 
 ## 5. Translate Locavern

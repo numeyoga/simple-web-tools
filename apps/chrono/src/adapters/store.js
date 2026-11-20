@@ -394,11 +394,12 @@ export function createStore() {
   /**
    * @param {string} name
    * @param {string} [client]
-   * @param {string} [color]
+   * @param {{ category?: number | null, customColor?: string | null }} [color] without one, the
+   *   next category of the default order
    */
-  function addProject(name, client = '', color = '#2563eb') {
+  function addProject(name, client = '', color = {}) {
     const id = uid('p');
-    apply(projects.addProject(currentData(), { name, client, color }, id));
+    apply(projects.addProject(currentData(), { name, client, ...color }, id));
     return id;
   }
   /**

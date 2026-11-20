@@ -121,7 +121,7 @@ describe('a version 2 fallback and an empty database', () => {
 });
 
 describe('a version 1 fallback', () => {
-  test('is converted to version 2, imported and left untouched', async () => {
+  test('is converted to the current version, imported and left untouched', async () => {
     nav.setNow(NOW);
     nav.localStorage.setItem(LEGACY_KEY, v1());
 
@@ -129,7 +129,14 @@ describe('a version 1 fallback', () => {
     await store.flush();
 
     expect(await readStore(DB, 'projects')).toEqual([
-      { id: 'p1', name: 'Legacy', color: '#000', client: '', archived: false },
+      {
+        id: 'p1',
+        name: 'Legacy',
+        category: null,
+        customColor: '#000000',
+        client: '',
+        archived: false,
+      },
     ]);
     expect(store.state.todos[0]).toMatchObject({ title: 'x', dueDate: '2026-11-17' });
     expect(store.state.sessions[0]).toMatchObject({ projectId: 'p1', status: 'done', start: 1 });

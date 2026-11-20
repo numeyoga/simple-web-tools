@@ -1,10 +1,13 @@
-// Schema migrations, pure: version 1 (French field names) to version 2 (English field names).
+// Schema migrations, pure: version 1 (French field names) to version 2 (English field names),
+// then version 2 to version 3 (a project colour is a category number or a free colour).
 // The same functions serve the IndexedDB upgrade (adapters/idb.js), the JSON import
 // (adapters/backup.js), the localStorage fallback and the workspace list. The field table is in
 // README.md.
 //
 // Rules: a field that is not in the tables, and anything that is not a record, is kept as it
 // is (the validation of the import drops what is unusable, the migration never loses data).
+
+import { isCategory, nextCategory, normalizeHex } from './categories.js';
 
 /** @typedef {import('../types.js').ChronoData} ChronoData */
 
@@ -157,6 +160,86 @@ export function v1ToV2(data) {
     out[to] = Array.isArray(value) ? value.map(convert) : value;
   }
   return out;
+}
+
+/**
+ * The 16 colours of Chrono's own palette (version 2), in the order of the Covenant categories:
+ * the position is the category number minus one. This table is the only place where a colour
+ * is written as a hex value.
+ * @type {readonly string[]}
+ */
+export const V2_PALETTE = Object.freeze([
+  '#ea580c', // 1 orange
+  '#d97706', // 2 amber
+  '#ca8a04', // 3 yellow
+  '#65a30d', // 4 lime
+  '#16a34a', // 5 green
+  '#0d9488', // 6 teal
+  '#0891b2', // 7 cyan
+  '#0284c7', // 8 sky
+  '#2563eb', // 9 blue
+  '#4f46e5', // 10 indigo
+  '#7c3aed', // 11 violet
+  '#9333ea', // 12 purple
+  '#c026d3', // 13 fuchsia
+  '#db2777', // 14 pink
+  '#e11d48', // 15 rose
+  '#475569', // 16 slate
+]);
+
+/**
+ * The colour of a version 2 project as a version 3 choice. A palette colour becomes its
+ * category number; any other valid hex stays a free colour (never changed to the nearest
+ * category); anything else is `null`, left to the caller.
+ * @param {unknown} color
+ * @returns {{ category: number, customColor: null } | { category: null, customColor: string } | null}
+ */
+export function colorV2ToV3(color) {
+  const hex = normalizeHex(color);
+  if (hex === null) return null;
+  const index = V2_PALETTE.indexOf(hex);
+  return index >= 0
+    ? { category: index + 1, customColor: null }
+    : { category: null, customColor: hex };
+}
+
+/**
+ * Convert the data of a workspace from version 2 to version 3: each project loses `color` and
+ * gets `category` (1 to 16) or `customColor` (`#rrggbb`), exactly one of them. A project with
+ * no usable colour takes the next category of the default order, after the projects that keep
+ * theirs (so that it does not repeat the colour of an active project while one is free). A
+ * project that already has a category or a free colour and no `color` is left as it is. Only the
+ * `projects` collection changes; other keys and non-record projects are kept. Does not mutate
+ * its input.
+ * @param {unknown} data `{ projects, todos, sessions, attendance }` in version 2
+ * @returns {unknown} the same in version 3
+ */
+export function v2ToV3(data) {
+  if (!isRecord(data) || !Array.isArray(data.projects)) return data;
+  /** @type {number[]} */
+  const pending = [];
+  const projects = data.projects.map((project, index) => {
+    if (!isRecord(project)) return project;
+    const { color, ...rest } = project;
+    if (isCategory(rest.category)) return { ...rest, customColor: null };
+    const custom = normalizeHex(rest.customColor);
+    if (!Object.hasOwn(project, 'color') && custom !== null) {
+      return { ...rest, category: null, customColor: custom };
+    }
+    const choice = colorV2ToV3(color);
+    if (choice === null) pending.push(index);
+    return { ...rest, ...(choice ?? { category: null, customColor: null }) };
+  });
+  for (const index of pending) {
+    const project = /** @type {Record<string, unknown>} */ (projects[index]);
+    project.category = nextCategory(
+      /** @type {{ category?: unknown, archived?: unknown }[]} */ (projects).map((p) => ({
+        category: isRecord(p) && isCategory(p.category) ? p.category : null,
+        archived: isRecord(p) && p.archived === true,
+      })),
+    );
+  }
+  return { ...data, projects };
 }
 
 /** Longest workspace id the registry of @simple-web-tools/storage accepts. */

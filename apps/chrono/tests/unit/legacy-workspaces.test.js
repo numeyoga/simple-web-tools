@@ -99,7 +99,7 @@ describe('the list', () => {
 });
 
 describe('the data', () => {
-  test('is copied into the database of the new id, converted to version 2', async () => {
+  test('is copied into the database of the new id, converted to the current version', async () => {
     await seedVersion1();
     getRegistry();
 
@@ -110,7 +110,8 @@ describe('the data', () => {
       {
         id: `p-${HYPHEN_ID}`,
         name: `data of ${HYPHEN_ID}`,
-        color: '#000',
+        category: null,
+        customColor: '#000000',
         client: '',
         archived: false,
       },
@@ -121,7 +122,7 @@ describe('the data', () => {
     expect(await readStore(target, 'attendance')).toEqual([
       { id: `a-${HYPHEN_ID}`, type: 'arrival', at: 5 },
     ]);
-    expect(await describeDatabase(target)).toMatchObject({ version: 2 });
+    expect(await describeDatabase(target)).toMatchObject({ version: 3 });
   });
 
   test('the 42-character duplicate keeps its own data, apart from the 40-character one', async () => {

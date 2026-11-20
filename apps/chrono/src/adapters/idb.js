@@ -1,8 +1,10 @@
 // IndexedDB helpers. One connection per page, on the active workspace's database, opened with
 // `openDatabase` of @simple-web-tools/storage.
 //
-// Schema (version 2, English names; the table of the version 1 fields is in README.md):
-//   projects   : { id, name, color, client, archived }
+// Schema (version 3, English names; the table of the version 1 fields is in README.md):
+//   projects   : { id, name, category, customColor, client, archived }
+//                  category: 1..16 (Covenant palette) or null; customColor: '#rrggbb' or null;
+//                  exactly one of the two is set.
 //   todos      : { id, title, done, projectId, dueDate, createdAt, description }
 //                  dueDate: null or local date 'YYYY-MM-DD' (absolute, independent of createdAt).
 //                  Old data: relative labels ('today', 'tomorrow', 'mon'..'sun', 'week')
@@ -18,10 +20,13 @@
 //   step 1, version 1 -> 2: converts the version 1 records (`v1ToV2`) inside the upgrade
 //           transaction: `projets` and `pointage` become `projects` and `attendance`,
 //           `todos` and `sessions` are rewritten in place.
-// A new database runs both steps, so it converges with an existing version 1 database.
+//   step 2, version 2 -> 3: `v2ToV3` on the projects, inside the upgrade transaction: `color`
+//           becomes `category` (a colour of the former palette) or `customColor`.
+// A new database runs the three steps, so it converges with an existing older database. Steps 0
+// and 1 are never edited: a database that skipped a release goes through each of them.
 
 import { createStoresIfMissing, deleteDatabase, openDatabase } from '@simple-web-tools/storage';
-import { v1ToV2 } from '../core/migrations.js';
+import { v1ToV2, v2ToV3 } from '../core/migrations.js';
 import { databaseNameFor, wsActiveId } from './workspace-list.js';
 
 /** @typedef {import('@simple-web-tools/storage').Database} Database */
@@ -42,9 +47,10 @@ const STORES_V2 = /** @type {const} */ (['projects', 'todos', 'sessions', 'atten
 
 /**
  * Step 1: read the version 1 stores, create `projects` and `attendance`, delete `projets` and
- * `pointage`, rewrite `todos` and `sessions`. It only issues requests of the upgrade
- * transaction (each `await` below is one of them), so the transaction stays alive until the last
- * write; a failure aborts it and nothing is half-applied.
+ * `pointage`, rewrite `todos` and `sessions`. It only awaits requests of the upgrade transaction,
+ * so the transaction stays alive until the last write. It returns its promise: the runner of
+ * `openDatabase` starts step 2 after it, and aborts the upgrade if it rejects (nothing is
+ * half-applied).
  * @type {Migration}
  */
 function convertToV2(db, tx) {
@@ -68,18 +74,30 @@ function convertToV2(db, tx) {
     }
     await Promise.all(writes);
   };
-  convert().catch((error) => {
-    console.error('[db] migration to version 2 failed', error);
-    try {
-      tx.abort();
-    } catch {
-      /* the transaction is already aborting */
-    }
-  });
+  // The runner of openDatabase waits for this promise before step 2, and aborts the upgrade
+  // transaction when it rejects.
+  return convert();
+}
+
+/**
+ * Step 2: rewrite the projects with `v2ToV3`. Same pattern as step 1: only requests of the
+ * upgrade transaction are awaited, and a rejection aborts it, so the database stays as it was.
+ * The runner of openDatabase starts it once step 1 (when it runs) has settled, so `projects`
+ * exists and holds the version 2 records.
+ * @type {Migration}
+ */
+function convertToV3(_db, tx) {
+  const convert = async () => {
+    const store = tx.objectStore('projects');
+    const v2 = await store.getAll();
+    const v3 = /** @type {ChronoData} */ (v2ToV3({ projects: v2 }));
+    await Promise.all(v3.projects.map((record) => store.put(record)));
+  };
+  return convert();
 }
 
 /** @type {readonly Migration[]} */
-export const migrations = [(db) => createStoresIfMissing(db, V1_STORES), convertToV2];
+export const migrations = [(db) => createStoresIfMissing(db, V1_STORES), convertToV2, convertToV3];
 
 /**
  * The database cannot be used: the page shows an error screen and writes nothing anywhere.

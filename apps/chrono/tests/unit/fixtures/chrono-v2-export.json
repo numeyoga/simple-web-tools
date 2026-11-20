@@ -1,0 +1,81 @@
+{
+  "app": "chrono",
+  "format": "chrono-workspace",
+  "version": 2,
+  "exportedAt": "2026-11-18T09:00:00.000Z",
+  "data": {
+    "projects": [
+      {
+        "id": "p1",
+        "name": "Refonte site",
+        "color": "#ea580c",
+        "client": "Orion SAS",
+        "archived": false
+      },
+      {
+        "id": "p2",
+        "name": "Audit",
+        "color": "#9333EA",
+        "client": "Atlas",
+        "archived": true,
+        "note": "extra field kept"
+      },
+      {
+        "id": "p3",
+        "name": "Couleur libre",
+        "color": "#ffff00",
+        "client": "",
+        "archived": false
+      },
+      {
+        "id": "p4",
+        "name": "Raccourci",
+        "color": "#f00",
+        "client": "",
+        "archived": false
+      },
+      {
+        "id": "p5",
+        "name": "Sans couleur",
+        "client": "",
+        "archived": false
+      },
+      {
+        "id": "p6",
+        "name": "Couleur invalide",
+        "color": "red",
+        "client": "",
+        "archived": false
+      }
+    ],
+    "todos": [
+      {
+        "id": "t1",
+        "title": "Valider la palette",
+        "done": false,
+        "projectId": "p1",
+        "dueDate": "2026-11-20",
+        "createdAt": 1763456400000
+      }
+    ],
+    "sessions": [
+      {
+        "id": "s1",
+        "projectId": "p1",
+        "description": "maquette",
+        "start": 1763456400000,
+        "lastStart": null,
+        "end": 1763460000000,
+        "duration": 3600000,
+        "status": "done"
+      }
+    ],
+    "attendance": [
+      {
+        "id": "a1",
+        "type": "arrival",
+        "at": 1763456400000
+      }
+    ]
+  }
+}

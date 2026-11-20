@@ -201,11 +201,17 @@ export function createAttendanceWidget(store, opts) {
         el(
           'div',
           { class: 'ch-row ch-center ch-gap-3' },
-          project ? el('span', { class: 'ch-swatch', style: { background: project.color } }) : null,
           el(
             'div',
             { class: 'ch-grow' },
-            el('div', { class: 'ch-ellipsis ch-strong' }, project?.name || 'Sans projet'),
+            // On the inverse card the project is a chip: the fill under a white label reads on
+            // any ground, where a marker is only guaranteed on the surfaces.
+            project
+              ? UI.setProjectColor(
+                  el('span', { class: 'cv-cat-block ch-cat-chip' }, project.name),
+                  project,
+                )
+              : el('div', { class: 'ch-ellipsis ch-strong' }, 'Sans projet'),
             el(
               'div',
               { class: 'ch-caption ch-ellipsis' },
@@ -286,7 +292,7 @@ export function createAttendanceWidget(store, opts) {
     } else {
       const header = el(
         'div',
-        { class: 'ch-row ch-center ch-wrap ch-gap-3 ch-grow' },
+        { class: 'ch-row ch-center ch-wrap ch-gap-3 ch-live-head' },
         el(
           'h2',
           { class: 'cv-overline ch-title-reset' },
@@ -397,8 +403,18 @@ export function createTopbarStatus(store, opts) {
         'span',
         { class: 'cv-tag cv-tag--mono' },
         icon('timer'),
-        String(shown),
-        el('span', { class: 'ch-topstatus__text' }, ` ${shown > 1 ? 'chronos' : 'chrono'} ${word}`),
+        // The figure and the words share one inline item: as separate flex items of the tag, the
+        // space that opens the words would be dropped and they would touch the figure.
+        el(
+          'span',
+          null,
+          String(shown),
+          el(
+            'span',
+            { class: 'ch-topstatus__text' },
+            ` ${shown > 1 ? 'chronos' : 'chrono'} ${word}`,
+          ),
+        ),
       );
     }
 

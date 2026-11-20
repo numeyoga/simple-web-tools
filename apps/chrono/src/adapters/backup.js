@@ -1,6 +1,7 @@
 // JSON export and import of a workspace, on the envelope of @simple-web-tools/storage.
-// Export: `createExportEnvelope` (format `chrono-workspace`, version 2). Import: `parseExport`
-// with the version 1 to 2 upgrade, after wrapping the legacy files (which are not envelopes).
+// Export: `createExportEnvelope` (format `chrono-workspace`, version 3). Import: `parseExport`
+// with the upgrades 1 to 2 and 2 to 3, chained, after wrapping the legacy files (which are not
+// envelopes).
 
 import { createExportEnvelope, parseExport } from '@simple-web-tools/storage';
 import {
@@ -12,7 +13,7 @@ import {
   validateImport,
   wrapLegacyExport,
 } from '../core/import-export.js';
-import { v1ToV2 } from '../core/migrations.js';
+import { v1ToV2, v2ToV3 } from '../core/migrations.js';
 
 /** @typedef {import('../types.js').ChronoData} ChronoData */
 
@@ -33,8 +34,8 @@ export function buildExport(data, now) {
 }
 
 /**
- * Read an export file (JSON text or an already parsed value): version 2 envelopes and the
- * legacy version 1 files. Throws an `ExportError` (package codes such as `wrong-app` or
+ * Read an export file (JSON text or an already parsed value): version 3 and 2 envelopes and
+ * the legacy version 1 files. Throws an `ExportError` (package codes such as `wrong-app` or
  * `newer-version`), or an `Error` with a French message when the content is unusable.
  * @param {string | unknown} input
  * @param {number} now
@@ -58,7 +59,7 @@ export function readExport(input, now, { strict = false } = {}) {
     app: EXPORT_APP,
     format: EXPORT_FORMAT,
     version: EXPORT_VERSION,
-    upgrades: { 1: v1ToV2 },
+    upgrades: { 1: v1ToV2, 2: v2ToV3 },
   });
   const collections = /** @type {{ projects?: unknown, sessions?: unknown }} */ (data);
   if (strict && !Array.isArray(collections.projects) && !Array.isArray(collections.sessions)) {

@@ -197,6 +197,14 @@ test.describe('presence and timers', () => {
     await goToSection(page, 'Todos');
     await expect(summary.getByText('Présent')).toBeVisible();
     await expect(summary.getByText('1 chrono en cours')).toBeVisible();
+    // The figure and the words are separated by a space, as text and as rendered: the tag is a
+    // flex box, so a space at the start of its own item would be dropped (innerText would break
+    // the line instead).
+    const tag = summary.locator('.cv-tag');
+    await expect(tag).toHaveText('1 chrono en cours');
+    expect(await tag.evaluate((node) => /** @type {HTMLElement} */ (node).innerText)).toBe(
+      '1 chrono en cours',
+    );
     await summary.getByRole('button', { name: 'Tout mettre en pause' }).click();
     await expect(summary.getByText('1 chrono en pause')).toBeVisible();
     await summary.getByRole('button', { name: 'Tout reprendre' }).click();

@@ -72,8 +72,7 @@ export function openQuickAddModal(
                 projectId = p.id;
               },
             }),
-            el('span', { class: 'ch-swatch', style: { background: p.color } }),
-            el('span', { class: 'ch-ellipsis' }, p.name),
+            UI.projectName(p),
             p.client ? el('span', { class: 'ch-meta ch-ellipsis' }, p.client) : null,
           ),
         ),

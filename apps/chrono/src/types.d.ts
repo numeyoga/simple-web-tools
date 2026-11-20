@@ -1,7 +1,7 @@
-// Data model of Chrono, schema version 2: the persisted shape (IndexedDB records and the
-// `chrono-workspace` JSON export). The previous shape (version 1, French field names) is
-// described by the `*V1` types at the end; `src/core/migrations.js` converts one into the
-// other, see the field table in README.md.
+// Data model of Chrono, schema version 3: the persisted shape (IndexedDB records and the
+// `chrono-workspace` JSON export). The previous shapes are described at the end: version 2
+// (a project colour is a hex value) by `ProjectV2`, version 1 (French field names) by the `*V1`
+// types; `src/core/migrations.js` converts one into the next, see the field table in README.md.
 
 export type SessionStatus = 'done' | 'running' | 'paused';
 export type AttendanceType = 'arrival' | 'break_start' | 'break_end' | 'departure';
@@ -9,7 +9,10 @@ export type AttendanceType = 'arrival' | 'break_start' | 'break_end' | 'departur
 export interface Project {
   id: string;
   name: string;
-  color: string;
+  /** Category 1 to 16 of the Covenant palette; null when the project has a free colour. */
+  category: number | null;
+  /** Free colour `#rrggbb`; null when the project has a category. Exactly one of the two is set. */
+  customColor: string | null;
   client: string;
   archived: boolean;
 }
@@ -67,6 +70,17 @@ export interface AttendanceState {
   status: 'not_arrived' | 'present' | 'on_break' | 'left';
   since?: number;
   events: AttendanceEvent[];
+}
+
+/* ---------------------------- Schema version 2 (legacy) ---------------------------- */
+
+/** A version 2 project: the colour is a hex value. */
+export interface ProjectV2 {
+  id: string;
+  name: string;
+  color: string;
+  client: string;
+  archived: boolean;
 }
 
 /* ---------------------------- Schema version 1 (legacy) ---------------------------- */

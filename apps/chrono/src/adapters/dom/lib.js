@@ -16,6 +16,7 @@ import { uid } from '../ids.js';
 
 /** @typedef {import('./types.js').Child} Child */
 /** @typedef {import('./types.js').Props} Props */
+/** @typedef {import('../../types.js').Project} Project */
 /** @typedef {import('../../types.js').Session} Session */
 /** @typedef {import('../../types.js').AttendanceEvent} AttendanceEvent */
 
@@ -134,6 +135,44 @@ export function icon(name, opts = {}) {
     class: `${base} ph-${name} cv-icon${opts.className ? ' ' + opts.className : ''}`,
     'aria-hidden': 'true',
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* Project colours: Covenant draws them from `data-cat` (see CategoryColor.md of the skill). */
+
+/**
+ * Gives an element the colour of a project: its category (`data-cat`), or its free colour
+ * through `Covenant.setCategory`, which derives the marker and the fill and keeps the label at
+ * 4.5:1. The element and its children then use the `cv-cat-*` recipes. Without a project, or
+ * without a colour, nothing is set and Covenant's default (slate) applies.
+ * @template {HTMLElement} T
+ * @param {T} node
+ * @param {Pick<Project, 'category' | 'customColor'> | null | undefined} project
+ * @returns {T}
+ */
+export function setProjectColor(node, project) {
+  if (project?.category) node.dataset.cat = String(project.category);
+  else if (project?.customColor) window.Covenant?.setCategory?.(node, project.customColor);
+  return node;
+}
+
+/**
+ * The name of a project after its dot: the marker recipe of lists and legends. The name is
+ * always written next to the colour, which never carries meaning alone.
+ * @param {Pick<Project, 'name' | 'category' | 'customColor'>} project
+ * @param {string} [className] added to the name
+ * @returns {HTMLElement}
+ */
+export function projectName(project, className = '') {
+  return setProjectColor(
+    el(
+      'span',
+      { class: 'cv-cat-name' },
+      el('span', { class: 'cv-cat-dot', 'aria-hidden': 'true' }),
+      el('span', { class: `ch-ellipsis${className ? ' ' + className : ''}` }, project.name),
+    ),
+    project,
+  );
 }
 
 let fieldCounter = 0;

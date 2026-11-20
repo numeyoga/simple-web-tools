@@ -104,3 +104,12 @@ export async function createV2Database(dbName, content = {}) {
   });
   await fill(db, content);
 }
+
+/**
+ * Write records into the stores of an existing database, whatever its version.
+ * @param {string} dbName
+ * @param {Record<string, object[]>} content records per store
+ */
+export async function putRecords(dbName, content) {
+  await fill(await openRaw(dbName), content);
+}

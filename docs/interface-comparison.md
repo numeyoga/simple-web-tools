@@ -779,6 +779,23 @@ would be a regression for the app's main action.
 Not a question, already decided by the roadmap and decision 0003: fonts are bundled, not loaded from
 the Google Fonts CDN.
 
+### Port status
+
+Decisions B, C, D, F, G and H are applied in Chrono (step 3 of the port):
+
+- **B** (instant hover and press): no transition on buttons, rows and inputs in `apps/chrono/src/styles/app.css`; motion only
+  on overlays and toasts, from Covenant.
+- **C** (project colour): a category 1 to 16 per project, or a free colour kept through `Covenant.setCategory`
+  (schema version 3, `core/migrations.js` and `core/categories.js`); drawn with the `cv-cat-*` recipes in the Timeline,
+  Projets, Rapport, Todos and quick add views.
+- **D** (running-timers card): `--cv-surface-inverse` with `--cv-fg-inverse` and `--cv-fg-inverse-muted`
+  (`.ch-ink` in `app.css`, `AttendanceWidget.js`).
+- **F** (live timers and presence): page header of the Timeline (`AttendanceWidget.js`); a compact summary in the
+  top bar on the other views and on the Timeline below 1024 px (`.ch-topstatus`).
+- **G** (page title): the top bar `h1`, set by `App.js` on each view.
+- **H** (single-key shortcuts): kept behind a "Single-key shortcuts" preference, off in text fields (`Preferences.js`,
+  `adapters/preferences.js`).
+
 ## What could not be checked
 
 - Everything under [Not verified](#not-verified) above (screen readers, text spacing, real browser
