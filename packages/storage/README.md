@@ -54,8 +54,13 @@ const db = await openDatabase({
 ```
 
 - The version is `migrations.length`; step `i` upgrades version `i` to `i + 1`.
-- Steps run synchronously inside the upgrade transaction, in order, and only from the version
-  found on disk. A failing step aborts the whole upgrade: nothing is half-applied.
+- Steps run inside the upgrade transaction, in order, and only from the version found on disk.
+  A step may be `async`: the steps after it run once its promise settles, so a step can read a
+  store with `getAll()` and a later step can use the store it created. Steps with no promise
+  before them still run synchronously. A step may only await **requests of the upgrade
+  transaction**; awaiting anything else (a timer, `fetch`) lets the transaction commit early.
+  A step that throws or rejects aborts the whole upgrade and the open rejects: nothing is
+  half-applied.
 - A database newer than the last step is never touched: the open fails with `VersionError`.
 - On `versionchange` (another tab upgrades or deletes the database) the connection is closed
   so the other tab can proceed, and `onVersionChange` is called. `blocked` is surfaced through
