@@ -1,46 +1,65 @@
-# Documentation de Locavern
+# Locavern documentation
 
-État documentaire mis à jour le 16 novembre 2026 pour la version **`0.2.0`** (Lot 1, Lot 2 — Tableau blanc, livraison GitHub Pages et évolutions fonctionnelles incluant agenda horaire/week-end, statuts initiaux/terminaux et archivage transversal), organisé selon [Diátaxis](https://diataxis.fr/).
+User and technical documentation for Locavern, organized by [Diataxis](https://diataxis.fr/)
+(tutorial, how-to guides, reference, explanation). It describes version `0.2.0`, with an interface
+in English and French. The pages use the English labels; French labels are given in parentheses where
+that helps.
 
-## Documentation utilisateur
+## User documentation
 
-### Tutoriel
+### Tutorial
 
-- [Créer votre premier espace de travail](tutorials/premier-espace-de-travail.md) : prise en main guidée de bout en bout (premier projet, tâche, Kanban, note, tableau blanc et export ZIP).
+- [Create your first workspace](tutorials/first-workspace.md): a guided walk from start to finish
+  (first project, task, Kanban, note, whiteboard and ZIP export).
 
-### Guides pratiques (How-to)
+### How-to guides
 
-- [Comment organiser vos projets et vos tâches](how-to/organiser-projets-et-taches.md) : gérer, archiver et retrouver vos projets et tâches dans **Archives**, utiliser l’ajout rapide, configurer les rôles de statut (**Initial** / **Terminal**), trier la vue Liste, piloter le Kanban et la palette `Ctrl+K`.
-- [Comment planifier votre journée et votre calendrier](how-to/planifier-journee-et-calendrier.md) : piloter la vue `Aujourd’hui`, distinguer week-ends et créneau `18h–7h` dans le `Calendrier`, planifier à l’heure, configurer des tâches récurrentes et exporter en `.ics`.
-- [Comment organiser votre travail avec étiquettes, liens et modèles](how-to/organiser-avec-etiquettes-liens-et-modeles.md) : classer par étiquettes transversales, relier tâches, notes et tableaux blancs (avec protection des statuts terminaux) et réutiliser ou créer des modèles locaux.
-- [Comment rédiger des notes avec mise en forme et images locales](how-to/rediger-notes-et-images.md) : éditeur enrichi (`Titre 1` à `3`), duplication, archivage, export Markdown (`.md`), liens autorisés, images locales et enregistrement automatique.
-- [Comment utiliser le tableau blanc](how-to/utiliser-le-tableau-blanc.md) : créer des tableaux blancs, sélectionner par zone et dupliquer (`Ctrl+D`), aimanter flèches et grille, insérer des images locales, archiver et exporter en SVG/PNG.
-- [Comment sauvegarder, restaurer ou effacer vos données](how-to/sauvegarder-et-restaurer.md) : stockage persistant, export ZIP en clair ou chiffré, fusion et import sélectif, corbeille locale et réinitialisation.
-- [Comment installer Locavern et l’utiliser hors ligne](how-to/utiliser-locavern-hors-ligne.md) : installation PWA dans Chrome/Chromium, usage sans réseau et mise à jour hors ligne.
-- [Comment reprendre l’édition en présence de plusieurs onglets](how-to/reprendre-edition-multi-onglets.md) : comportement du mode lecture seule et reprise du verrou d’écriture.
+- [How to organize your projects and tasks](how-to/organize-projects-and-tasks.md): manage, archive
+  and find projects and tasks in the **Archive**, use quick add, configure the status roles
+  (**Initial** / **Final**), sort the List view, drive the Kanban and the `Ctrl+K` palette.
+- [How to plan your day and your calendar](how-to/plan-your-day-and-calendar.md): drive the **Today**
+  view, tell weekends and the 18:00–07:00 slot apart in the **Calendar**, plan by the hour, set up
+  recurring tasks and export `.ics`.
+- [How to organize your work with tags, links and templates](how-to/organize-with-tags-links-and-templates.md):
+  sort with cross-cutting tags, link tasks, notes and whiteboards (with protection of final statuses)
+  and reuse or create local templates.
+- [How to write notes with formatting and local images](how-to/write-notes-and-images.md): the rich
+  editor (headings 1 to 3), duplication, archiving, Markdown (`.md`) export, allowed links, local
+  images and autosave.
+- [How to use the whiteboard](how-to/use-the-whiteboard.md): create whiteboards, select by area and
+  duplicate (`Ctrl+D`), snap arrows and grid, insert local images, archive and export as SVG/PNG.
+- [How to back up, restore or erase your data](how-to/back-up-and-restore.md): persistent storage,
+  plain or encrypted ZIP export, merge and selective import, the local trash and reset.
+- [How to install Locavern and use it offline](how-to/use-offline.md): PWA installation in
+  Chrome/Chromium, use without a network and updating offline.
+- [How to resume editing when several tabs are open](how-to/resume-editing-across-tabs.md):
+  read-only mode and taking the write lock over.
 
-### Référence utilisateur
+### Reference
 
-- [Interface, vues et raccourcis clavier](reference/interface-et-raccourcis.md) : description des vues (y compris **Archives**), champs, limites de saisie, commandes et raccourcis.
-- [Stockage local, format d’archive et messages d’erreur](reference/stockage-limites-et-erreurs.md) : base `IndexedDB` (`DB_VERSION = 4`), archives ZIP claires et chiffrées, formats `.md` / `.ics`, plafonds et catalogue des erreurs.
+- [Interface, views and keyboard shortcuts](reference/interface-and-shortcuts.md): the views
+  (including the **Archive**), fields, input limits, commands and shortcuts.
+- [Local storage, archive format and error messages](reference/storage-limits-and-errors.md): the
+  `IndexedDB` database (`DB_VERSION = 4`), plain and encrypted ZIP archives, `.md` / `.ics`
+  formats, limits and the catalog of errors.
 
-### Explication
+### Explanation
 
-- [Fonctionnement local, confidentialité et périmètre](explanation/fonctionnement-local-et-confidentialite.md) : modèle local-first, chiffrement optionnel, corbeille locale, verrouillage multi-onglets, blocage des images distantes et limites structurelles.
+- [Local-first, privacy and scope](explanation/local-first-and-privacy.md): the local-first model,
+  optional encryption, the local trash, tab locking, blocking of remote images and structural limits.
 
-## Pour les contributeurs
+## For contributors
 
-### Référence technique
+### Explanation
 
-- [État du dépôt](reference/etat-du-depot.md) : inventaire des fichiers présents, état applicatif et validations exécutables.
-- [Décisions et avancement](reference/decisions-et-avancement.md) : contraintes retenues, périmètre livré et choix techniques vérifiés.
+- [Architecture choices](explanation/architecture-choices.md): motivations, trade-offs and the pure
+  core / adapters split.
+- [Technical choices](explanation/technical-choices.md): the original constraints and decisions, the
+  alternatives considered and what became of each.
 
-### Explication technique
+### Project-wide documents
 
-- [Choix d’architecture](explanation/choix-architecture.md) : motivations, compromis et séparation noyau pur / adaptateurs.
-
-Les commandes de démarrage et de vérification sont synthétisées dans [README.md](../README.md).
-
-## Source historique
-
-[choix-technique.md](../choix-technique.md) conserve la restitution initiale du 12 novembre 2026 ayant servi de base au cadrage.
+Locavern lives in the Simple Web Tools monorepo. Repository decisions are in
+[docs/decisions](../../../docs/decisions/README.md) and the work in progress in the
+[roadmap](../../../docs/roadmap.md). The commands to run and check the app are in the app's
+[README](../README.md).
