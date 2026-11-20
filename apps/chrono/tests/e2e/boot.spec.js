@@ -13,8 +13,8 @@ test('the application starts: sidebar and Timeline visible, no error', async ({ 
   await expect(page.getByText('Temps travaillé')).toBeVisible();
 
   expect(errors).toEqual([]);
-  // Today, the only external request is the Google Fonts stylesheet (removed in a later step).
-  expect([...new Set(blockedHosts)]).toEqual(['fonts.googleapis.com']);
+  // Fonts and icons are bundled: nothing is requested outside the app's own origin.
+  expect([...new Set(blockedHosts)]).toEqual([]);
 });
 
 test('the demo data of the first start is loaded', async ({ page }) => {

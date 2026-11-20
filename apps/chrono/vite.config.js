@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 
-// TODO (docs/roadmap.md, step 4 "Bundled fonts, strict CSP, PWA"): add the Content Security
-// Policy as Locavern does. It cannot be added yet: covenant.css still loads Google Fonts.
+// TODO (docs/roadmap.md, step 4 "Strict CSP, PWA"): add the Content Security
+// Policy as Locavern does. Nothing blocks it since step 3: fonts and icons are bundled by the
+// Covenant package, and the app makes no request outside its own origin.
 export default defineConfig({
   base: './',
   build: {

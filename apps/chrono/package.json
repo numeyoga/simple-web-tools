@@ -18,6 +18,7 @@
     "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
+    "@simple-web-tools/covenant": "*",
     "@simple-web-tools/dates": "*",
     "@simple-web-tools/storage": "*"
   },

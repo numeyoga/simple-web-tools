@@ -9,7 +9,7 @@ test('manual entry of a session, then editing its end', async ({ page }) => {
   // Manual entry: 08:00 -> 09:30 today
   await main.getByRole('button', { name: 'Nouvelle' }).click();
   const addDialog = page.getByRole('dialog', { name: 'Ajouter un chrono' });
-  await addDialog.getByRole('tab', { name: 'Saisir manuellement' }).click();
+  await addDialog.getByRole('radio', { name: 'Saisir manuellement' }).check();
   await addDialog.getByRole('textbox', { name: 'Sur quoi as-tu travaillé ?' }).fill('Rattrapage');
   await addDialog.getByLabel('Début').fill('2026-11-18T08:00');
   await addDialog.getByLabel('Fin').fill('2026-11-18T09:30');

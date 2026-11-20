@@ -10,15 +10,15 @@ const END_HOUR = 20;
 const PX_PER_HOUR = 84;
 
 const ATTENDANCE_TYPES = [
-  { value: 'arrival', label: 'Arrivée', icon: 'sign-in', color: 'var(--cv-success-600)' },
-  { value: 'break_start', label: 'Début de pause', icon: 'pause', color: 'var(--cv-warning-700)' },
-  { value: 'break_end', label: 'Fin de pause', icon: 'play', color: 'var(--cv-warning-700)' },
-  { value: 'departure', label: 'Départ', icon: 'sign-out', color: 'var(--cv-fg-muted)' },
+  { value: 'arrival', label: 'Arrivée', icon: 'sign-in', tone: 'ch-success-text' },
+  { value: 'break_start', label: 'Début de pause', icon: 'pause', tone: 'ch-warning-text' },
+  { value: 'break_end', label: 'Fin de pause', icon: 'play', tone: 'ch-warning-text' },
+  { value: 'departure', label: 'Départ', icon: 'sign-out', tone: 'ch-muted-text' },
 ];
 /** @type {Record<string, (typeof ATTENDANCE_TYPES)[number]>} */
 const ATTENDANCE_META = Object.fromEntries(ATTENDANCE_TYPES.map((p) => [p.value, p]));
 
-// Horizontal scale of the chart (px from the left edge of the content).
+// Horizontal scale of the chart (px at the standard text scale, from the left edge of the content).
 const CHART_PAD_X = 16;
 /** @typedef {import('../../types.js').Session} Session */
 /** @typedef {import('../../types.js').Project} Project */
@@ -31,7 +31,8 @@ const tsToPx = (/** @type {number} */ ts) => {
   return hourToPx(h);
 };
 
-// Sets a stable focus key (dataset.focusKey) on an element that is already built.
+// Sets a stable focus key (dataset.focusKey) on an element that is already built. An icon button
+// is wrapped in its tooltip: the key goes on the button, which is what takes the focus.
 /**
  * @template {HTMLElement} T
  * @param {T} node
@@ -39,7 +40,8 @@ const tsToPx = (/** @type {number} */ ts) => {
  * @returns {T}
  */
 const withFocusKey = (node, key) => {
-  node.dataset.focusKey = key;
+  const target = node.querySelector('button') ?? node;
+  target.dataset.focusKey = key;
   return node;
 };
 
@@ -47,66 +49,36 @@ const withFocusKey = (node, key) => {
 export function createTimelineView(store, opts) {
   let dateOffset = 0;
 
-  const host = el('div', { class: 'ch-pile ch-g20' });
+  const host = el('div', { class: 'ch-view' });
 
   /**
    * @param {string} label
    * @param {string} value
    * @param {string | null} subtext
-   * @param {{ accent?: boolean, mono?: boolean }} [options]
    */
-  function statBlock(label, value, subtext, { accent, mono = true } = {}) {
+  function statBlock(label, value, subtext) {
     return el(
       'div',
       null,
-      el('div', { class: 'ch-surtitre' }, label),
-      el(
-        'div',
-        {
-          style: {
-            marginTop: 4,
-            font: `500 22px/1 ${mono ? 'var(--cv-font-mono)' : 'var(--cv-font-sans)'}`,
-            color: accent ? 'var(--cv-accent-600)' : 'var(--cv-fg)',
-            letterSpacing: '-0.01em',
-          },
-        },
-        value,
-      ),
-      subtext
-        ? el(
-            'div',
-            {
-              style: {
-                marginTop: 3,
-                font: '400 11px/1.2 var(--cv-font-sans)',
-                color: 'var(--cv-fg-subtle)',
-              },
-            },
-            subtext,
-          )
-        : null,
+      el('div', { class: 'cv-overline' }, label),
+      el('div', { class: 'cv-num ch-kpi ch-mt-2' }, value),
+      subtext ? el('div', { class: 'ch-subtle ch-mt-1' }, subtext) : null,
     );
   }
 
   /**
-   * @param {string} color
+   * A swatch of the chart legend: a fill and a border, both semantic roles.
+   * @param {string} fill
+   * @param {string} border
    * @param {string} label
-   * @param {boolean} [stripe]
    */
-  function legendItem(color, label, stripe) {
+  function legendItem(fill, border, label) {
     return el(
       'span',
-      { style: { display: 'inline-flex', alignItems: 'center', gap: 6 } },
+      { class: 'ch-row ch-center ch-gap-3' },
       el('span', {
-        style: {
-          width: 14,
-          height: 8,
-          borderRadius: 2,
-          background: stripe
-            ? `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`
-            : color,
-          border: stripe ? `1px solid ${color}` : 'none',
-        },
+        class: 'ch-legend-swatch',
+        style: { background: fill, border: `1px solid ${border}` },
       }),
       label,
     );
@@ -133,6 +105,7 @@ export function createTimelineView(store, opts) {
       label: 'Début',
       value: timestampToLocal(s.start),
       type: 'datetime-local',
+      className: 'ch-field-wide',
     });
     const endW =
       s.status === 'done'
@@ -140,14 +113,13 @@ export function createTimelineView(store, opts) {
             label: 'Fin',
             value: timestampToLocal(/** @type {number} */ (s.end)),
             type: 'datetime-local',
+            className: 'ch-field-wide',
           })
         : null;
 
     const displayedDuration = el(
       'div',
-      {
-        style: { font: '500 18px/1 var(--cv-font-mono)', color: 'var(--cv-fg)', marginTop: 4 },
-      },
+      { class: 'cv-num ch-kpi ch-kpi--md ch-mt-2' },
       formatDuration(liveDuration(s)),
     );
     // Same rule as updateSession (core/sessions.js): the break time already deducted from
@@ -166,10 +138,7 @@ export function createTimelineView(store, opts) {
       originalPauses > 0
         ? el(
             'div',
-            {
-              class: 'ch-legende',
-              style: { marginTop: 4 },
-            },
+            { class: 'ch-meta ch-mt-2' },
             `dont ${pauseLabel(originalPauses)} de pause déduites`,
           )
         : null;
@@ -180,8 +149,15 @@ export function createTimelineView(store, opts) {
       if (d != null && f != null && f >= d)
         displayedDuration.textContent = formatDuration(Math.max(0, f - d - originalPauses));
     }
-    startW.input.addEventListener('input', recomputeDuration);
-    if (endW) endW.input.addEventListener('input', recomputeDuration);
+    startW.input.addEventListener('input', () => {
+      recomputeDuration();
+      endW?.setError(null);
+    });
+    if (endW)
+      endW.input.addEventListener('input', () => {
+        recomputeDuration();
+        endW.setError(null);
+      });
 
     function save() {
       /** @type {Partial<Session>} */
@@ -200,7 +176,8 @@ export function createTimelineView(store, opts) {
         const newStart = patch.start ?? s.start;
         const newEnd = patch.end ?? s.end ?? newStart;
         if ((patch.start != null || patch.end != null) && newEnd <= newStart) {
-          alert('La fin doit être après le début.');
+          endW.setError('La fin est avant le début. Choisis une fin postérieure au début.');
+          endW.input.focus();
           return;
         }
       }
@@ -215,64 +192,36 @@ export function createTimelineView(store, opts) {
 
     const modal = UI.Modal({
       title: 'Modifier la session',
-      width: 480,
       body: el(
         'div',
-        { class: 'ch-pile ch-g12' },
+        { class: 'ch-stack ch-gap-4' },
         projectW,
         descW,
-        el(
-          'div',
-          { class: 'ch-flex ch-g10' },
-          el('div', { style: { flex: 1 } }, startW),
-          endW ? el('div', { style: { flex: 1 } }, endW) : null,
-        ),
+        el('div', { class: 'ch-row ch-wrap ch-gap-4' }, startW, endW),
         s.status === 'done'
           ? el(
               'div',
               null,
-              el(
-                'div',
-                {
-                  style: {
-                    font: '500 11px/1.3 var(--cv-font-sans)',
-                    color: 'var(--cv-fg-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                  },
-                },
-                'Durée calculée',
-              ),
+              el('div', { class: 'cv-overline' }, 'Durée calculée'),
               displayedDuration,
               breaksNote,
             )
-          : el(
-              'div',
-              {
-                style: {
-                  padding: '8px 10px',
-                  background: 'var(--cv-accent-50)',
-                  border: '1px solid var(--cv-accent-100)',
-                  borderRadius: 6,
-                  font: '400 12px/1.4 var(--cv-font-sans)',
-                  color: 'var(--cv-accent-700)',
-                },
-              },
-              'Session encore active — la durée continue de courir.',
-            ),
+          : UI.Alert({
+              status: 'info',
+              title: 'Session encore active.',
+              text: 'La durée continue de courir.',
+            }),
       ),
       footer: [
         UI.Button({
-          variant: 'destructive',
-          icon: 'trash',
+          variant: 'danger',
           children: 'Supprimer',
           onclick: originalDelete,
-          style: { marginRight: 'auto' },
+          className: 'ch-push',
         }),
-        UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
+        UI.Button({ children: 'Annuler', onclick: () => modal.close() }),
         UI.Button({
           variant: 'primary',
-          icon: 'check',
           children: 'Enregistrer',
           onclick: save,
         }),
@@ -340,7 +289,7 @@ export function createTimelineView(store, opts) {
         el(
           'div',
           {
-            class: 'ch-mono-xs',
+            class: 'ch-chart-label cv-num',
             style: {
               position: 'absolute',
               left: hourToPx(h),
@@ -383,10 +332,9 @@ export function createTimelineView(store, opts) {
             width: Math.max(2, tsToPx(seg.end) - tsToPx(seg.start)),
             top: 0,
             bottom: 0,
-            background: 'var(--cv-success-50)',
-            borderTop: '2px solid var(--cv-success-500)',
-            borderBottom: '2px solid var(--cv-success-500)',
-            opacity: 0.9,
+            background: 'var(--cv-success-surface)',
+            borderTop: '2px solid var(--cv-fg-success)',
+            borderBottom: '2px solid var(--cv-fg-success)',
           },
         }),
       );
@@ -402,10 +350,9 @@ export function createTimelineView(store, opts) {
             width: Math.max(2, tsToPx(seg.end) - tsToPx(seg.start)),
             top: 0,
             bottom: 0,
-            background:
-              'repeating-linear-gradient(135deg, var(--cv-warning-100) 0 6px, var(--cv-warning-50) 6px 12px)',
-            borderTop: '2px solid var(--cv-warning-500)',
-            borderBottom: '2px solid var(--cv-warning-500)',
+            background: 'var(--cv-warning-surface)',
+            borderTop: '2px solid var(--cv-fg-warning)',
+            borderBottom: '2px solid var(--cv-fg-warning)',
           },
         }),
       );
@@ -504,68 +451,38 @@ export function createTimelineView(store, opts) {
       const blockH = laneH * item.colSpan + LANE_GAP * (item.colSpan - 1);
       const compact = blockH < 46;
       const top = SESSION_ZONE_TOP + item.col * (laneH + LANE_GAP);
-      const block = el('div', {
+      const block = el('button', {
+        type: 'button',
+        class: `ch-session-block${compact ? ' ch-session-block--compact' : ''}`,
         dataset: { focusKey: `session-block:${s.id}` },
         title: `${project?.name || 'Sans projet'} · ${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'} · ${formatDuration(durationMs)}`,
         onclick: () => openSessionEditor(s),
         style: {
-          position: 'absolute',
           left,
           width,
           top,
           height: blockH,
-          background: project?.color || 'var(--cv-neutral-500)',
-          borderRadius: 6,
-          boxShadow: isActive
-            ? '0 0 0 2px rgba(234,88,12,0.30), var(--cv-shadow-md)'
-            : 'var(--cv-shadow-sm)',
-          color: '#fff',
-          padding: compact ? '0 9px' : '7px 10px',
-          overflow: 'hidden',
-          cursor: 'pointer',
-          display: 'flex',
-          flexDirection: compact ? 'row' : 'column',
-          alignItems: compact ? 'center' : 'stretch',
-          justifyContent: 'space-between',
-          gap: compact ? 8 : 0,
-          outline: isRunning ? '2px solid var(--cv-accent-500)' : 'none',
+          background: project?.color || 'var(--cv-cat-16-fill)',
+          boxShadow: isRunning
+            ? '0 0 0 2px var(--cv-border-selected), var(--cv-shadow-md)'
+            : isActive
+              ? 'var(--cv-shadow-md)'
+              : 'var(--cv-shadow-sm)',
         },
       });
       const title = el(
         'div',
-        { class: 'ch-souple', style: { overflow: 'hidden' } },
-        el(
-          'div',
-          {
-            class: 'ch-ellipse',
-            style: { font: '500 11px/1.2 var(--cv-font-sans)', opacity: 0.85 },
-          },
-          project?.name || 'Sans projet',
-        ),
+        { class: 'ch-grow' },
+        el('div', { class: 'ch-ellipsis ch-strong' }, project?.name || 'Sans projet'),
         !compact && s.description && width > 80
-          ? el(
-              'div',
-              {
-                class: 'ch-ellipse',
-                style: { marginTop: 2, font: '500 12px/1.3 var(--cv-font-sans)' },
-              },
-              s.description,
-            )
+          ? el('div', { class: 'ch-ellipsis ch-mt-1' }, s.description)
           : null,
       );
       const durationLine = el(
         'div',
-        {
-          class: 'ch-flex-c',
-          style: { font: '500 11px/1 var(--cv-font-mono)', opacity: 0.95, gap: 5, flexShrink: 0 },
-        },
+        { class: 'cv-num ch-row ch-center ch-gap-2 ch-shrink-0' },
         el('span', null, formatDuration(durationMs)),
-        isRunning
-          ? el('span', {
-              class: 'ch-point',
-              style: { background: '#fff', animation: 'cv-pulse 1.2s infinite' },
-            })
-          : null,
+        isRunning ? el('span', { class: 'ch-dot-light' }) : null,
       );
       block.append(title, durationLine);
       line.appendChild(block);
@@ -583,7 +500,7 @@ export function createTimelineView(store, opts) {
               top: -6,
               bottom: -6,
               width: 2,
-              background: 'var(--cv-accent-500)',
+              background: 'var(--cv-brand-accent)',
               pointerEvents: 'none',
             },
           },
@@ -595,24 +512,14 @@ export function createTimelineView(store, opts) {
               width: 10,
               height: 10,
               borderRadius: '50%',
-              background: 'var(--cv-accent-500)',
-              boxShadow: '0 0 0 3px rgba(234,88,12,0.2)',
+              background: 'var(--cv-brand-accent)',
             },
           }),
           el(
             'div',
             {
-              style: {
-                position: 'absolute',
-                top: -22,
-                left: 4,
-                background: 'var(--cv-accent-500)',
-                color: '#fff',
-                padding: '2px 6px',
-                borderRadius: 4,
-                font: '500 10px/1 var(--cv-font-mono)',
-                whiteSpace: 'nowrap',
-              },
+              class: 'ch-now-label cv-num',
+              style: { position: 'absolute', top: -24, left: 4 },
             },
             formatTime(now),
           ),
@@ -623,13 +530,18 @@ export function createTimelineView(store, opts) {
     return el(
       'div',
       {
-        dataset: { role: 'timeline-scroll', day: String(dayStart) },
-        style: { overflowX: 'auto', overflowY: 'hidden', padding: '16px 0 12px' },
+        class: 'ch-chart-scroll',
+        // A scrollable region is reachable with the keyboard (WCAG 2.1.1).
+        role: 'region',
+        'aria-label': 'Journée en continu',
+        tabindex: 0,
+        dataset: { role: 'timeline-scroll', day: String(dayStart), focusKey: 'chart-scroll' },
       },
       el(
         'div',
         {
           style: {
+            boxSizing: 'content-box',
             width: widthPx,
             position: 'relative',
             paddingLeft: CHART_PAD_X,
@@ -650,39 +562,34 @@ export function createTimelineView(store, opts) {
   function sessionsList(daySessions, projects) {
     const list =
       daySessions.length === 0
-        ? el(
-            'div',
-            { class: 'ch-vide' },
-            icon('hourglass-low', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
-            el('div', { style: { marginTop: 6 } }, 'Aucune session pour ce jour.'),
-            withFocusKey(
-              UI.Button({
-                variant: 'primary',
-                size: 'sm',
-                icon: 'play',
-                children: 'Démarrer un chrono',
-                style: { marginTop: 12 },
-                mutates: true,
-                onclick: opts.onOpenQuickAdd,
-              }),
-              'sessions-empty:start',
-            ),
-            // A brand new workspace: the demo data is offered, never loaded on its own.
-            store.isEmpty()
-              ? withFocusKey(
-                  UI.Button({
-                    variant: 'secondary',
-                    size: 'sm',
-                    icon: 'flask',
-                    children: 'Charger des données de démonstration',
-                    style: { marginTop: 8 },
-                    mutates: true,
-                    onclick: () => store.actions.loadDemoData(),
-                  }),
-                  'sessions-empty:demo',
-                )
-              : null,
-          )
+        ? UI.EmptyState({
+            icon: 'hourglass-low',
+            title: 'Aucune session pour ce jour.',
+            actions: [
+              withFocusKey(
+                UI.Button({
+                  variant: 'primary',
+                  icon: 'play',
+                  children: 'Démarrer un chrono',
+                  mutates: true,
+                  onclick: opts.onOpenQuickAdd,
+                }),
+                'sessions-empty:start',
+              ),
+              // A brand new workspace: the demo data is offered, never loaded on its own.
+              store.isEmpty()
+                ? withFocusKey(
+                    UI.Button({
+                      icon: 'flask',
+                      children: 'Charger des données de démonstration',
+                      mutates: true,
+                      onclick: () => store.actions.loadDemoData(),
+                    }),
+                    'sessions-empty:demo',
+                  )
+                : null,
+            ],
+          })
         : el(
             'div',
             null,
@@ -692,10 +599,7 @@ export function createTimelineView(store, opts) {
               const row = el(
                 'div',
                 {
-                  class: isActive
-                    ? 'ch-ligne est-actif ch-flex-c ch-g12'
-                    : 'ch-ligne ch-flex-c ch-g12',
-                  style: { padding: '10px 16px', cursor: 'pointer' },
+                  class: `ch-line ch-line--click${isActive ? ' is-active' : ''}`,
                   onclick: (/** @type {import('./types.js').TargetMouseEvent} */ e) => {
                     // Avoids opening the editor when a button in the row is clicked.
                     if (e.target.closest('button')) return;
@@ -703,58 +607,40 @@ export function createTimelineView(store, opts) {
                   },
                 },
                 el('div', {
-                  style: {
-                    width: 4,
-                    alignSelf: 'stretch',
-                    borderRadius: 2,
-                    background: project?.color || 'var(--cv-neutral-400)',
-                    flexShrink: 0,
-                  },
+                  class: 'ch-stripe',
+                  style: { background: project?.color || 'var(--cv-cat-16-fill)' },
                 }),
                 el(
                   'div',
-                  { class: 'ch-souple' },
+                  { class: 'ch-grow' },
                   el(
                     'div',
-                    {
-                      class: 'ch-libelle ch-ellipse',
-                    },
+                    { class: 'ch-strong ch-ellipsis' },
                     s.description ||
-                      el(
-                        'span',
-                        { style: { color: 'var(--cv-fg-subtle)', fontStyle: 'italic' } },
-                        'Sans description',
-                      ),
+                      el('span', { class: 'ch-subtle ch-italic' }, 'Sans description'),
                   ),
                   el(
                     'div',
-                    { class: 'ch-legende ch-flex ch-g10', style: { marginTop: 2 } },
+                    { class: 'ch-meta ch-row ch-gap-3 ch-mt-1' },
                     el('span', null, project?.name || 'Sans projet'),
                     el('span', null, '·'),
                     el(
                       'span',
-                      { style: { fontFamily: 'var(--cv-font-mono)' } },
+                      { class: 'cv-num' },
                       `${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'}`,
                     ),
                   ),
                 ),
                 el(
                   'div',
-                  {
-                    style: {
-                      font: '500 15px/1 var(--cv-font-mono)',
-                      color: 'var(--cv-fg)',
-                      minWidth: 56,
-                      textAlign: 'right',
-                    },
-                  },
+                  { class: 'cv-num ch-figure ch-duration' },
                   formatDuration(liveDuration(s)),
                 ),
                 isActive && s.status === 'running'
                   ? el(
                       'div',
-                      { class: 'ch-flex-c ch-g6', style: { flexShrink: 0 } },
-                      UI.Badge({ variant: 'accent', dot: true, children: 'en cours' }),
+                      { class: 'ch-row ch-center ch-gap-3 ch-shrink-0' },
+                      UI.Badge({ variant: 'accent', children: 'En cours' }),
                       withFocusKey(
                         UI.IconButton({
                           icon: 'pause',
@@ -779,8 +665,8 @@ export function createTimelineView(store, opts) {
                   : isActive && s.status === 'paused'
                     ? el(
                         'div',
-                        { class: 'ch-flex-c ch-g6', style: { flexShrink: 0 } },
-                        UI.Badge({ variant: 'warning', dot: true, children: 'pause' }),
+                        { class: 'ch-row ch-center ch-gap-3 ch-shrink-0' },
+                        UI.Badge({ variant: 'warning', children: 'En pause' }),
                         withFocusKey(
                           UI.IconButton({
                             icon: 'play',
@@ -804,12 +690,11 @@ export function createTimelineView(store, opts) {
                       )
                     : el(
                         'div',
-                        { class: 'ch-flex ch-g2', style: { flexShrink: 0 } },
+                        { class: 'ch-row ch-gap-1 ch-shrink-0' },
                         withFocusKey(
                           UI.IconButton({
                             icon: 'play',
                             label: 'Reprendre ce projet',
-                            title: 'Redémarrer un chrono sur ce projet',
                             mutates: true,
                             onclick: () => opts.onStartOnProject(s.projectId, s.description),
                           }),
@@ -842,16 +727,14 @@ export function createTimelineView(store, opts) {
 
     return el(
       'section',
-      {
-        class: 'ch-carte ch-carte--rogne',
-      },
+      { class: 'cv-card ch-flush' },
       el(
         'header',
-        { class: 'ch-carte-entete ch-flex-c' },
-        el('div', { class: 'ch-titre-carte' }, 'Sessions du jour'),
+        { class: 'ch-card-header' },
+        el('h2', { class: 'cv-card__title' }, 'Sessions du jour'),
         el(
           'div',
-          { style: { marginLeft: 'auto' } },
+          { class: 'ch-end' },
           withFocusKey(
             UI.Button({
               size: 'sm',
@@ -864,7 +747,7 @@ export function createTimelineView(store, opts) {
           ),
         ),
       ),
-      list,
+      daySessions.length === 0 ? el('div', { class: 'ch-card-body' }, list) : list,
     );
   }
 
@@ -889,82 +772,54 @@ export function createTimelineView(store, opts) {
 
     return el(
       'section',
-      {
-        class: 'ch-carte ch-carte--rogne',
-      },
+      { class: 'cv-card ch-flush' },
       el(
         'header',
-        { class: 'ch-carte-entete' },
-        el('div', { class: 'ch-titre-carte' }, 'Répartition par projet'),
-        el('div', { class: 'ch-legende', style: { marginTop: 2 } }, 'Clique pour relancer'),
+        { class: 'ch-card-header ch-stack ch-align-start ch-gap-1' },
+        el('h2', { class: 'cv-card__title' }, 'Répartition par projet'),
+        el('div', { class: 'ch-meta' }, 'Clique pour relancer'),
       ),
       listEl.length === 0
-        ? el('div', { class: 'ch-vide' }, 'Rien à afficher — lance un chrono.')
+        ? el(
+            'div',
+            { class: 'ch-card-body' },
+            UI.EmptyState({
+              icon: 'chart-pie-slice',
+              title: 'Rien à afficher.',
+              text: 'Lance un chrono.',
+            }),
+          )
         : el(
             'div',
-            { style: { padding: '8px 0' } },
+            { class: 'ch-list-pad' },
             listEl.map(({ id, duration, project }) => {
               const pct = total > 0 ? (duration / total) * 100 : 0;
               return el(
                 'button',
                 {
+                  type: 'button',
                   dataset: { focusKey: `distribution:${id}` },
                   'data-mutates': '',
                   onclick: () => opts.onStartOnProject(id),
-                  class: 'ch-ligne-bouton ch-flex-c ch-g12',
+                  class: 'ch-line-button ch-row ch-center ch-gap-4',
                 },
                 el(
                   'div',
-                  { class: 'ch-souple' },
+                  { class: 'ch-grow' },
                   el(
                     'div',
-                    { class: 'ch-flex-c ch-g8', style: { marginBottom: 4 } },
-                    el('span', {
-                      class: 'ch-pastille',
-                      style: { background: project.color, flexShrink: 0 },
-                    }),
-                    el(
-                      'span',
-                      {
-                        class: 'ch-ellipse',
-                        style: { font: '500 13px/1.2 var(--cv-font-sans)', color: 'var(--cv-fg)' },
-                      },
-                      project.name,
-                    ),
-                    el(
-                      'span',
-                      {
-                        style: {
-                          marginLeft: 'auto',
-                          font: '500 13px/1 var(--cv-font-mono)',
-                          color: 'var(--cv-fg)',
-                        },
-                      },
-                      formatDuration(duration),
-                    ),
+                    { class: 'ch-row ch-center ch-gap-3 ch-mb-2' },
+                    el('span', { class: 'ch-swatch', style: { background: project.color } }),
+                    el('span', { class: 'ch-ellipsis ch-strong' }, project.name),
+                    el('span', { class: 'cv-num ch-figure ch-end' }, formatDuration(duration)),
                   ),
                   el(
                     'div',
-                    {
-                      style: {
-                        height: 6,
-                        background: 'var(--cv-neutral-100)',
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                      },
-                    },
-                    el('div', {
-                      style: {
-                        width: `${pct}%`,
-                        height: '100%',
-                        background: project.color,
-                        borderRadius: 3,
-                        transition: 'width 300ms',
-                      },
-                    }),
+                    { class: 'ch-track', 'aria-hidden': 'true' },
+                    el('span', { style: { width: `${pct}%`, background: project.color } }),
                   ),
                 ),
-                icon('play', { size: 14, style: { color: 'var(--cv-fg-subtle)' } }),
+                icon('play', { className: 'ch-subtle' }),
               );
             }),
           ),
@@ -995,7 +850,11 @@ export function createTimelineView(store, opts) {
 
     function save() {
       const t = localToTimestamp(timeW.input.value);
-      if (t == null) return;
+      if (t == null) {
+        timeW.setError('Heure illisible. Renseigne une date et une heure valides.');
+        timeW.input.focus();
+        return;
+      }
       const type = /** @type {import('../../types.js').AttendanceType} */ (typeW.input.value);
       if (!p) store.actions.addAttendance(type, t);
       else store.actions.updateAttendance(p.id, { type, at: t });
@@ -1009,23 +868,22 @@ export function createTimelineView(store, opts) {
     timeW.input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') save();
     });
+    timeW.input.addEventListener('input', () => timeW.setError(null));
 
     const footer = [];
     if (!isNew)
       footer.push(
         UI.Button({
-          variant: 'destructive',
-          icon: 'trash',
+          variant: 'danger',
           children: 'Supprimer',
           onclick: originalDelete,
-          style: { marginRight: 'auto' },
+          className: 'ch-push',
         }),
       );
-    footer.push(UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }));
+    footer.push(UI.Button({ children: 'Annuler', onclick: () => modal.close() }));
     footer.push(
       UI.Button({
         variant: 'primary',
-        icon: 'check',
         children: 'Enregistrer',
         onclick: save,
       }),
@@ -1033,8 +891,7 @@ export function createTimelineView(store, opts) {
 
     const modal = UI.Modal({
       title: isNew ? 'Ajouter un pointage' : 'Modifier le pointage',
-      width: 420,
-      body: el('div', { class: 'ch-pile ch-g12' }, typeW, timeW),
+      body: el('div', { class: 'ch-stack ch-gap-4' }, typeW, timeW),
       footer,
     });
   }
@@ -1049,59 +906,33 @@ export function createTimelineView(store, opts) {
     const hasArrival = dayAttendance.some((e) => e.type === 'arrival');
     const nowBoundary = isToday ? Date.now() : dayBounds(dayStart).end;
     const presence = hasArrival ? UI.presenceDuration(dayAttendance, nowBoundary) : 0;
-    const hasLeft = dayAttendance.some((e) => e.type === 'departure');
     return el(
       'section',
-      {
-        class: 'ch-carte ch-carte--rogne',
-      },
+      { class: 'cv-card ch-flush' },
       el(
         'header',
-        { class: 'ch-carte-entete ch-flex-c ch-g12' },
+        { class: 'ch-card-header ch-wrap' },
         el(
           'div',
-          { style: { minWidth: 0 } },
-          el('div', { class: 'ch-titre-carte' }, 'Pointages du jour'),
+          { class: 'ch-grow' },
+          el('h2', { class: 'cv-card__title' }, 'Pointages du jour'),
           el(
             'div',
-            { class: 'ch-legende', style: { marginTop: 2 } },
-            'Arrivée, pauses, départ — clique pour corriger une heure.',
+            { class: 'ch-meta ch-mt-1' },
+            'Arrivée, pauses, départ. Clique pour corriger une heure.',
           ),
         ),
         hasArrival
           ? el(
               'div',
-              { style: { marginLeft: 'auto', textAlign: 'right' } },
-              el('div', { class: 'ch-surtitre ch-surtitre--xs' }, 'Présence totale'),
-              el(
-                'div',
-                { class: 'ch-flex-c', style: { gap: 5, justifyContent: 'flex-end', marginTop: 4 } },
-                isToday && !hasLeft
-                  ? el('span', {
-                      class: 'ch-point',
-                      style: {
-                        background: 'var(--cv-success-500)',
-                        animation: 'cv-pulse 2s infinite',
-                      },
-                    })
-                  : null,
-                el(
-                  'span',
-                  {
-                    style: {
-                      font: '500 16px/1 var(--cv-font-mono)',
-                      color: 'var(--cv-fg)',
-                      letterSpacing: '-0.01em',
-                    },
-                  },
-                  formatDuration(presence),
-                ),
-              ),
+              { class: 'ch-end ch-text-right' },
+              el('div', { class: 'cv-overline' }, 'Présence totale'),
+              el('div', { class: 'cv-num ch-kpi ch-kpi--sm ch-mt-2' }, formatDuration(presence)),
             )
           : null,
         el(
           'div',
-          { style: { marginLeft: hasArrival ? 0 : 'auto' } },
+          { class: hasArrival ? null : 'ch-end' },
           withFocusKey(
             UI.Button({
               size: 'sm',
@@ -1117,54 +948,33 @@ export function createTimelineView(store, opts) {
       orders.length === 0
         ? el(
             'div',
-            {
-              class: 'ch-vide',
-              style: { padding: '24px 16px' },
-            },
-            icon('clock', { size: 22, style: { color: 'var(--cv-fg-subtle)' } }),
-            el('div', { style: { marginTop: 6 } }, 'Aucun pointage pour ce jour.'),
-            el(
-              'div',
-              { style: { marginTop: 4, font: '400 12px/1.4 var(--cv-font-sans)' } },
-              'Utilise « Ajouter » pour reconstituer la journée.',
-            ),
+            { class: 'ch-card-body' },
+            UI.EmptyState({
+              icon: 'clock',
+              title: 'Aucun pointage pour ce jour.',
+              text: 'Utilise « Ajouter » pour reconstituer la journée.',
+            }),
           )
         : el(
             'div',
-            { class: 'ch-flex ch-g8', style: { flexWrap: 'wrap', padding: 12 } },
+            { class: 'ch-row ch-wrap ch-gap-3 ch-card-body' },
             orders.map((p) => {
               const meta = ATTENDANCE_META[p.type] ?? ATTENDANCE_TYPES[0];
               if (!meta) return null;
               return el(
                 'button',
                 {
+                  type: 'button',
                   dataset: { focusKey: `attendance:${p.id ?? `${p.type}-${p.at}`}` },
                   onclick: () => openAttendanceEditor(p, dayStart),
-                  title: 'Modifier ou supprimer ce pointage',
-                  class: 'ch-chip ch-chip--teinte',
-                  style: {
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                  },
+                  class: 'cv-btn ch-attendance',
                 },
-                icon(meta.icon, { size: 16, style: { color: meta.color } }),
+                icon(meta.icon, { className: meta.tone }),
                 el(
-                  'div',
-                  { class: 'ch-pile ch-g2' },
-                  el(
-                    'div',
-                    {
-                      class: 'ch-surtitre ch-surtitre--xs',
-                    },
-                    meta.label,
-                  ),
-                  el(
-                    'div',
-                    { style: { font: '500 13px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' } },
-                    formatTime(p.at),
-                  ),
+                  'span',
+                  { class: 'ch-stack ch-gap-1' },
+                  el('span', { class: 'cv-overline' }, meta.label),
+                  el('span', { class: 'cv-num ch-figure' }, formatTime(p.at)),
                 ),
               );
             }),
@@ -1193,6 +1003,12 @@ export function createTimelineView(store, opts) {
       active && host.contains(active)
         ? /** @type {HTMLElement | null} */ (active.closest('[data-focus-key]'))?.dataset.focusKey
         : null;
+
+    // The view is drawn again every second: the button whose tooltip the pointer is on is
+    // remembered, and its tooltip is shown again below.
+    const hoveredKey = /** @type {HTMLElement | null} */ (
+      host.querySelector('.cv-tooltip-wrap:hover [data-focus-key]')
+    )?.dataset.focusKey;
 
     const s = store.state;
     const baseDate = new Date();
@@ -1233,10 +1049,10 @@ export function createTimelineView(store, opts) {
       // Date banner + stats
       el(
         'div',
-        { class: 'ch-flex', style: { alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' } },
+        { class: 'ch-row ch-align-end ch-wrap ch-gap-7' },
         el(
           'div',
-          { class: 'ch-flex-c ch-g8' },
+          { class: 'ch-row ch-center ch-gap-3' },
           withFocusKey(
             UI.IconButton({
               icon: 'caret-left',
@@ -1251,12 +1067,8 @@ export function createTimelineView(store, opts) {
           el(
             'div',
             null,
-            el('div', { class: 'ch-titre-page', style: { textTransform: 'capitalize' } }, dayLabel),
-            el(
-              'div',
-              { class: 'ch-meta', style: { textTransform: 'capitalize', marginTop: 2 } },
-              dayLabelDate,
-            ),
+            el('h1', { class: 'cv-h1 ch-page-title ch-capitalize' }, dayLabel),
+            el('div', { class: 'ch-meta ch-capitalize ch-mt-1' }, dayLabelDate),
           ),
           withFocusKey(
             UI.IconButton({
@@ -1285,10 +1097,9 @@ export function createTimelineView(store, opts) {
               )
             : null,
         ),
-        el('div', { style: { flex: 1 } }),
         el(
           'div',
-          { class: 'ch-flex', style: { gap: 28 } },
+          { class: 'ch-row ch-gap-7 ch-end' },
           statBlock(
             'Temps travaillé',
             formatDuration(totalWorked),
@@ -1300,7 +1111,6 @@ export function createTimelineView(store, opts) {
               ? `${formatTime(arrival.at)} → ${lastDeparture ? formatTime(lastDeparture.at) : '···'}`
               : '—',
             arrival ? (lastDeparture ? 'journée clôturée' : 'en cours') : 'pas encore arrivé',
-            { mono: false },
           ),
         ),
       ),
@@ -1308,33 +1118,26 @@ export function createTimelineView(store, opts) {
       // Timeline chart
       el(
         'section',
-        { class: 'ch-carte ch-carte--rogne' },
+        { class: 'cv-card ch-flush' },
         el(
           'header',
-          { class: 'ch-carte-entete ch-flex-c ch-g12' },
+          { class: 'ch-card-header ch-wrap' },
           el(
             'div',
             null,
-            el('div', { class: 'ch-titre-carte' }, 'Journée en continu'),
+            el('h2', { class: 'cv-card__title' }, 'Journée en continu'),
             el(
               'div',
-              { class: 'ch-legende', style: { marginTop: 2 } },
-              'Les chronos en parallèle s’empilent en voies · glisse pour faire défiler',
+              { class: 'ch-meta ch-mt-1' },
+              'Les chronos en parallèle s’empilent en voies. Fais défiler pour voir le reste de la journée.',
             ),
           ),
           el(
             'div',
-            {
-              class: 'ch-flex-c ch-g12',
-              style: {
-                marginLeft: 'auto',
-                font: '400 11px/1 var(--cv-font-sans)',
-                color: 'var(--cv-fg-muted)',
-              },
-            },
-            legendItem('var(--cv-success-500)', 'Présence'),
-            legendItem('var(--cv-warning-400)', 'Pause', true),
-            legendItem('var(--cv-fg)', 'Session'),
+            { class: 'ch-row ch-center ch-gap-5 ch-meta ch-end' },
+            legendItem('var(--cv-success-surface)', 'var(--cv-fg-success)', 'Présence'),
+            legendItem('var(--cv-warning-surface)', 'var(--cv-fg-warning)', 'Pause'),
+            legendItem('var(--cv-surface-inverse)', 'var(--cv-surface-inverse)', 'Session'),
           ),
         ),
         timelineChart(dayStart, daySessions, dayAttendance, s.projects, isToday),
@@ -1343,17 +1146,16 @@ export function createTimelineView(store, opts) {
       // Bottom: sessions + distribution
       el(
         'div',
-        { style: { display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 } },
+        { class: 'ch-grid-day' },
         sessionsList(daySessions, s.projects),
         el(
           'div',
-          { class: 'ch-pile ch-g20' },
+          { class: 'ch-stack ch-gap-6' },
           attendanceSection(dayAttendance, dayStart, isToday),
           distribution(daySessions, s.projects),
         ),
       ),
     );
-
     // Restores the scroll of the chart.
     const scroller = /** @type {HTMLElement | null} */ (
       host.querySelector('[data-role="timeline-scroll"]')
@@ -1364,9 +1166,11 @@ export function createTimelineView(store, opts) {
         scroller.scrollLeft = remembered;
       } else if (isToday && scroller.scrollWidth > scroller.clientWidth) {
         // First display of the current day: the current time visible, around 2/3 of the width.
+        // The chart is laid out in rem: its px size follows the root font size.
+        const scale = parseFloat(getComputedStyle(document.documentElement).fontSize) / 16;
         scroller.scrollLeft = Math.max(
           0,
-          CHART_PAD_X + tsToPx(Date.now()) - (scroller.clientWidth * 2) / 3,
+          (CHART_PAD_X + tsToPx(Date.now())) * scale - (scroller.clientWidth * 2) / 3,
         );
       }
       scroller.dataset.positioned = '1';
@@ -1383,6 +1187,12 @@ export function createTimelineView(store, opts) {
         .../** @type {NodeListOf<HTMLElement>} */ (host.querySelectorAll('[data-focus-key]')),
       ].find((n) => n.dataset.focusKey === focusKey);
       if (targetId) targetId.focus({ preventScroll: true });
+    }
+    if (hoveredKey) {
+      const hovered = [
+        .../** @type {NodeListOf<HTMLElement>} */ (host.querySelectorAll('[data-focus-key]')),
+      ].find((n) => n.dataset.focusKey === hoveredKey);
+      hovered?.closest('.cv-tooltip-wrap')?.dispatchEvent(new MouseEvent('mouseenter'));
     }
   }
 

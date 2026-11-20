@@ -1,446 +1,626 @@
 /* =============================================================================
-   Chrono : styles applicatifs, chargés après covenant.css.
-   Les classes ch-* factorisent les styles autrefois répétés en inline dans js/*.js.
-   Les valeurs calculées à l'exécution (couleur de projet, position dans la
-   timeline, états) restent en style inline : un style inline l'emporte sur ces
-   classes. Les unités sont explicites (el() ajoute « px » aux nombres, pas le CSS).
+   Chrono: app styles, loaded after @simple-web-tools/covenant (tokens, components, fonts).
+   Layout glue and the few app-level pieces that Covenant has no component for. Rules:
+   semantic roles only (no hex, no primitive scale token), every size in rem, hover and press
+   are instant (motion belongs to overlays and toasts, and Covenant provides it).
+   Values that the views compute at run time (a project colour, a position in the timeline)
+   stay inline: a number written by el() in `style` is px at the standard scale, written in rem.
    ============================================================================= */
 
-/* --- Animations --------------------------------------------------------- */
-@keyframes cv-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes cv-modal-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes cv-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-@keyframes cv-slide-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* --- Reset et défilement ------------------------------------------------ */
+/* --- Reset --------------------------------------------------------------- */
 html,
 body {
   margin: 0;
-  height: 100%;
-}
-body {
-  background: var(--cv-bg);
-  color: var(--cv-fg);
-  font-family: var(--cv-font-sans);
-}
-button,
-select,
-input,
-textarea {
-  font-family: inherit;
-}
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-*::-webkit-scrollbar-thumb {
-  background: var(--cv-neutral-300);
-  border-radius: 6px;
-  border: 2px solid var(--cv-bg);
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--cv-neutral-400);
 }
 
-/* --- Mise en page : flex et espacements --------------------------------- */
-.ch-flex {
+/* --- Layout: flex, grid and spacing ------------------------------------- */
+.ch-row {
   display: flex;
+  flex-direction: row;
 }
-.ch-flex-c {
-  display: flex;
-  align-items: center;
-}
-.ch-pile {
+.ch-stack {
   display: flex;
   flex-direction: column;
 }
-.ch-entre {
+.ch-center {
+  align-items: center;
+}
+.ch-baseline {
+  align-items: baseline;
+}
+.ch-align-end {
+  align-items: flex-end;
+}
+.ch-between {
   justify-content: space-between;
 }
-.ch-souple {
+.ch-wrap {
+  flex-wrap: wrap;
+}
+.ch-grow {
   min-width: 0;
   flex: 1;
 }
-
-.ch-g2 {
-  gap: 2px;
+.ch-self-start {
+  align-self: flex-start;
 }
-.ch-g4 {
-  gap: 4px;
+.ch-shrink-0 {
+  flex-shrink: 0;
 }
-.ch-g6 {
-  gap: 6px;
+.ch-end {
+  margin-left: auto;
 }
-.ch-g8 {
-  gap: 8px;
+.ch-push {
+  margin-right: auto;
 }
-.ch-g10 {
-  gap: 10px;
-}
-.ch-g12 {
-  gap: 12px;
-}
-.ch-g14 {
-  gap: 14px;
-}
-.ch-g16 {
-  gap: 16px;
-}
-.ch-g20 {
-  gap: 20px;
+.ch-fill {
+  align-self: stretch;
+  flex: 1;
 }
 
-/* --- Typographie -------------------------------------------------------- */
-/* Surtitre : petit libellé en capitales. */
-.ch-surtitre {
-  font: 500 11px/1 var(--cv-font-sans);
-  color: var(--cv-fg-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.ch-gap-1 {
+  gap: var(--cv-space-1);
 }
-.ch-surtitre--xs {
-  font: 500 10px/1 var(--cv-font-sans);
+.ch-gap-2 {
+  gap: var(--cv-space-2);
 }
-.ch-surtitre--fort {
-  font: 600 11px/1 var(--cv-font-sans);
+.ch-gap-3 {
+  gap: var(--cv-space-3);
+}
+.ch-gap-4 {
+  gap: var(--cv-space-4);
+}
+.ch-gap-5 {
+  gap: var(--cv-space-5);
+}
+.ch-gap-6 {
+  gap: var(--cv-space-6);
+}
+.ch-gap-7 {
+  gap: var(--cv-space-7);
 }
 
-.ch-titre-page {
-  font: 600 20px/1.2 var(--cv-font-sans);
-  color: var(--cv-fg);
-  letter-spacing: -0.01em;
+.ch-mt-auto {
+  margin-top: auto;
 }
-.ch-titre-carte {
-  font: 600 13px/1.3 var(--cv-font-sans);
+.ch-mt-5 {
+  margin-top: var(--cv-space-5);
 }
-.ch-libelle {
-  font: 500 13px/1.3 var(--cv-font-sans);
-  color: var(--cv-fg);
+.ch-mb-4 {
+  margin-bottom: var(--cv-space-4);
 }
-.ch-label {
-  font: 500 12px/1.3 var(--cv-font-sans);
-  color: var(--cv-fg-muted);
+.ch-mt-1 {
+  margin-top: var(--cv-space-1);
+}
+.ch-mt-2 {
+  margin-top: var(--cv-space-2);
+}
+.ch-mt-3 {
+  margin-top: var(--cv-space-3);
+}
+.ch-mt-4 {
+  margin-top: var(--cv-space-4);
+}
+
+/* --- Typography ---------------------------------------------------------- */
+.ch-page-title {
+  margin: 0;
 }
 .ch-meta {
-  font: 400 12px/1.3 var(--cv-font-sans);
+  font-size: var(--cv-text-xs);
+  line-height: 1.3;
   color: var(--cv-fg-muted);
 }
-.ch-note {
-  font: 400 12px/1.4 var(--cv-font-sans);
-  color: var(--cv-fg-muted);
-}
-.ch-indice {
-  font: 400 12px/1.3 var(--cv-font-sans);
+.ch-subtle {
+  font-size: var(--cv-text-xs);
+  line-height: 1.3;
   color: var(--cv-fg-subtle);
 }
-.ch-legende {
-  font: 400 11px/1.3 var(--cv-font-sans);
-  color: var(--cv-fg-muted);
+.ch-strong {
+  font-weight: var(--cv-weight-medium);
 }
-.ch-mono-xs {
-  font: 500 10px/1 var(--cv-font-mono);
-  color: var(--cv-fg-subtle);
+.ch-title {
+  margin: 0;
+  font: var(--cv-weight-semibold) var(--cv-text-sm) / 1.3 var(--cv-font-sans);
 }
-.ch-ellipse {
+.ch-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* État vide : texte centré dans une carte. */
-.ch-vide {
-  padding: 32px 16px;
-  text-align: center;
-  color: var(--cv-fg-muted);
-  font: 400 13px/1.5 var(--cv-font-sans);
+.ch-capitalize {
+  text-transform: capitalize;
+}
+.ch-italic {
+  font-style: italic;
+}
+.ch-done {
+  color: var(--cv-fg-subtle);
+  text-decoration: line-through;
+}
+.ch-fg {
+  color: var(--cv-fg);
+}
+.ch-accent-text {
+  color: var(--cv-fg-accent);
+}
+.ch-danger-text {
+  color: var(--cv-fg-danger);
+}
+.ch-title-reset {
+  margin: 0;
+}
+.ch-warning-text {
+  color: var(--cv-fg-warning);
+}
+.ch-message {
+  margin: 0;
 }
 
-/* --- Cartes et panneaux ------------------------------------------------- */
-.ch-carte {
-  background: var(--cv-surface);
-  border: 1px solid var(--cv-border);
-  border-radius: 12px;
-  box-shadow: var(--cv-shadow-sm);
+/* Key figures: IBM Plex Mono through `cv-num`, hierarchy through size. */
+.ch-kpi {
+  font-size: var(--cv-text-2xl);
+  font-weight: var(--cv-weight-medium);
+  line-height: 1;
+  letter-spacing: var(--cv-tracking-tight);
 }
-.ch-carte--rogne {
+.ch-kpi--lg {
+  font-size: var(--cv-text-3xl);
+}
+.ch-kpi--md {
+  font-size: var(--cv-text-xl);
+}
+.ch-kpi--sm {
+  font-size: var(--cv-text-lg);
+}
+.ch-figure {
+  font-size: var(--cv-text-md);
+  font-weight: var(--cv-weight-medium);
+}
+
+/* --- Messages -------------------------------------------------------------- */
+.ch-loading {
+  padding: var(--cv-space-9);
+}
+.ch-error-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+  max-width: 35rem;
+  margin: 15vh auto 0;
+  padding: 0 var(--cv-space-7);
+  background: var(--cv-bg);
+  font-size: var(--cv-text-md);
+}
+.ch-icon-xl {
+  font-size: 1.75rem;
+}
+
+/* --- Page ---------------------------------------------------------------- */
+.ch-app {
+  display: flex;
+  min-height: 100vh;
+  background: var(--cv-bg);
+}
+.ch-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--cv-space-6);
+  width: 100%;
+  min-width: 0;
+  padding: var(--cv-space-7) var(--cv-space-8);
+}
+.ch-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-6);
+}
+.ch-view--narrow {
+  max-width: 57.5rem;
+}
+
+/* --- Cards without padding: a header, then rows or a table ---------------- */
+.ch-flush {
+  gap: 0;
+  padding: 0;
   overflow: hidden;
 }
-.ch-carte-entete {
-  padding: 12px 16px;
+.ch-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-4);
+  padding: var(--cv-space-4) var(--cv-space-5);
   border-bottom: 1px solid var(--cv-border);
 }
-.ch-panneau {
-  background: var(--cv-surface);
+.ch-card-header--danger {
+  background: var(--cv-danger-surface);
+}
+.ch-form-bar {
+  padding: var(--cv-space-4);
+}
+.ch-field-wide {
+  flex: 1 1 14rem;
+}
+.ch-field-md {
+  flex: 0 1 13.75rem;
+  min-width: 10rem;
+}
+.ch-field-sm {
+  flex: 0 1 9.375rem;
+  min-width: 8rem;
+}
+.ch-block {
+  padding: var(--cv-space-4);
   border: 1px solid var(--cv-border);
-  border-radius: 10px;
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+.ch-block--selected {
+  border-color: var(--cv-border-selected);
+  background: var(--cv-bg-accent-subtle);
+}
+.ch-block--dashed {
+  border-style: dashed;
+  border-color: var(--cv-border-strong);
+  background: var(--cv-surface-2);
 }
 
-/* --- Pastilles ---------------------------------------------------------- */
-.ch-pastille {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
+.ch-project-card {
+  position: relative;
+  overflow: hidden;
+  padding-left: var(--cv-space-7);
 }
-.ch-point {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.ch-card-stripe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0.25rem;
 }
 
-/* --- Navigation latérale ------------------------------------------------ */
+.ch-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18.75rem, 1fr));
+  gap: var(--cv-space-4);
+}
+.ch-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--cv-space-4);
+}
+.ch-grid-day {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--cv-space-6);
+}
+@media (max-width: 1023px) {
+  .ch-grid-day {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ch-main {
+    padding: var(--cv-space-5);
+  }
+}
+
+/* --- Sidebar ------------------------------------------------------------- */
+.ch-sidebar {
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  width: 16.5rem;
+  height: 100vh;
+  gap: var(--cv-space-4);
+}
+.ch-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-3);
+  padding: var(--cv-space-1) var(--cv-space-3);
+  font: var(--cv-weight-semibold) var(--cv-text-lg) / 1 var(--cv-font-sans);
+  letter-spacing: var(--cv-tracking-tight);
+}
+.ch-brand .cv-icon {
+  color: var(--cv-brand-accent);
+}
+.ch-sidebar-scroll {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+  min-height: 0;
+  margin: 0 calc(var(--cv-space-1) * -2);
+  padding: 0 calc(var(--cv-space-1) * 2);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.ch-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-1);
+}
 .ch-nav-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: 6px;
-  border: none;
+  width: 100%;
+  border: 0;
   background: transparent;
-  color: var(--cv-fg-muted);
-  font: 400 13px/1 var(--cv-font-sans);
-  cursor: pointer;
   text-align: left;
-  transition: background 120ms;
+  cursor: pointer;
 }
-.ch-nav-btn.est-actif {
-  background: var(--cv-surface-2);
-  color: var(--cv-fg);
-  font-weight: 500;
+.ch-workspace {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
 }
-.ch-nav-btn:not(.est-actif):hover {
-  background: var(--cv-surface-2);
-}
-
-/* --- Puce cliquable (espace de sauvegarde, tuiles de pointage) ---------- */
-.ch-chip {
+.ch-shortcuts {
+  flex-shrink: 0;
+  padding: var(--cv-space-3);
   border: 1px solid var(--cv-border);
-  border-radius: 8px;
-  background: var(--cv-surface);
-  cursor: pointer;
-  font: inherit;
-  color: var(--cv-fg);
-  text-align: left;
-  transition:
-    background 120ms,
-    border-color 120ms;
-}
-.ch-chip--teinte {
-  background: var(--cv-neutral-50);
-}
-.ch-chip:hover {
+  border-radius: var(--cv-radius-md);
   background: var(--cv-surface-2);
-  border-color: var(--cv-border-strong);
 }
 
-/* --- Boutons (ui.js : Button et IconButton) ----------------------------- */
-.ch-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font-family: var(--cv-font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
-  transition:
-    background-color 120ms,
-    border-color 120ms,
-    transform 80ms;
+/* --- Timers and presence (sidebar widget) -------------------------------- */
+/* The running-timer card is the inverse surface; captions use fg-inverse-muted. */
+.ch-ink {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-3);
+  padding: var(--cv-space-4);
+  border: 1px solid var(--cv-surface-inverse);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface-inverse);
+  color: var(--cv-fg-inverse);
+}
+.ch-ink .ch-caption {
+  font-size: var(--cv-text-xs);
+  color: var(--cv-fg-inverse-muted);
+}
+.cv-tag {
   white-space: nowrap;
-  user-select: none;
 }
-.ch-btn--primary {
-  background: var(--cv-accent-500);
-  color: #fff;
-  border-color: var(--cv-accent-500);
-}
-.ch-btn--secondary {
-  background: var(--cv-surface);
-  color: var(--cv-fg);
-  border-color: var(--cv-border-strong);
-}
-.ch-btn--ghost {
-  background: transparent;
-  color: var(--cv-fg);
-  border-color: transparent;
-}
-.ch-btn--destructive {
-  background: var(--cv-danger-500);
-  color: #fff;
-  border-color: var(--cv-danger-500);
-}
-.ch-btn--success {
-  background: var(--cv-success-500);
-  color: #fff;
-  border-color: var(--cv-success-500);
+.ch-ink .cv-tooltip {
+  box-shadow: var(--cv-shadow-md);
 }
 
-.ch-icon-btn {
-  border-radius: 8px;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 120ms;
-}
-.ch-icon-btn--ghost {
-  background: transparent;
-  color: var(--cv-fg-muted);
-}
-.ch-icon-btn--secondary {
-  background: var(--cv-surface);
-  color: var(--cv-fg);
-  border: 1px solid var(--cv-border-strong);
-}
-.ch-icon-btn--primary {
-  background: var(--cv-accent-500);
-  color: #fff;
-}
-.ch-icon-btn--danger {
-  background: var(--cv-danger-500);
-  color: #fff;
-}
-.ch-icon-btn--ghost:hover:not(:disabled) {
-  background: var(--cv-surface-2);
-}
-
-/* --- Champs de formulaire (ui.js) --------------------------------------- */
-.ch-champ {
-  border: 1px solid var(--cv-border-strong);
-  border-radius: 8px;
-  background: var(--cv-surface);
-  color: var(--cv-fg);
-  outline: none;
-}
-.ch-champ--anime {
-  transition:
-    border-color 120ms,
-    box-shadow 120ms;
-}
-
-/* --- Bouton sur fond sombre (carte de chrono actif du widget de pointage) -- */
-.ch-btn-sombre {
-  flex: 0;
-  height: 30px;
-  padding: 0 11px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font: 500 12px/1 var(--cv-font-sans);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: background 120ms;
-}
-.ch-btn-sombre--accent {
-  background: var(--cv-accent-500);
-  border-color: var(--cv-accent-500);
-}
-
-/* --- Option de liste sélectionnable (choix du projet dans QuickAdd) ------ */
-.ch-option {
+/* --- Lists: hairline rows, hover is instant ------------------------------ */
+.ch-line {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--cv-fg);
-  cursor: pointer;
-  text-align: left;
-  transition: all 120ms;
-}
-.ch-option.est-actif {
-  background: var(--cv-accent-50);
-  border-color: var(--cv-accent-500);
-}
-.ch-option:not(.est-actif):hover {
-  background: var(--cv-surface-2);
-}
-
-/* --- Lignes de liste survolables (sessions du jour, todos) -------------- */
-.ch-ligne {
+  gap: var(--cv-space-4);
+  padding: var(--cv-space-3) var(--cv-space-5);
   border-bottom: 1px solid var(--cv-border);
   background: var(--cv-surface);
-  transition: background 120ms;
 }
-.ch-ligne.est-actif {
-  background: var(--cv-accent-50);
+.ch-line:last-child {
+  border-bottom: 0;
 }
-.ch-ligne:not(.est-actif):hover {
+.ch-line:hover {
   background: var(--cv-surface-2);
 }
-
-/* Ligne cliquable pleine largeur (répartition par projet). */
-.ch-ligne-bouton {
+.ch-line--click {
+  cursor: pointer;
+}
+.ch-line.is-active {
+  background: var(--cv-bg-accent-subtle);
+}
+.ch-todo-main {
+  flex-basis: 12rem;
+}
+.ch-line--top {
+  align-items: flex-start;
+}
+.ch-line-button {
   width: 100%;
-  padding: 10px 16px;
+  padding: var(--cv-space-3) var(--cv-space-5);
+  font: inherit;
+  border: 0;
   background: transparent;
-  border: none;
-  cursor: pointer;
+  color: inherit;
   text-align: left;
-  transition: background 120ms;
+  cursor: pointer;
 }
-.ch-ligne-bouton:hover {
+.ch-line-button:hover {
   background: var(--cv-surface-2);
+}
+.ch-stripe {
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 0.25rem;
+  border-radius: var(--cv-radius-xs);
+}
+.ch-swatch {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--cv-radius-xs);
+}
+.ch-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.ch-todo-title {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ch-todo-title:hover {
+  text-decoration: underline;
 }
 
-/* --- Bouton discret à bordure pointillée (Projets : « Calculer le temps ») -- */
-.ch-btn-pointille {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  border: 1px dashed var(--cv-border-strong);
-  background: transparent;
-  color: var(--cv-fg-muted);
-  font: 500 12px/1 var(--cv-font-sans);
-  transition:
-    background 120ms,
-    color 120ms;
-}
-.ch-btn-pointille:hover {
+/* --- Progress and bars --------------------------------------------------- */
+.ch-track {
+  overflow: hidden;
+  height: 0.375rem;
+  border-radius: var(--cv-radius-xs);
   background: var(--cv-surface-2);
+}
+.ch-track > span {
+  display: block;
+  height: 100%;
+}
+.ch-track--accent > span {
+  background: var(--cv-brand-accent);
+}
+.ch-track--success > span {
+  background: var(--cv-fg-success);
+}
+
+/* --- Attendance chip (opens the editor) ---------------------------------- */
+.ch-attendance {
+  gap: var(--cv-space-3);
+  padding: var(--cv-space-2) var(--cv-space-4);
+  text-align: left;
+}
+.ch-attendance .cv-icon {
+  font-size: var(--cv-text-lg);
+}
+
+/* --- Colour picker of the project form ------------------------------------ */
+.ch-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cv-space-3);
+}
+.ch-swatch-btn {
+  box-sizing: border-box;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--cv-radius-md);
+  cursor: pointer;
+}
+.ch-swatch-btn[aria-pressed='true'] {
+  border-color: var(--cv-border-selected);
+  box-shadow: inset 0 0 0 2px var(--cv-surface);
+}
+.ch-color-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- Project choice of the quick add (radios) ----------------------------- */
+.ch-radio-list {
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+/* --- Week chart and day timeline: neutral parts --------------------------- */
+.ch-chart-label {
+  font-size: var(--cv-text-xs);
+  line-height: 1;
+  color: var(--cv-fg-subtle);
+}
+.ch-bar-track {
+  background: var(--cv-surface-2);
+}
+.ch-th-end {
+  text-align: right;
+}
+.ch-justify-end {
+  justify-content: flex-end;
+}
+.cv-table tbody th.ch-row-head {
   color: var(--cv-fg);
+  font-weight: var(--cv-weight-regular);
+}
+.cv-table .ch-total-row th.ch-row-head {
+  font-weight: var(--cv-weight-semibold);
+}
+.cv-table tbody tr:last-child th {
+  border-bottom: 0;
+}
+.ch-total-row th,
+.ch-today-row td {
+  background: var(--cv-bg-accent-subtle);
+}
+.ch-muted-cell {
+  color: var(--cv-fg-muted);
+}
+.ch-chart-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--cv-space-5) 0 var(--cv-space-4);
+}
+.ch-session-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: var(--cv-space-2) var(--cv-space-3);
+  border: 0;
+  border-radius: var(--cv-radius-sm);
+  color: var(--cv-fg-on-cat);
+  font: var(--cv-weight-medium) var(--cv-text-xs) / 1.2 var(--cv-font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.ch-session-block--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--cv-space-3);
+  padding: 0 var(--cv-space-3);
+}
+.ch-dot-light {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: var(--cv-fg-on-cat);
+}
+.ch-now-label {
+  padding: var(--cv-space-1) var(--cv-space-2);
+  border-radius: var(--cv-radius-sm);
+  background: var(--cv-accent-fill);
+  color: var(--cv-fg-on-accent);
+  font-size: var(--cv-text-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+.ch-card-body {
+  padding: var(--cv-space-4);
+}
+.ch-list-pad {
+  padding: var(--cv-space-2) 0;
+}
+.ch-text-right {
+  text-align: right;
+}
+.ch-align-start {
+  align-items: flex-start;
+}
+.ch-duration {
+  min-width: 3.5rem;
+  text-align: right;
+}
+.ch-success-text {
+  color: var(--cv-fg-success);
+}
+.ch-muted-text {
+  color: var(--cv-fg-muted);
+}
+.ch-mb-2 {
+  margin-bottom: var(--cv-space-2);
+}
+.ch-scroll-x {
+  overflow-x: auto;
+}
+.ch-legend-swatch {
+  width: 0.875rem;
+  height: 0.5rem;
+  border-radius: var(--cv-radius-xs);
 }

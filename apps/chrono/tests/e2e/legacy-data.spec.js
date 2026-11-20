@@ -165,7 +165,7 @@ test('an export file of the former site (version 1) can be imported', async ({ p
   });
   await page
     .getByRole('dialog', { name: 'Remplacer les données ?' })
-    .getByRole('button', { name: 'Supprimer' })
+    .getByRole('button', { name: 'Remplacer les données' })
     .click();
 
   await page.getByRole('button', { name: 'Projets' }).click();

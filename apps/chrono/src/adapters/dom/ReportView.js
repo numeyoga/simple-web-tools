@@ -13,83 +13,23 @@ const { el, formatDuration } = UI;
 export function createReportView(store) {
   let weekOffset = 0;
 
-  const host = el('div', { class: 'ch-pile ch-g20' });
+  const host = el('div', { class: 'ch-view' });
 
   /**
    * @param {string} label
    * @param {string} value
    * @param {string | null} subtext
-   * @param {{ accent?: boolean, mono?: boolean, extra?: import('./types.js').Child }} [options]
+   * @param {{ extra?: import('./types.js').Child }} [options]
    */
-  function statCard(label, value, subtext, { accent, mono = true, extra } = {}) {
+  function statCard(label, value, subtext, { extra } = {}) {
     return el(
       'div',
-      {
-        class: 'ch-carte',
-        style: { padding: 16 },
-      },
-      el('div', { class: 'ch-surtitre' }, label),
-      el(
-        'div',
-        {
-          style: {
-            marginTop: 8,
-            font: `500 26px/1 ${mono ? 'var(--cv-font-mono)' : 'var(--cv-font-sans)'}`,
-            color: accent ? 'var(--cv-accent-600)' : 'var(--cv-fg)',
-            letterSpacing: '-0.01em',
-          },
-        },
-        value,
-      ),
-      subtext
-        ? el(
-            'div',
-            {
-              style: {
-                marginTop: 4,
-                font: '400 12px/1.2 var(--cv-font-sans)',
-                color: 'var(--cv-fg-subtle)',
-              },
-            },
-            subtext,
-          )
-        : null,
+      { class: 'cv-card cv-card--compact' },
+      el('div', { class: 'cv-overline' }, label),
+      el('div', { class: 'cv-num ch-kpi ch-kpi--lg' }, value),
+      subtext ? el('div', { class: 'ch-subtle' }, subtext) : null,
       extra || null,
     );
-  }
-
-  /**
-   * @param {import('./types.js').Child} content
-   * @param {string} [align]
-   */
-  function Th(content, align = 'left') {
-    return el(
-      'th',
-      {
-        class: 'ch-surtitre',
-        style: { padding: '10px 16px', textAlign: align },
-      },
-      content,
-    );
-  }
-  /**
-   * @param {import('./types.js').Child} content
-   * @param {{ align?: string, muted?: boolean, mono?: boolean, strong?: boolean, colSpan?: number, style?: import('./types.js').Style }} [opts]
-   */
-  function Td(content, opts = {}) {
-    const { align = 'left', muted, mono, strong, colSpan, style } = opts;
-    /** @type {Record<string, unknown>} */
-    const attrs = {
-      style: {
-        padding: '12px 16px',
-        textAlign: align,
-        font: `${strong ? 600 : 400} 13px/1.3 ${mono ? 'var(--cv-font-mono)' : 'var(--cv-font-sans)'}`,
-        color: muted ? 'var(--cv-fg-muted)' : 'var(--cv-fg)',
-        ...(style || {}),
-      },
-    };
-    if (colSpan) attrs.colSpan = colSpan;
-    return el('td', attrs, content);
   }
 
   /**
@@ -107,14 +47,15 @@ export function createReportView(store) {
     const steps = Array.from({ length: Math.max(1, maxH / 2) + 1 }, (_, i) => i * 2);
 
     const axisY = el('div', {
-      style: { height: H, position: 'relative', width: 34, flexShrink: 0 },
+      class: 'ch-shrink-0',
+      style: { height: H, position: 'relative', width: 34 },
     });
     for (const h of steps) {
       axisY.appendChild(
         el(
           'div',
           {
-            class: 'ch-mono-xs',
+            class: 'ch-chart-label cv-num',
             style: {
               position: 'absolute',
               bottom: (h / maxH) * H,
@@ -128,7 +69,7 @@ export function createReportView(store) {
     }
 
     const bars = el('div', {
-      class: 'ch-flex ch-g8',
+      class: 'ch-row ch-gap-3',
       style: { flex: 1, alignItems: 'flex-end', height: H, position: 'relative' },
     });
     for (const h of steps) {
@@ -164,7 +105,7 @@ export function createReportView(store) {
           style: {
             height: (seg.duration / j.total) * totalHeight,
             background: seg.project.color,
-            borderBottom: si > 0 ? '1px solid rgba(255,255,255,0.2)' : 'none',
+            borderBottom: si > 0 ? '1px solid var(--cv-surface)' : 'none',
           },
         }),
       );
@@ -173,18 +114,16 @@ export function createReportView(store) {
         el(
           'div',
           {
-            class: 'ch-pile ch-g6',
+            class: 'ch-stack ch-gap-3',
             style: { flex: 1, alignItems: 'center', position: 'relative', zIndex: 1 },
           },
           el(
             'div',
             {
+              class: `ch-chart-label cv-num ch-meta`,
               style: {
                 position: 'absolute',
                 bottom: totalHeight + 8,
-                font: '500 11px/1 var(--cv-font-mono)',
-                color: 'var(--cv-fg-muted)',
-                opacity: j.total > 0 ? 1 : 0.3,
                 whiteSpace: 'nowrap',
               },
             },
@@ -194,7 +133,7 @@ export function createReportView(store) {
           el(
             'div',
             {
-              class: 'ch-flex',
+              class: `ch-row${isWeekend ? '' : ' ch-bar-track'}`,
               style: {
                 width: '100%',
                 maxWidth: 68,
@@ -202,8 +141,7 @@ export function createReportView(store) {
                 flexDirection: 'column-reverse',
                 borderRadius: 4,
                 overflow: 'hidden',
-                background: isWeekend ? 'transparent' : 'var(--cv-neutral-100)',
-                boxShadow: isToday ? '0 0 0 2px var(--cv-accent-500)' : 'none',
+                boxShadow: isToday ? '0 0 0 2px var(--cv-brand-accent)' : 'none',
                 position: 'absolute',
                 bottom: 20,
                 left: '50%',
@@ -216,16 +154,8 @@ export function createReportView(store) {
           el(
             'div',
             {
-              style: {
-                position: 'absolute',
-                bottom: 0,
-                font: `${isToday ? 600 : 400} 12px/1 var(--cv-font-sans)`,
-                color: isToday
-                  ? 'var(--cv-accent-600)'
-                  : isWeekend
-                    ? 'var(--cv-fg-subtle)'
-                    : 'var(--cv-fg)',
-              },
+              class: isToday ? 'ch-accent-text ch-strong' : isWeekend ? 'ch-subtle' : 'ch-fg',
+              style: { position: 'absolute', bottom: 0, fontSize: 12, lineHeight: 1 },
             },
             `${dayNames[i]} ${j.date.getDate()}`,
           ),
@@ -233,7 +163,7 @@ export function createReportView(store) {
       );
     });
 
-    return el('div', { class: 'ch-flex ch-g16' }, axisY, bars);
+    return el('div', { class: 'ch-row ch-gap-5' }, axisY, bars);
   }
 
   // Summary table of the distribution per day: one row per day,
@@ -250,62 +180,42 @@ export function createReportView(store) {
     today.setHours(0, 0, 0, 0);
     const cols = sortedProjects; // [{ id, duration, project }]
 
-    if (cols.length === 0) return el('div', { style: { display: 'none' } });
+    if (cols.length === 0) return null;
 
     const cellTxt = (/** @type {number} */ ms) => (ms > 0 ? formatDuration(ms) : '·');
 
     const projectTotals = cols.map((c) =>
       byDay.reduce((acc, j) => acc + (j.byProject[c.id] || 0), 0),
     );
+    const captionId = UI.fieldId('ch-caption');
 
     return el(
       'div',
-      { style: { marginTop: 20, borderTop: '1px solid var(--cv-border)', overflowX: 'auto' } },
-      el(
-        'div',
-        { class: 'ch-surtitre ch-surtitre--fort', style: { padding: '16px 0 10px' } },
-        'Détail chiffré',
-      ),
+      { class: 'cv-table-wrap ch-mt-5', role: 'region', 'aria-labelledby': captionId, tabindex: 0 },
       el(
         'table',
-        { style: { width: '100%', borderCollapse: 'collapse', minWidth: 480 } },
+        { class: 'cv-table' },
+        el('caption', { id: captionId }, 'Détail chiffré'),
         el(
           'thead',
           null,
           el(
             'tr',
-            { style: { borderBottom: '1px solid var(--cv-border)' } },
-            Th('Jour'),
+            null,
+            el('th', { scope: 'col' }, 'Jour'),
             ...cols.map((c) =>
               el(
                 'th',
-                {
-                  style: {
-                    padding: '8px 12px',
-                    textAlign: 'right',
-                    font: '500 11px/1.3 var(--cv-font-sans)',
-                    color: 'var(--cv-fg-muted)',
-                  },
-                },
+                { scope: 'col', class: 'ch-th-end' },
                 el(
                   'span',
-                  {
-                    style: {
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      justifyContent: 'flex-end',
-                    },
-                  },
-                  el('span', {
-                    class: 'ch-pastille',
-                    style: { background: c.project.color, flexShrink: 0 },
-                  }),
-                  el('span', { class: 'ch-ellipse', style: { maxWidth: 120 } }, c.project.name),
+                  { class: 'ch-row ch-center ch-gap-3 ch-justify-end' },
+                  el('span', { class: 'ch-swatch', style: { background: c.project.color } }),
+                  el('span', { class: 'ch-ellipsis', style: { maxWidth: 120 } }, c.project.name),
                 ),
               ),
             ),
-            Th('Total', 'right'),
+            el('th', { scope: 'col', class: 'ch-th-end' }, 'Total'),
           ),
         ),
         el(
@@ -315,33 +225,32 @@ export function createReportView(store) {
             const isToday = j.date.getTime() === today.getTime();
             return el(
               'tr',
-              {
-                style: {
-                  borderBottom: '1px solid var(--cv-border)',
-                  background: isToday ? 'var(--cv-accent-50)' : 'transparent',
+              { class: isToday ? 'ch-today-row' : null },
+              el(
+                'th',
+                {
+                  scope: 'row',
+                  class: `ch-row-head${isToday ? ' ch-strong' : ''}${j.total === 0 ? ' ch-muted-cell' : ''}`,
                 },
-              },
-              Td(`${dayNames[i]} ${j.date.getDate()}`, { strong: isToday, muted: j.total === 0 }),
+                `${dayNames[i]} ${j.date.getDate()}`,
+              ),
               ...cols.map((c) => {
                 const v = j.byProject[c.id] || 0;
-                return Td(cellTxt(v), { align: 'right', mono: true, muted: v === 0 });
+                return el('td', { class: `cv-num${v === 0 ? ' ch-muted-cell' : ''}` }, cellTxt(v));
               }),
-              Td(j.total > 0 ? formatDuration(j.total) : '·', {
-                align: 'right',
-                mono: true,
-                strong: j.total > 0,
-                muted: j.total === 0,
-              }),
+              el(
+                'td',
+                { class: `cv-num${j.total === 0 ? ' ch-muted-cell' : ' ch-strong'}` },
+                j.total > 0 ? formatDuration(j.total) : '·',
+              ),
             );
           }),
           el(
             'tr',
-            { style: { background: 'var(--cv-neutral-50)' } },
-            Td('Total', { strong: true }),
-            ...projectTotals.map((v) =>
-              Td(cellTxt(v), { align: 'right', mono: true, strong: true, muted: v === 0 }),
-            ),
-            Td(formatDuration(weekTotal), { align: 'right', mono: true, strong: true }),
+            { class: 'ch-total-row' },
+            el('th', { scope: 'row', class: 'ch-row-head' }, 'Total'),
+            ...projectTotals.map((v) => el('td', { class: 'cv-num' }, cellTxt(v))),
+            el('td', { class: 'cv-num' }, formatDuration(weekTotal)),
           ),
         ),
       ),
@@ -390,14 +299,15 @@ export function createReportView(store) {
             : `Dans ${weekOffset} semaines`;
     const weekDates = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
 
+    const projectsTableId = UI.fieldId('ch-caption');
     host.replaceChildren(
       // Header
       el(
         'div',
-        { class: 'ch-flex ch-g16', style: { alignItems: 'flex-end', flexWrap: 'wrap' } },
+        { class: 'ch-row ch-wrap ch-align-end ch-gap-5' },
         el(
           'div',
-          { class: 'ch-flex-c ch-g8' },
+          { class: 'ch-row ch-center ch-gap-3' },
           UI.IconButton({
             icon: 'caret-left',
             label: 'Semaine précédente',
@@ -409,12 +319,8 @@ export function createReportView(store) {
           el(
             'div',
             null,
-            el('div', { class: 'ch-titre-page' }, weekLabel),
-            el(
-              'div',
-              { class: 'ch-meta', style: { marginTop: 2, textTransform: 'capitalize' } },
-              weekDates,
-            ),
+            el('h1', { class: 'cv-h1 ch-page-title' }, weekLabel),
+            el('div', { class: 'ch-meta ch-capitalize ch-mt-1' }, weekDates),
           ),
           UI.IconButton({
             icon: 'caret-right',
@@ -437,10 +343,10 @@ export function createReportView(store) {
               })
             : null,
         ),
-        el('div', { style: { flex: 1 } }),
         UI.Button({
           icon: 'file-arrow-down',
           children: 'Exporter CSV',
+          className: 'ch-end',
           onclick: () => exportCSV(weekSessions, projects, monday),
         }),
       ),
@@ -448,34 +354,21 @@ export function createReportView(store) {
       // Stats top
       el(
         'div',
-        { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 } },
+        { class: 'ch-grid-stats' },
         statCard('Total semaine', formatDuration(weekTotal), 'objectif 35h00', {
           extra: el(
             'div',
             {
-              style: {
-                height: 4,
-                background: 'var(--cv-neutral-100)',
-                borderRadius: 2,
-                marginTop: 10,
-                overflow: 'hidden',
-              },
+              class: `ch-track ch-mt-3 ${targetProgress >= 1 ? 'ch-track--success' : 'ch-track--accent'}`,
+              'aria-hidden': 'true',
             },
-            el('div', {
-              style: {
-                width: `${targetProgress * 100}%`,
-                height: '100%',
-                background: targetProgress >= 1 ? 'var(--cv-success-500)' : 'var(--cv-accent-500)',
-                transition: 'width 300ms',
-              },
-            }),
+            el('span', { style: { width: `${targetProgress * 100}%` } }),
           ),
         }),
         statCard(
           'Sessions',
           String(totalSessions),
           `réparties sur ${activeDays} jour${activeDays > 1 ? 's' : ''}`,
-          { mono: false },
         ),
         statCard(
           'Moyenne / jour actif',
@@ -487,56 +380,43 @@ export function createReportView(store) {
       // Chart
       el(
         'section',
-        {
-          class: 'ch-carte',
-          style: { padding: 20 },
-        },
+        { class: 'cv-card' },
         el(
           'div',
-          { class: 'ch-flex', style: { alignItems: 'baseline', marginBottom: 16 } },
-          el('div', { class: 'ch-titre-carte' }, 'Distribution par jour'),
-          el(
-            'div',
-            { class: 'ch-legende', style: { marginLeft: 'auto' } },
-            'Segments colorés = projets',
-          ),
+          { class: 'ch-row ch-baseline ch-wrap ch-gap-4 ch-mb-4' },
+          el('h2', { class: 'cv-card__title' }, 'Distribution par jour'),
+          el('div', { class: 'ch-meta ch-end' }, 'Segments colorés = projets'),
         ),
         weekBars(byDay, projects, maxDay),
         dayTable(byDay, sortedProjects, weekTotal),
       ),
 
       // Projects table
-      el(
-        'section',
-        {
-          class: 'ch-carte ch-carte--rogne',
-        },
-        el(
-          'header',
-          { style: { padding: '14px 20px', borderBottom: '1px solid var(--cv-border)' } },
-          el('div', { class: 'ch-titre-carte' }, 'Par projet'),
-        ),
-        sortedProjects.length === 0
-          ? el('div', { class: 'ch-vide' }, 'Aucune session sur cette semaine.')
-          : el(
+      sortedProjects.length === 0
+        ? UI.EmptyState({ icon: 'chart-bar', title: 'Aucune session sur cette semaine.' })
+        : el(
+            'div',
+            {
+              class: 'cv-table-wrap',
+              role: 'region',
+              'aria-labelledby': projectsTableId,
+              tabindex: 0,
+            },
+            el(
               'table',
-              { style: { width: '100%', borderCollapse: 'collapse' } },
+              { class: 'cv-table' },
+              el('caption', { id: projectsTableId }, 'Par projet'),
               el(
                 'thead',
                 null,
                 el(
                   'tr',
-                  {
-                    style: {
-                      borderBottom: '1px solid var(--cv-border)',
-                      background: 'var(--cv-neutral-50)',
-                    },
-                  },
-                  Th('Projet'),
-                  Th('Client'),
-                  Th('Sessions', 'right'),
-                  Th('Temps', 'right'),
-                  Th('Part', 'right'),
+                  null,
+                  el('th', { scope: 'col' }, 'Projet'),
+                  el('th', { scope: 'col' }, 'Client'),
+                  el('th', { scope: 'col', class: 'ch-th-end' }, 'Sessions'),
+                  el('th', { scope: 'col', class: 'ch-th-end' }, 'Temps'),
+                  el('th', { scope: 'col', class: 'ch-th-end' }, 'Part'),
                 ),
               ),
               el(
@@ -547,32 +427,34 @@ export function createReportView(store) {
                   const part = weekTotal > 0 ? (duration / weekTotal) * 100 : 0;
                   return el(
                     'tr',
-                    { style: { borderBottom: '1px solid var(--cv-border)' } },
-                    Td(
+                    null,
+                    el(
+                      'th',
+                      { scope: 'row', class: 'ch-row-head' },
                       el(
-                        'div',
-                        { class: 'ch-flex-c ch-g8' },
-                        el('span', { class: 'ch-pastille', style: { background: project.color } }),
-                        el('span', { class: 'ch-libelle' }, project.name),
+                        'span',
+                        { class: 'ch-row ch-center ch-gap-3' },
+                        el('span', { class: 'ch-swatch', style: { background: project.color } }),
+                        el('span', { class: 'ch-strong' }, project.name),
                       ),
                     ),
-                    Td(project.client || '—', { muted: true }),
-                    Td(String(sessionsCount), { align: 'right', mono: true }),
-                    Td(formatDuration(duration), { align: 'right', mono: true }),
-                    Td(`${part.toFixed(0)}\u00a0%`, { align: 'right', mono: true, muted: true }),
+                    el('td', { class: 'ch-muted-cell' }, project.client || '—'),
+                    el('td', { class: 'cv-num' }, String(sessionsCount)),
+                    el('td', { class: 'cv-num' }, formatDuration(duration)),
+                    el('td', { class: 'cv-num ch-muted-cell' }, `${part.toFixed(0)}\u00a0%`),
                   );
                 }),
                 el(
                   'tr',
-                  { style: { background: 'var(--cv-neutral-50)' } },
-                  Td('Total', { colSpan: 2, strong: true }),
-                  Td(String(totalSessions), { align: 'right', mono: true, strong: true }),
-                  Td(formatDuration(weekTotal), { align: 'right', mono: true, strong: true }),
-                  Td('100\u00a0%', { align: 'right', mono: true, muted: true }),
+                  { class: 'ch-total-row' },
+                  el('th', { scope: 'row', colspan: 2, class: 'ch-row-head' }, 'Total'),
+                  el('td', { class: 'cv-num' }, String(totalSessions)),
+                  el('td', { class: 'cv-num' }, formatDuration(weekTotal)),
+                  el('td', { class: 'cv-num ch-muted-cell' }, '100\u00a0%'),
                 ),
               ),
             ),
-      ),
+          ),
     );
   }
 

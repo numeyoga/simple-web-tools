@@ -33,116 +33,49 @@ export function openQuickAddModal(
   /** @type {'live' | 'manual'} */
   let mode = modePrefill === 'manual' ? 'manual' : 'live';
 
-  /* --- segmented control mode --- */
-  const segWrap = el('div', {
-    role: 'tablist',
-    style: {
-      display: 'inline-flex',
-      padding: 3,
-      borderRadius: 9,
-      background: 'var(--cv-neutral-100)',
-      border: '1px solid var(--cv-border)',
-      alignSelf: 'flex-start',
+  /* --- mode: a segmented control (native radios) --- */
+  const segmented = UI.Segmented({
+    legend: 'Mode de saisie',
+    name: fieldGroupName('mode'),
+    options: [
+      { value: 'live', label: 'Démarrer maintenant' },
+      { value: 'manual', label: 'Saisir manuellement' },
+    ],
+    value: mode,
+    onchange: (value) => {
+      mode = value === 'manual' ? 'manual' : 'live';
+      renderMode();
     },
   });
-  /**
-   * @param {'live' | 'manual'} value
-   * @param {string} iconName
-   * @param {string} label
-   */
-  function segBtn(value, iconName, label) {
-    const btn = el(
-      'button',
-      {
-        role: 'tab',
-        onclick: () => {
-          mode = value;
-          renderMode();
-        },
-        style: {
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '6px 12px',
-          border: 'none',
-          borderRadius: 6,
-          font: '500 12px/1 var(--cv-font-sans)',
-          cursor: 'pointer',
-          background: 'transparent',
-          color: 'var(--cv-fg-muted)',
-          transition: 'background 120ms, color 120ms',
-        },
-      },
-      icon(iconName, { size: 13 }),
-      label,
-    );
-    btn.dataset.value = value;
-    return btn;
-  }
-  const segLive = segBtn('live', 'play', 'Démarrer maintenant');
-  const segManual = segBtn('manual', 'pencil-simple', 'Saisir manuellement');
-  segWrap.appendChild(segLive);
-  segWrap.appendChild(segManual);
+  segmented.classList.add('ch-self-start');
 
-  function paintSeg() {
-    for (const b of [segLive, segManual]) {
-      const isOn = b.dataset.value === mode;
-      b.style.background = isOn ? 'var(--cv-surface)' : 'transparent';
-      b.style.color = isOn ? 'var(--cv-fg)' : 'var(--cv-fg-muted)';
-      b.style.boxShadow = isOn ? 'var(--cv-shadow-sm)' : 'none';
-    }
-  }
-
-  /* --- project list --- */
-  const listHost = el('div', {
-    class: 'ch-pile ch-g4',
-    style: { maxHeight: 240, overflowY: 'auto' },
-  });
+  /* --- project list: native radios in a fieldset --- */
+  const projectGroup = fieldGroupName('project');
+  const listHost = el('fieldset', { class: 'cv-fieldset' });
   function renderListView() {
     const projects = store.state.projects.filter((p) => !p.archived);
     listHost.replaceChildren(
-      ...projects.map((p) =>
-        el(
-          'button',
-          {
-            onclick: () => {
-              projectId = p.id;
-              renderListView();
-            },
-            class: projectId === p.id ? 'ch-option est-actif' : 'ch-option',
-          },
-          el('span', {
-            style: { width: 10, height: 10, borderRadius: 3, background: p.color, flexShrink: 0 },
-          }),
+      el('legend', { class: 'cv-label' }, 'Projet'),
+      el(
+        'div',
+        { class: 'ch-radio-list ch-stack' },
+        ...projects.map((p) =>
           el(
-            'div',
-            { class: 'ch-souple' },
-            el(
-              'div',
-              { class: 'ch-ellipse', style: { font: '500 13px/1.2 var(--cv-font-sans)' } },
-              p.name,
-            ),
-            p.client
-              ? el(
-                  'div',
-                  {
-                    style: {
-                      font: '400 11px/1.2 var(--cv-font-sans)',
-                      color: 'var(--cv-fg-muted)',
-                      marginTop: 2,
-                    },
-                  },
-                  p.client,
-                )
-              : null,
+            'label',
+            { class: 'cv-check' },
+            el('input', {
+              type: 'radio',
+              name: projectGroup,
+              value: p.id,
+              checked: projectId === p.id,
+              onchange: () => {
+                projectId = p.id;
+              },
+            }),
+            el('span', { class: 'ch-swatch', style: { background: p.color } }),
+            el('span', { class: 'ch-ellipsis' }, p.name),
+            p.client ? el('span', { class: 'ch-meta ch-ellipsis' }, p.client) : null,
           ),
-          projectId === p.id
-            ? icon('check-circle', {
-                weight: 'fill',
-                size: 16,
-                style: { color: 'var(--cv-accent-500)' },
-              })
-            : null,
         ),
       ),
     );
@@ -150,33 +83,15 @@ export function openQuickAddModal(
   renderListView();
 
   /* --- description --- */
-  const inputDesc = el('input', {
+  const descW = UI.Input({
+    label: 'Sur quoi as-tu travaillé ?',
     value: descriptionPrefill || '',
     placeholder: 'Ex. maquette homepage v3',
-    autocomplete: 'off',
-    onkeydown: (/** @type {import('./types.js').TargetKeyEvent} */ e) => {
+    onkeydown: (e) => {
       if (e.key === 'Enter' && mode === 'live') submit();
     },
-    style: {
-      height: 40,
-      padding: '0 12px',
-      border: '1px solid var(--cv-border-strong)',
-      borderRadius: 8,
-      background: 'var(--cv-surface)',
-      color: 'var(--cv-fg)',
-      font: '400 15px/1 var(--cv-font-sans)',
-      outline: 'none',
-      transition: 'border-color 120ms',
-    },
-    onfocus: (/** @type {import('./types.js').TargetEvent} */ e) => {
-      e.target.style.borderColor = 'var(--cv-accent-500)';
-      e.target.style.boxShadow = 'var(--cv-shadow-focus)';
-    },
-    onblur: (/** @type {import('./types.js').TargetEvent} */ e) => {
-      e.target.style.borderColor = 'var(--cv-border-strong)';
-      e.target.style.boxShadow = 'none';
-    },
   });
+  const inputDesc = descW.input;
 
   /* --- "manual entry" block --- */
   // Defaults: without a prefill, propose a one-hour range
@@ -196,24 +111,7 @@ export function openQuickAddModal(
     type: 'datetime-local',
     value: timestampToLocal(defaultEnd),
   });
-  const displayedDuration = el(
-    'div',
-    {
-      style: { font: '500 16px/1 var(--cv-font-mono)', color: 'var(--cv-fg)' },
-    },
-    '—',
-  );
-  const errorBox = el('div', {
-    style: {
-      display: 'none',
-      padding: '6px 10px',
-      borderRadius: 6,
-      background: 'var(--cv-danger-50, #fef2f2)',
-      border: '1px solid var(--cv-danger-200, #fecaca)',
-      color: 'var(--cv-danger-700, #b91c1c)',
-      font: '400 12px/1.3 var(--cv-font-sans)',
-    },
-  });
+  const displayedDuration = el('div', { class: 'cv-num ch-kpi ch-kpi--sm' }, '—');
 
   function recomputeDuration() {
     const d = localToTimestamp(startW.input.value);
@@ -229,11 +127,11 @@ export function openQuickAddModal(
     displayedDuration.textContent = formatDuration(f - d);
   }
   startW.input.addEventListener('input', () => {
-    hideError();
+    endW.setError(null);
     recomputeDuration();
   });
   endW.input.addEventListener('input', () => {
-    hideError();
+    endW.setError(null);
     recomputeDuration();
   });
   startW.input.addEventListener('keydown', (e) => {
@@ -244,50 +142,20 @@ export function openQuickAddModal(
   });
   recomputeDuration();
 
-  /** @param {string} msg */
-  function showError(msg) {
-    errorBox.textContent = msg;
-    errorBox.style.display = 'block';
-  }
-  function hideError() {
-    errorBox.style.display = 'none';
-  }
-
   const manualBlock = el(
     'div',
-    { class: 'ch-pile ch-g10' },
+    { class: 'ch-stack ch-gap-4' },
+    el('div', { class: 'ch-row ch-wrap ch-gap-4' }, startW, endW),
     el(
       'div',
-      { class: 'ch-flex ch-g10' },
-      el('div', { style: { flex: 1 } }, startW),
-      el('div', { style: { flex: 1 } }, endW),
-    ),
-    el(
-      'div',
-      {
-        class: 'ch-flex-c ch-entre',
-        style: {
-          padding: '8px 12px',
-          background: 'var(--cv-neutral-50)',
-          border: '1px solid var(--cv-border)',
-          borderRadius: 8,
-        },
-      },
-      el('span', { class: 'ch-surtitre' }, 'Durée'),
+      { class: 'ch-block ch-row ch-center ch-between' },
+      el('span', { class: 'cv-overline' }, 'Durée'),
       displayedDuration,
     ),
-    errorBox,
   );
 
   /* --- dynamic footer --- */
-  const footerHint = el('div', {
-    class: 'ch-flex-c ch-g8',
-    style: {
-      marginRight: 'auto',
-      font: '400 12px/1 var(--cv-font-sans)',
-      color: 'var(--cv-fg-subtle)',
-    },
-  });
+  const footerHint = el('div', { class: 'ch-meta ch-row ch-center ch-gap-2 ch-push' });
   const submitBtn = UI.Button({
     variant: 'primary',
     icon: 'play',
@@ -298,43 +166,25 @@ export function openQuickAddModal(
   function paintFooter() {
     if (mode === 'live') {
       footerHint.replaceChildren(UI.Kbd('Entrée'), document.createTextNode(' pour démarrer'));
-      submitBtn.replaceChildren(
-        icon('play', { size: 14, weight: 'fill' }),
-        document.createTextNode('Démarrer'),
-      );
+      submitBtn.replaceChildren(icon('play'), document.createTextNode('Démarrer'));
     } else {
       footerHint.replaceChildren(UI.Kbd('Entrée'), document.createTextNode(' pour enregistrer'));
-      submitBtn.replaceChildren(
-        icon('check', { size: 14 }),
-        document.createTextNode('Enregistrer'),
-      );
+      submitBtn.replaceChildren(icon('check'), document.createTextNode('Enregistrer'));
     }
   }
 
   /* --- swap the body according to the mode --- */
-  const modeHost = el('div', { class: 'ch-pile ch-g14' });
+  const modeHost = el('div', { class: 'ch-stack ch-gap-4' });
   function renderMode() {
-    paintSeg();
     paintFooter();
     modeHost.replaceChildren(
       mode === 'manual'
         ? manualBlock
-        : el(
-            'div',
-            {
-              class: 'ch-flex-c ch-g8',
-              style: {
-                padding: '8px 12px',
-                background: 'var(--cv-accent-50)',
-                border: '1px solid var(--cv-accent-100)',
-                borderRadius: 8,
-                font: '400 12px/1.4 var(--cv-font-sans)',
-                color: 'var(--cv-accent-700)',
-              },
-            },
-            icon('timer', { size: 14, weight: 'fill' }),
-            'Le chrono se lance maintenant — en parallèle des chronos déjà actifs — et tourne jusqu’à ce que tu l’arrêtes.',
-          ),
+        : UI.Alert({
+            status: 'info',
+            title: 'Le chrono se lance maintenant.',
+            text: 'Il tourne en parallèle des chronos déjà actifs, jusqu’à ce que tu l’arrêtes.',
+          }),
     );
   }
 
@@ -348,11 +198,11 @@ export function openQuickAddModal(
       const d = localToTimestamp(startW.input.value);
       const f = localToTimestamp(endW.input.value);
       if (d == null || f == null) {
-        showError('Renseigne un début et une fin valides.');
+        failEnd('Début ou fin illisible. Renseigne un début et une fin valides.');
         return;
       }
       if (f <= d) {
-        showError('La fin doit être postérieure au début.');
+        failEnd('La fin est avant le début. Choisis une fin postérieure au début.');
         return;
       }
       const id = store.actions.addManualSession({
@@ -362,7 +212,7 @@ export function openQuickAddModal(
         end: f,
       });
       if (!id) {
-        showError('Impossible d’enregistrer cette session.');
+        failEnd('Impossible d’enregistrer cette session. Vérifie le projet et les heures.');
         return;
       }
       onManualAdd && onManualAdd(id, projectId);
@@ -370,33 +220,32 @@ export function openQuickAddModal(
     }
   }
 
+  /** @param {string} message */
+  function failEnd(message) {
+    endW.setError(message);
+    endW.input.focus();
+  }
+
   /* --- modal body --- */
-  const body = el(
-    'div',
-    { class: 'ch-pile ch-g14' },
-    segWrap,
-    el(
-      'label',
-      { class: 'ch-pile ch-g4' },
-      el('span', { class: 'ch-label' }, 'Sur quoi as-tu travaillé ?'),
-      inputDesc,
-    ),
-    modeHost,
-    el(
-      'div',
-      null,
-      el('div', { class: 'ch-label', style: { marginBottom: 6 } }, 'Projet'),
-      listHost,
-    ),
-  );
+  const body = el('div', { class: 'ch-stack ch-gap-5' }, segmented, descW, modeHost, listHost);
 
   const footer = [
     footerHint,
-    UI.Button({ variant: 'ghost', children: 'Annuler', onclick: () => modal.close() }),
+    UI.Button({ children: 'Annuler', onclick: () => modal.close() }),
     submitBtn,
   ];
 
-  const modal = UI.Modal({ title: 'Ajouter un chrono', width: 540, body, footer });
+  const modal = UI.Modal({ title: 'Ajouter un chrono', body, footer });
   renderMode();
-  setTimeout(() => inputDesc.focus(), 50);
+  inputDesc.focus();
+}
+
+let groupCounter = 0;
+/**
+ * A name for a group of radios, unique in the document.
+ * @param {string} prefix
+ */
+function fieldGroupName(prefix) {
+  groupCounter += 1;
+  return `quick-add-${prefix}-${groupCounter}`;
 }

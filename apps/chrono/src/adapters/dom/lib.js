@@ -1,4 +1,4 @@
-// Small DOM helpers (el, mount, icon) and formatting. No framework, no dependencies.
+// Small DOM helpers (el, mount, icon, fieldId) and formatting. No framework, no dependencies.
 // The pure computations (durations, presence, dates) live in src/core; this module only
 // supplies the current time to them, as the legacy lib.js did.
 
@@ -24,12 +24,13 @@ const HTML_PROPS = new Set(['innerHTML', 'outerHTML', 'srcdoc']);
 
 /* ------------------------------------------------------------------ */
 /* Ergonomic DOM element builder. Usage:
-     el('div', { class: 'card', style: { padding: 12 }, onclick: fn },
+     el('div', { class: 'card', style: { width: 120 }, onclick: fn },
         el('h2', null, 'Title'),
         'plain text',
         items.map(i => el('li', null, i.label))
      )
-*/
+   A number in `style` is a length in px at the standard text scale and is written in rem
+   (`width: 120` gives `7.5rem`), so every size follows the text size of the user. */
 /**
  * @template {keyof HTMLElementTagNameMap} K
  * @param {K} tag
@@ -53,7 +54,7 @@ export function el(tag, props, ...children) {
           if (sv == null || sv === false) continue;
           // A CSS property assigned by name: the style object has no index signature.
           /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (node.style))[sk] =
-            typeof sv === 'number' && !UNITLESS.has(sk) ? sv + 'px' : sv;
+            typeof sv === 'number' && !UNITLESS.has(sk) ? `${sv / 16}rem` : sv;
         }
       } else if (k === 'class' || k === 'className') {
         node.className = String(v);
@@ -121,18 +122,29 @@ export function mount(host, node) {
   host.replaceChildren(node);
 }
 
-/* Phosphor icon: shortcut. */
+/* Phosphor icon, as in the Icons page of the skill: regular, or bold for one level of emphasis
+   (the package ships no other weight). `className` adds app classes (a colour role, a size). */
 /**
  * @param {string} name
- * @param {{ weight?: string, size?: number, style?: import('./types.js').Style }} [opts]
+ * @param {{ weight?: 'regular' | 'bold', className?: string }} [opts]
  */
 export function icon(name, opts = {}) {
-  const weight = opts.weight ? '-' + opts.weight : '';
+  const base = opts.weight === 'bold' ? 'ph-bold' : 'ph';
   return el('i', {
-    class: `ph${weight} ph-${name}`,
-    style: { fontSize: opts.size || 16, ...(opts.style || {}) },
+    class: `${base} ph-${name} cv-icon${opts.className ? ' ' + opts.className : ''}`,
     'aria-hidden': 'true',
   });
+}
+
+let fieldCounter = 0;
+/**
+ * A unique id for a label, a hint or an error, so that `for`, `aria-describedby` and
+ * `aria-labelledby` can point at it.
+ * @param {string} [prefix]
+ */
+export function fieldId(prefix = 'ch-field') {
+  fieldCounter += 1;
+  return `${prefix}-${fieldCounter}`;
 }
 
 /* ------------------------------------------------------------------ */
