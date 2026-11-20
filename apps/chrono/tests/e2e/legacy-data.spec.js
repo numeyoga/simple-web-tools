@@ -141,7 +141,7 @@ test('a version 1 database and workspace list are migrated and their data shows 
       }),
   );
   expect(storage).toMatchObject({
-    version: 2,
+    version: 3,
     stores: ['attendance', 'meta', 'projects', 'sessions', 'todos'],
     legacyActive: 'default',
     list: [

@@ -3,8 +3,10 @@
 // adapters/backup.js.
 //
 // Export format `chrono-workspace`:
-//   version 2 (current): envelope { app, format, version, exportedAt, data } with the English
-//     `data` { projects, todos, sessions, attendance }.
+//   version 3 (current): envelope { app, format, version, exportedAt, data } with the English
+//     `data` { projects, todos, sessions, attendance }; a project has `category` (1 to 16) or
+//     `customColor` (`#rrggbb`).
+//   version 2: the same envelope, a project has `color` (a hex value). Upgraded on import.
 //   version 1 (the files of the GitLab site, imported forever): not an envelope, a bare object
 //     { version: 1, exporteLe, workspace, data: { projets, todos, sessions, pointage } }.
 
@@ -14,7 +16,7 @@ import { migrateRelativeDueDates } from './due-dates.js';
 
 export const EXPORT_APP = 'chrono';
 export const EXPORT_FORMAT = 'chrono-workspace';
-export const EXPORT_VERSION = 2;
+export const EXPORT_VERSION = 3;
 
 const SESSION_STATUSES = ['done', 'running', 'paused'];
 
@@ -86,7 +88,7 @@ export function toExportData(data) {
 }
 
 /**
- * Validates and cleans the version 2 `data` of an import. Invalid items are dropped, old due
+ * Validates and cleans the version 3 `data` of an import. Invalid items are dropped, old due
  * dates are migrated. Throws when the format is wrong or when nothing valid remains.
  * @param {unknown} payload
  * @param {number} now

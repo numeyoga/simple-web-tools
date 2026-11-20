@@ -26,7 +26,7 @@ const S = {
 afterEach(uninstallBrowser);
 
 describe('import', () => {
-  test('writes the version 2 records into IndexedDB, from a version 1 file', async () => {
+  test('writes the current records into IndexedDB, from a version 1 file', async () => {
     installBrowser();
 
     await WORKSPACES.importJson('default', {
@@ -39,7 +39,9 @@ describe('import', () => {
       },
     });
 
-    expect(await readStore('chrono__default', 'projects')).toEqual([{ id: 'p1', name: 'A' }]);
+    expect(await readStore('chrono__default', 'projects')).toEqual([
+      { id: 'p1', name: 'A', category: 9, customColor: null },
+    ]);
     expect((await readStore('chrono__default', 'sessions'))[0]).toMatchObject({
       id: 's1',
       status: 'done',

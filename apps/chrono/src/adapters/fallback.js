@@ -7,7 +7,7 @@
 // the `meta` store so that it never happens again. The keys themselves are never deleted.
 
 import { validateImport } from '../core/import-export.js';
-import { v1ToV2 } from '../core/migrations.js';
+import { v1ToV2, v2ToV3 } from '../core/migrations.js';
 import { fallbackKey, fallbackSkippedKey, legacyFallbackKey } from './names.js';
 import { STORE_NAMES, readLegacyWorkspaces } from './workspace-list.js';
 
@@ -27,7 +27,7 @@ function readJson(key) {
 }
 
 /**
- * The fallback data of a workspace in the version 2 layout; null when there is none. The
+ * The fallback data of a workspace in the current (version 3) layout; null when there is none. The
  * version 2 key wins; otherwise the version 1 key is converted (the id of a workspace repaired
  * during the migration of the list is looked up under its version 1 id).
  * @param {string} id
@@ -35,10 +35,10 @@ function readJson(key) {
  */
 export function readFallback(id) {
   const current = readJson(fallbackKey(id));
-  if (current) return current;
+  if (current) return v2ToV3(current);
   const legacyId = readLegacyWorkspaces().find((w) => w.to === id)?.from ?? id;
   const legacy = readJson(legacyFallbackKey(legacyId));
-  return legacy ? v1ToV2(legacy) : null;
+  return legacy ? v2ToV3(v1ToV2(legacy)) : null;
 }
 
 /**

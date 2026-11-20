@@ -3,8 +3,16 @@ import { dayBounds } from '../../core/dates.js';
 import { createAttendanceWidget } from './AttendanceWidget.js';
 import * as UI from './ui.js';
 
-const { el, icon, formatDuration, formatTime, liveDuration, localToTimestamp, timestampToLocal } =
-  UI;
+const {
+  el,
+  icon,
+  formatDuration,
+  formatTime,
+  liveDuration,
+  localToTimestamp,
+  setProjectColor,
+  timestampToLocal,
+} = UI;
 
 const START_HOUR = 7;
 const END_HOUR = 20;
@@ -458,9 +466,11 @@ export function createTimelineView(store, opts) {
       const blockH = laneH * item.colSpan + LANE_GAP * (item.colSpan - 1);
       const compact = blockH < 46;
       const top = SESSION_ZONE_TOP + item.col * (laneH + LANE_GAP);
+      // The fill recipe of the skill (`cv-cat-block`: the category fill under a white label). A
+      // session whose project is gone gets the neutral inverse roles, which no category uses.
       const block = el('button', {
         type: 'button',
-        class: `ch-session-block${compact ? ' ch-session-block--compact' : ''}`,
+        class: `cv-cat-block ch-session-block${compact ? ' ch-session-block--compact' : ''}${project ? '' : ' ch-session-block--neutral'}`,
         dataset: { focusKey: `session-block:${s.id}` },
         title: `${project?.name || 'Sans projet'} · ${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'} · ${formatDuration(durationMs)}`,
         onclick: () => openSessionEditor(s),
@@ -469,7 +479,6 @@ export function createTimelineView(store, opts) {
           width,
           top,
           height: blockH,
-          background: project?.color || 'var(--cv-cat-16-fill)',
           boxShadow: isRunning
             ? '0 0 0 2px var(--cv-border-selected), var(--cv-shadow-md)'
             : isActive
@@ -491,6 +500,7 @@ export function createTimelineView(store, opts) {
         el('span', null, formatDuration(durationMs)),
         isRunning ? el('span', { class: 'ch-dot-light' }) : null,
       );
+      setProjectColor(block, project);
       block.append(title, durationLine);
       line.appendChild(block);
     }
@@ -525,8 +535,9 @@ export function createTimelineView(store, opts) {
           el(
             'div',
             {
+              // Under the plot, not on the hour axis above it: there it covered the next hour.
               class: 'ch-now-label cv-num',
-              style: { position: 'absolute', top: -24, left: 4 },
+              style: { position: 'absolute', top: 'calc(100% + 4px)', left: 4 },
             },
             formatTime(now),
           ),
@@ -537,7 +548,7 @@ export function createTimelineView(store, opts) {
     return el(
       'div',
       {
-        class: 'ch-chart-scroll',
+        class: `ch-chart-scroll${isToday ? ' ch-chart-scroll--now' : ''}`,
         // A scrollable region is reachable with the keyboard (WCAG 2.1.1).
         role: 'region',
         'aria-label': 'Journée en continu',
@@ -606,17 +617,13 @@ export function createTimelineView(store, opts) {
               const row = el(
                 'div',
                 {
-                  class: `ch-line ch-line--click${isActive ? ' is-active' : ''}`,
+                  class: `ch-line ch-line--click${project ? ' cv-cat-stripe' : ''}${isActive ? ' is-active' : ''}`,
                   onclick: (/** @type {import('./types.js').TargetMouseEvent} */ e) => {
                     // Avoids opening the editor when a button in the row is clicked.
                     if (e.target.closest('button')) return;
                     openSessionEditor(s);
                   },
                 },
-                el('div', {
-                  class: 'ch-stripe',
-                  style: { background: project?.color || 'var(--cv-cat-16-fill)' },
-                }),
                 el(
                   'div',
                   { class: 'ch-grow' },
@@ -629,7 +636,7 @@ export function createTimelineView(store, opts) {
                   el(
                     'div',
                     { class: 'ch-meta ch-row ch-gap-3 ch-mt-1' },
-                    el('span', null, project?.name || 'Sans projet'),
+                    project ? UI.projectName(project) : el('span', null, 'Sans projet'),
                     el('span', null, '·'),
                     el(
                       'span',
@@ -728,7 +735,7 @@ export function createTimelineView(store, opts) {
                         ),
                       ),
               );
-              return row;
+              return setProjectColor(row, project);
             }),
           );
 
@@ -816,14 +823,16 @@ export function createTimelineView(store, opts) {
                   el(
                     'div',
                     { class: 'ch-row ch-center ch-gap-3 ch-mb-2' },
-                    el('span', { class: 'ch-swatch', style: { background: project.color } }),
-                    el('span', { class: 'ch-ellipsis ch-strong' }, project.name),
+                    UI.projectName(project, 'ch-strong'),
                     el('span', { class: 'cv-num ch-figure ch-end' }, formatDuration(duration)),
                   ),
                   el(
                     'div',
                     { class: 'ch-track', 'aria-hidden': 'true' },
-                    el('span', { style: { width: `${pct}%`, background: project.color } }),
+                    setProjectColor(
+                      el('span', { class: 'cv-cat-segment', style: { width: `${pct}%` } }),
+                      project,
+                    ),
                   ),
                 ),
                 icon('play', { className: 'ch-subtle' }),

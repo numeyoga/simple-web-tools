@@ -1,30 +1,30 @@
 // projects view: cards with totals, creation modal.
 import { getShowProjectTotals, setShowProjectTotals } from '../preferences.js';
+import { nextCategory } from '../../core/categories.js';
 import * as UI from './ui.js';
 
 const { el, formatDuration, liveDuration } = UI;
 
-/* Curated palette (16 well-separated hues). A custom colour can be entered with the native picker. */
-const COLORS = [
-  '#ea580c',
-  '#d97706',
-  '#ca8a04',
-  '#65a30d',
-  '#16a34a',
-  '#0d9488',
-  '#0891b2',
-  '#0284c7',
-  '#2563eb',
-  '#4f46e5',
-  '#7c3aed',
-  '#9333ea',
-  '#c026d3',
-  '#db2777',
-  '#e11d48',
-  '#475569',
+/* The 16 categories of the Covenant palette (`data-cat` 1 to 16), by hue: the accessible name of
+   each choice of the colour picker. A project can also keep a free colour (`customColor`). */
+const CATEGORY_NAMES = [
+  'Orange',
+  'Ambre',
+  'Jaune',
+  'Citron vert',
+  'Vert',
+  'Sarcelle',
+  'Cyan',
+  'Bleu ciel',
+  'Bleu',
+  'Indigo',
+  'Violet',
+  'Pourpre',
+  'Fuchsia',
+  'Rose',
+  'Framboise',
+  'Ardoise',
 ];
-/** @param {string | null | undefined} c */
-const norm = (c) => (c || '').trim().toLowerCase();
 
 /** @typedef {import('../../types.js').Project} Project */
 
@@ -44,62 +44,86 @@ export function createProjectsView(store, opts) {
   /** @param {Project | null} [existing] */
   function openProjectModal(existing = null) {
     const isEdit = !!existing;
+    /** @type {{ name: string, client: string, category: number | null, customColor: string | null }} */
     const draft = existing
-      ? { name: existing.name, client: existing.client || '', color: existing.color }
-      : { name: '', client: '', color: COLORS[0] ?? '#2563eb' };
-    const colorsRow = el('div', { class: 'ch-swatches' });
+      ? {
+          name: existing.name,
+          client: existing.client || '',
+          category: existing.category,
+          customColor: existing.customColor,
+        }
+      : {
+          name: '',
+          client: '',
+          // A new project takes the next category of the default order.
+          category: nextCategory(store.state.projects),
+          customColor: null,
+        };
 
-    /* Hidden native picker, triggered by the "+" button. */
-    const nativePicker = el('input', {
+    /* The 16 categories: native radios (arrow keys, one stop), drawn as swatches. */
+    const groupName = UI.fieldId('ch-category');
+    /** @type {HTMLInputElement[]} */
+    const radios = [];
+    const swatchRow = el(
+      'div',
+      { class: 'ch-swatches' },
+      CATEGORY_NAMES.map((hue, index) => {
+        const category = index + 1;
+        const radio = el('input', {
+          type: 'radio',
+          name: groupName,
+          value: String(category),
+          class: 'ch-swatch-radio',
+          'aria-label': hue,
+          checked: draft.category === category,
+          onchange: () => {
+            draft.category = category;
+            draft.customColor = null;
+            paintCustom();
+          },
+        });
+        radios.push(radio);
+        return el(
+          'span',
+          { class: 'ch-swatch-choice', dataset: { cat: String(category) } },
+          radio,
+          el('span', { class: 'ch-swatch-btn', 'aria-hidden': 'true' }),
+        );
+      }),
+    );
+
+    /* The free colour: the native picker, kept. Its swatch shows the colour once one is chosen. */
+    const customId = UI.fieldId('ch-custom-color');
+    const customSwatch = el('span', { class: 'ch-swatch-btn', 'aria-hidden': 'true' });
+    const customPicker = el('input', {
       type: 'color',
-      value: COLORS.includes(norm(draft.color)) ? COLORS[0] : draft.color,
-      tabindex: -1,
-      'aria-hidden': 'true',
-      class: 'ch-color-input',
+      id: customId,
+      class: 'ch-swatch-radio',
       oninput: (/** @type {import('./types.js').TargetEvent} */ e) => {
-        draft.color = e.target.value;
-        paintColors();
+        draft.customColor = e.target.value;
+        draft.category = null;
+        for (const radio of radios) radio.checked = false;
+        paintCustom();
       },
     });
-
-    function paintColors() {
-      const current = norm(draft.color);
-      const isInPalette = COLORS.some((c) => norm(c) === current);
-      colorsRow.replaceChildren(
-        ...COLORS.map((c) =>
-          el('button', {
-            type: 'button',
-            class: 'ch-swatch-btn',
-            'aria-pressed': String(norm(c) === current),
-            onclick: () => {
-              draft.color = c;
-              paintColors();
-            },
-            'aria-label': `Couleur ${c}`,
-            style: { background: c },
-          }),
-        ),
-        /* "Custom colour" button: opens the native colour picker.
-             If a custom colour is already chosen, it is shown in the button. */
-        isInPalette
-          ? UI.IconButton({
-              icon: 'plus',
-              label: 'Couleur personnalisée',
-              variant: 'secondary',
-              onclick: () => nativePicker.click(),
-            })
-          : el('button', {
-              type: 'button',
-              class: 'ch-swatch-btn',
-              'aria-pressed': 'true',
-              'aria-label': `Couleur personnalisée ${draft.color}`,
-              style: { background: draft.color },
-              onclick: () => nativePicker.click(),
-            }),
-        nativePicker,
-      );
+    const customChoice = el(
+      'span',
+      { class: 'ch-swatch-choice ch-swatch-choice--custom' },
+      customPicker,
+      customSwatch,
+    );
+    function paintCustom() {
+      const custom = draft.customColor !== null;
+      customChoice.classList.toggle('is-selected', custom);
+      customChoice.classList.toggle('is-unset', !custom);
+      if (custom) {
+        UI.setProjectColor(customChoice, { category: null, customColor: draft.customColor });
+        customPicker.value = /** @type {string} */ (draft.customColor);
+      } else {
+        customChoice.removeAttribute('data-cat');
+      }
     }
-    paintColors();
+    paintCustom();
 
     const nameW = UI.Input({
       label: 'Nom du projet',
@@ -149,7 +173,13 @@ export function createProjectsView(store, opts) {
         'fieldset',
         { class: 'cv-fieldset' },
         el('legend', { class: 'cv-label' }, 'Couleur'),
-        colorsRow,
+        swatchRow,
+        el(
+          'div',
+          { class: 'ch-row ch-center ch-gap-3 ch-mt-3' },
+          customChoice,
+          el('label', { class: 'cv-label ch-fg', for: customId }, 'Couleur personnalisée'),
+        ),
       ),
     );
 
@@ -160,13 +190,14 @@ export function createProjectsView(store, opts) {
         inputName.focus();
         return;
       }
-      const patch = {
-        name,
-        client: inputClient.value.trim(),
-        color: draft.color,
-      };
-      if (existing) store.actions.updateProject(existing.id, patch);
-      else store.actions.addProject(patch.name, patch.client, patch.color);
+      const color = { category: draft.category, customColor: draft.customColor };
+      if (existing) {
+        store.actions.updateProject(existing.id, {
+          name,
+          client: inputClient.value.trim(),
+          ...color,
+        });
+      } else store.actions.addProject(name, inputClient.value.trim(), color);
       modal.close();
     }
 
@@ -328,99 +359,101 @@ export function createProjectsView(store, opts) {
    * @param {{ open: number, done: number }} td
    */
   function projectCard(p, t, td) {
-    return el(
-      'article',
-      { class: 'cv-card cv-card--compact ch-project-card' },
-      el('div', { class: 'ch-card-stripe', style: { background: p.color } }),
+    return UI.setProjectColor(
       el(
-        'div',
-        null,
-        el('h2', { class: 'cv-card__title' }, p.name),
-        el('div', { class: 'cv-card__meta ch-mt-1' }, p.client || '—'),
-      ),
+        'article',
+        { class: 'cv-card cv-card--compact cv-cat-stripe ch-project-card' },
+        el(
+          'div',
+          null,
+          el('h2', { class: 'cv-card__title' }, UI.projectName(p)),
+          el('div', { class: 'cv-card__meta ch-mt-1' }, p.client || '—'),
+        ),
 
-      showTotals || computed.has(p.id)
-        ? el(
-            'div',
-            null,
-            el('div', { class: 'cv-overline' }, 'Temps total'),
-            el('div', { class: 'cv-num ch-kpi ch-mt-3' }, formatDuration(t.duration)),
-            el(
+        showTotals || computed.has(p.id)
+          ? el(
               'div',
-              { class: 'ch-subtle ch-mt-1' },
-              `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`,
+              null,
+              el('div', { class: 'cv-overline' }, 'Temps total'),
+              el('div', { class: 'cv-num ch-kpi ch-mt-3' }, formatDuration(t.duration)),
+              el(
+                'div',
+                { class: 'ch-subtle ch-mt-1' },
+                `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`,
+              ),
+            )
+          : el(
+              'div',
+              null,
+              UI.Button({
+                size: 'sm',
+                icon: 'clock-countdown',
+                children: 'Calculer le temps',
+                onclick: () => {
+                  computed.add(p.id);
+                  render();
+                },
+              }),
             ),
-          )
-        : el(
-            'div',
-            null,
-            UI.Button({
-              size: 'sm',
-              icon: 'clock-countdown',
-              children: 'Calculer le temps',
-              onclick: () => {
-                computed.add(p.id);
-                render();
-              },
-            }),
-          ),
 
-      el(
-        'div',
-        { class: 'ch-row ch-wrap ch-gap-3' },
-        UI.Tag(`${td.open} todo${td.open > 1 ? 's' : ''}`),
-        td.done > 0 ? UI.Badge({ variant: 'success', children: `${td.done} faites` }) : null,
-      ),
+        el(
+          'div',
+          { class: 'ch-row ch-wrap ch-gap-3' },
+          UI.Tag(`${td.open} todo${td.open > 1 ? 's' : ''}`),
+          td.done > 0 ? UI.Badge({ variant: 'success', children: `${td.done} faites` }) : null,
+        ),
 
-      el(
-        'div',
-        { class: 'ch-row ch-gap-3 ch-mt-auto' },
-        !p.archived
-          ? [
-              UI.Button({
-                size: 'sm',
-                variant: 'primary',
-                icon: 'play',
-                children: 'Démarrer',
-                mutates: true,
-                onclick: () => opts.onStartOnProject(p.id),
-                className: 'ch-grow',
-              }),
-              UI.IconButton({
-                icon: 'pencil-simple',
-                label: 'Modifier',
-                variant: 'secondary',
-                size: 'sm',
-                onclick: () => openProjectModal(p),
-              }),
-              UI.IconButton({
-                icon: 'archive',
-                label: 'Archiver',
-                variant: 'secondary',
-                size: 'sm',
-                mutates: true,
-                onclick: () => store.actions.toggleProjectArchived(p.id),
-              }),
-            ]
-          : [
-              UI.Button({
-                size: 'sm',
-                variant: 'secondary',
-                icon: 'arrow-counter-clockwise',
-                children: 'Désarchiver',
-                mutates: true,
-                onclick: () => store.actions.toggleProjectArchived(p.id),
-                className: 'ch-grow',
-              }),
-              UI.IconButton({
-                icon: 'pencil-simple',
-                label: 'Modifier',
-                variant: 'secondary',
-                size: 'sm',
-                onclick: () => openProjectModal(p),
-              }),
-            ],
+        el(
+          'div',
+          { class: 'ch-row ch-gap-3 ch-mt-auto' },
+          !p.archived
+            ? [
+                UI.Button({
+                  size: 'sm',
+                  variant: 'primary',
+                  icon: 'play',
+                  children: 'Démarrer',
+                  mutates: true,
+                  onclick: () => opts.onStartOnProject(p.id),
+                  className: 'ch-grow',
+                }),
+                UI.IconButton({
+                  icon: 'pencil-simple',
+                  label: 'Modifier',
+                  variant: 'secondary',
+                  size: 'sm',
+                  onclick: () => openProjectModal(p),
+                }),
+                UI.IconButton({
+                  icon: 'archive',
+                  label: 'Archiver',
+                  variant: 'secondary',
+                  size: 'sm',
+                  mutates: true,
+                  onclick: () => store.actions.toggleProjectArchived(p.id),
+                }),
+              ]
+            : [
+                UI.Button({
+                  size: 'sm',
+                  variant: 'secondary',
+                  icon: 'arrow-counter-clockwise',
+                  children: 'Désarchiver',
+                  mutates: true,
+                  onclick: () => store.actions.toggleProjectArchived(p.id),
+                  className: 'ch-grow',
+                }),
+                UI.IconButton({
+                  icon: 'pencil-simple',
+                  label: 'Modifier',
+                  variant: 'secondary',
+                  size: 'sm',
+                  onclick: () => openProjectModal(p),
+                }),
+              ],
+        ),
       ),
+      p,
     );
   }
 

@@ -16,7 +16,7 @@ l'exécution. Les seules dépendances d'exécution sont les paquets du monorepo
   édition d'une session existante (projet, description, début, fin).
 - **Todos** : liste de tâches avec filtre par projet et groupes par échéance.
   Une todo peut lancer un chrono.
-- **Projets** : cartes avec totaux, couleur, client, archivage.
+- **Projets** : cartes avec totaux, couleur (une des 16 catégories de Covenant, ou une couleur libre), client, archivage.
 - **Rapport hebdomadaire** : totaux par jour et par projet, export CSV
   (séparateur `;`, virgule décimale, BOM UTF-8, lisible dans Excel en français).
 - **Espaces de sauvegarde** : plusieurs jeux de données indépendants, création,
@@ -24,11 +24,38 @@ l'exécution. Les seules dépendances d'exécution sont les paquets du monorepo
 - **Export et import JSON** d'un espace (l'import remplace les données de
   l'espace courant après confirmation).
 
+## Couleurs des projets
+
+Chaque projet a une des 16 catégories de couleur de Covenant (`data-cat` de 1 à 16), ou une
+couleur libre choisie avec le sélecteur natif (« Couleur personnalisée »). Choisir une pastille
+efface la couleur libre, et inversement ; l'éditeur de projet montre ce qui est stocké.
+
+- **Nouveau projet** : il prend la première catégorie de l'ordre par défaut (bleu, citron vert,
+  rose, indigo, cyan, sarcelle, ardoise, fuchsia, ciel, violet, pourpre, vert, jaune, ambre,
+  framboise, orange) qu'aucun projet actif n'utilise ; après 16 projets l'ordre recommence
+  (`nextCategory`, `src/core/categories.js`). L'utilisateur peut changer ce choix dans le
+  formulaire.
+- **Affichage** : uniquement avec les recettes de Covenant, jamais une valeur hexadécimale dans
+  le code ou le CSS. Bande (`cv-cat-stripe`) et pastille (`cv-cat-dot`) des cartes et des listes,
+  segments des graphiques (`cv-cat-segment`) et légende (`cv-cat-legend`) pour les marqueurs ;
+  `cv-cat-block` pour les blocs de la Timeline, dont le fond garde un texte blanc à 4,5:1 au
+  moins. Une couleur libre passe par `Covenant.setCategory(élément, '#rrggbb')`, qui dérive le
+  marqueur et le fond.
+- **Le nom accompagne toujours la couleur** : dans la pastille, le bloc, la légende, la ligne du
+  tableau. Sur la carte « chronos en cours » (fond inverse), le projet est une pastille au fond
+  de sa catégorie, car un marqueur n'y a de contraste garanti que sur les surfaces claires du thème.
+- **Timeline** : les blocs gardent le placement en voies de Chrono (échelle de 84 px par
+  heure, plusieurs voies pour les chronos en parallèle, hauteur variable), que `cv-cat-timeline`
+  (une seule voie, en pourcentages de la journée) ne sait pas exprimer ; ils n'utilisent donc que
+  la recette de fond `cv-cat-block`. Une session dont le projet n'existe plus prend le fond
+  neutre (`--cv-surface-inverse`, texte `--cv-fg-inverse`), qui n'est une couleur de aucune
+  catégorie.
+
 ## Données
 
 Tout reste dans le navigateur, rien n'est envoyé à un serveur.
 
-- Chaque espace possède sa propre base IndexedDB (`chrono__<id>`), en schéma version 2
+- Chaque espace possède sa propre base IndexedDB (`chrono__<id>`), en schéma version 3
   (voir ci-dessous).
 - Chrono n'écrit plus dans `localStorage` à la place d'IndexedDB. Si IndexedDB est indisponible
   ou ne s'ouvre pas (navigation privée, stockage bloqué, ancien onglet Chrono qui garde la base
@@ -54,52 +81,102 @@ Tout reste dans le navigateur, rien n'est envoyé à un serveur.
 Vider les données du site dans le navigateur efface donc les données de Chrono :
 pensez à l'export JSON pour sauvegarder.
 
+### Schéma version 3 et migration depuis la version 2
+
+La version 3 change une seule chose : la couleur d'un projet. La version 2 stockait une valeur
+hexadécimale (`color`) ; la version 3 stocke le numéro d'une des 16 catégories de couleur de
+Covenant, ou, quand l'utilisateur a choisi une couleur libre, cette couleur. Les couleurs
+affichées (marqueur, bande, pastille, fond d'un bloc sous un texte blanc) sont calculées par
+Covenant à partir de ce numéro ; on ne stocke jamais une valeur dérivée.
+
+| Version 2                                | Version 3                                                      |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| Base IndexedDB, version 2                | Même base `chrono__<id>`, version 3                            |
+| Projet `color` (`#rrggbb`)               | `category` (entier de 1 à 16) **ou** `customColor` (`#rrggbb`) |
+| Export JSON `chrono-workspace` version 2 | Version 3 (la version 2 reste importable)                      |
+| Tous les autres champs et collections    | Inchangés                                                      |
+
+Un projet a exactement un des deux champs renseigné, l'autre vaut `null`. `v2ToV3`
+(`src/core/migrations.js`, pure) convertit chaque projet :
+
+- Une des 16 couleurs de l'ancienne palette de Chrono (majuscules ou minuscules, `#rgb`
+  développé) devient son numéro. Toute autre couleur valide est **conservée** comme
+  `customColor`, en minuscules et sur six chiffres, sans jamais être rapprochée d'une
+  catégorie.
+- Une couleur absente ou invalide prend la première catégorie de l'ordre par défaut qu'aucun
+  projet actif n'utilise.
+
+| N°  | Teinte   | Ancienne couleur | N°  | Teinte    | Ancienne couleur |
+| --- | -------- | ---------------- | --- | --------- | ---------------- |
+| 1   | orange   | `#ea580c`        | 9   | bleu      | `#2563eb`        |
+| 2   | ambre    | `#d97706`        | 10  | indigo    | `#4f46e5`        |
+| 3   | jaune    | `#ca8a04`        | 11  | violet    | `#7c3aed`        |
+| 4   | citron   | `#65a30d`        | 12  | pourpre   | `#9333ea`        |
+| 5   | vert     | `#16a34a`        | 13  | fuchsia   | `#c026d3`        |
+| 6   | sarcelle | `#0d9488`        | 14  | rose      | `#db2777`        |
+| 7   | cyan     | `#0891b2`        | 15  | framboise | `#e11d48`        |
+| 8   | ciel     | `#0284c7`        | 16  | ardoise   | `#475569`        |
+
+La nuance exacte change : Covenant dessine chaque teinte avec un marqueur et un fond propres à
+chaque thème, qui respectent les contrastes (par exemple l'ambre et le citron vert sont plus
+foncés qu'avant). Les couleurs libres, elles, gardent leur teinte : Covenant en dérive un
+marqueur et un fond lisibles (`Covenant.setCategory`).
+
+**IndexedDB** : l'étape 2 (version 2 vers 3) s'ajoute après les étapes 0 et 1, qui ne changent
+pas. Elle lit les projets dans la transaction de mise à niveau, les convertit avec `v2ToV3` et
+les réécrit. Une base en version 1 passe par les trois étapes en une seule ouverture (les étapes 1
+et 2 renvoient leur promesse, et `openDatabase` lance l'étape suivante quand la précédente a fini). Une
+erreur annule toute la mise à niveau. **Export et import** : `parseExport` enchaîne
+`upgrades: { 1: v1ToV2, 2: v2ToV3 }` ; un fichier de la version 1 ou 2 est donc importé en
+version 3. Les sauvegardes de repli `localStorage` et les bases à identifiant corrigé sont
+converties de la même façon.
+
 ### Schéma version 2 et migration depuis la version 1
 
 La version 1 (celle du site GitLab) stockait des champs en français. La version 2 les a
 renommés en anglais ; le modèle est décrit dans `src/types.d.ts`. Un champ absent de ce tableau
 est conservé tel quel, sur la même clé.
 
-| Version 1                                 | Version 2                                   |
-| ----------------------------------------- | ------------------------------------------- |
-| Base IndexedDB, version 1                 | Même base `chrono__<id>`, version 2         |
-| Store `projets`                           | `projects`                                  |
-| Store `todos`, `sessions`, `meta`         | Inchangés (`todos`, `sessions`, `meta`)     |
-| Store `pointage`                          | `attendance`                                |
-| Projet `nom`                              | `name`                                      |
-| Projet `couleur`                          | `color`                                     |
-| Projet `archive`                          | `archived`                                  |
-| Projet `id`, `client`                     | Inchangés                                   |
-| Todo `titre`                              | `title`                                     |
-| Todo `fait`                               | `done`                                      |
-| Todo `projetId`                           | `projectId`                                 |
-| Todo `echeance`                           | `dueDate` (voir la note ci-dessous)         |
-| Todo `creeLe`                             | `createdAt`                                 |
-| Todo `id`, `description`                  | Inchangés                                   |
-| Session `projetId`                        | `projectId`                                 |
-| Session `debut`                           | `start`                                     |
-| Session `dernierDebut`                    | `lastStart`                                 |
-| Session `fin`                             | `end`                                       |
-| Session `duree`                           | `duration`                                  |
-| Session `statut`                          | `status`                                    |
-| Session `statut: 'terminee'`              | `status: 'done'`                            |
-| Session `statut: 'en_cours'`              | `status: 'running'`                         |
-| Session `statut: 'en_pause'`              | `status: 'paused'`                          |
-| Session `id`, `description`               | Inchangés                                   |
-| Pointage `sessionsSuspenduesIds`          | `suspendedSessionIds`                       |
-| Pointage `sessionSuspendueId` (ancien)    | Replié dans `suspendedSessionIds`, supprimé |
-| Pointage `type: 'arrivee'`                | `type: 'arrival'`                           |
-| Pointage `type: 'pause_debut'`            | `type: 'break_start'`                       |
-| Pointage `type: 'pause_fin'`              | `type: 'break_end'`                         |
-| Pointage `type: 'depart'`                 | `type: 'departure'`                         |
-| Pointage `id`, `at`                       | Inchangés                                   |
-| Liste des espaces `chrono.workspaces`     | `chrono-workspaces` (registre du paquet)    |
-| Espace `creeLe`                           | `createdAt`                                 |
-| Espace `seedOnInit`                       | Ignoré (démo jamais automatique)            |
-| Espace actif `chrono.workspace.active`    | `chrono-workspace-active`                   |
-| Repli `chrono.fallback.<id>.v1`           | Importé une fois dans IndexedDB, conservé   |
-| Export JSON `version: 1` (sans enveloppe) | Enveloppe `chrono-workspace` version 2      |
-| Export `exporteLe`, `workspace`           | `exportedAt` ; `workspace` n'est plus écrit |
+| Version 1                                 | Version 2                                                       |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| Base IndexedDB, version 1                 | Même base `chrono__<id>`, version 2                             |
+| Store `projets`                           | `projects`                                                      |
+| Store `todos`, `sessions`, `meta`         | Inchangés (`todos`, `sessions`, `meta`)                         |
+| Store `pointage`                          | `attendance`                                                    |
+| Projet `nom`                              | `name`                                                          |
+| Projet `couleur`                          | `color`                                                         |
+| Projet `archive`                          | `archived`                                                      |
+| Projet `id`, `client`                     | Inchangés                                                       |
+| Todo `titre`                              | `title`                                                         |
+| Todo `fait`                               | `done`                                                          |
+| Todo `projetId`                           | `projectId`                                                     |
+| Todo `echeance`                           | `dueDate` (voir la note ci-dessous)                             |
+| Todo `creeLe`                             | `createdAt`                                                     |
+| Todo `id`, `description`                  | Inchangés                                                       |
+| Session `projetId`                        | `projectId`                                                     |
+| Session `debut`                           | `start`                                                         |
+| Session `dernierDebut`                    | `lastStart`                                                     |
+| Session `fin`                             | `end`                                                           |
+| Session `duree`                           | `duration`                                                      |
+| Session `statut`                          | `status`                                                        |
+| Session `statut: 'terminee'`              | `status: 'done'`                                                |
+| Session `statut: 'en_cours'`              | `status: 'running'`                                             |
+| Session `statut: 'en_pause'`              | `status: 'paused'`                                              |
+| Session `id`, `description`               | Inchangés                                                       |
+| Pointage `sessionsSuspenduesIds`          | `suspendedSessionIds`                                           |
+| Pointage `sessionSuspendueId` (ancien)    | Replié dans `suspendedSessionIds`, supprimé                     |
+| Pointage `type: 'arrivee'`                | `type: 'arrival'`                                               |
+| Pointage `type: 'pause_debut'`            | `type: 'break_start'`                                           |
+| Pointage `type: 'pause_fin'`              | `type: 'break_end'`                                             |
+| Pointage `type: 'depart'`                 | `type: 'departure'`                                             |
+| Pointage `id`, `at`                       | Inchangés                                                       |
+| Liste des espaces `chrono.workspaces`     | `chrono-workspaces` (registre du paquet)                        |
+| Espace `creeLe`                           | `createdAt`                                                     |
+| Espace `seedOnInit`                       | Ignoré (démo jamais automatique)                                |
+| Espace actif `chrono.workspace.active`    | `chrono-workspace-active`                                       |
+| Repli `chrono.fallback.<id>.v1`           | Importé une fois dans IndexedDB, conservé                       |
+| Export JSON `version: 1` (sans enveloppe) | Enveloppe `chrono-workspace` version 2 (puis 3, voir plus haut) |
+| Export `exporteLe`, `workspace`           | `exportedAt` ; `workspace` n'est plus écrit                     |
 
 Notes :
 
@@ -107,7 +184,7 @@ Notes :
   `echeance`. La migration ne fait que renommer le champ ; l'étiquette devient une date
   `AAAA-MM-JJ` au chargement (elle a besoin de l'heure courante, que `src/core/migrations.js`
   ne lit pas), puis la date est réécrite.
-- **IndexedDB** : `openDatabase` enchaîne deux étapes. L'étape 0 recrée exactement la disposition
+- **IndexedDB** : `openDatabase` enchaîne trois étapes (la troisième est décrite plus haut). L'étape 0 recrée exactement la disposition
   de la version 1 (`createStoresIfMissing`) : une base neuve et une base existante convergent.
   L'étape 1 lit les anciens stores dans la transaction de mise à niveau, convertit chaque
   enregistrement avec `v1ToV2`, crée `projects` et `attendance`, supprime `projets` et
@@ -129,7 +206,7 @@ Notes :
   convertie par `v1ToV2` au moment de l'import (sous son ancien id pour un espace dont l'id a été
   corrigé) ; elle n'est pas modifiée.
 - **Export et import** : les nouveaux exports sont une enveloppe
-  `{ app: 'chrono', format: 'chrono-workspace', version: 2, exportedAt, data }`. L'import accepte
+  `{ app: 'chrono', format: 'chrono-workspace', version: 3, exportedAt, data }`. L'import accepte
   aussi, pour toujours, les fichiers de la version 1 du site GitLab (un objet nu, sans `app`) :
   ils sont enveloppés en version 1 puis convertis par `v1ToV2`. Un fichier d'une autre application
   ou d'une version plus récente est refusé (`wrong-app`, `newer-version`).
@@ -146,7 +223,7 @@ public/theme-init.js  script classique : thème et taille du texte avant le prem
 public/assets/        fichiers statiques : favicon
 src/
   main.js             démarre l'application dans #root
-  types.d.ts          modèle de données, schéma version 2 (et types de la version 1)
+  types.d.ts          modèle de données, schéma version 3 (et types des versions 2 et 1)
   styles/             covenant.css (thème) et app.css
   core/               logique métier PURE
   adapters/           tout ce qui touche au navigateur
@@ -183,7 +260,8 @@ rien, elle renvoie l'objet reçu tel quel.
 | `todos.js`, `projects.js` | Ajout, édition, suppression, archivage.                                                                            |
 | `due-dates.js`            | Échéances `AAAA-MM-JJ`, catégories (`bucket`), migration des anciennes étiquettes relatives.                       |
 | `seed.js`                 | Données de démonstration et données vides.                                                                         |
-| `migrations.js`           | Conversion version 1 vers version 2 (`v1ToV2` et conversions d'enregistrements), pure.                             |
+| `migrations.js`           | Conversions version 1 vers 2 (`v1ToV2`) et 2 vers 3 (`v2ToV3`, la palette d'origine), pures.                       |
+| `categories.js`           | Les 16 catégories de couleur, l'ordre par défaut et `nextCategory`, pures.                                         |
 | `import-export.js`        | Validation de l'import, reconnaissance et mise en enveloppe des fichiers de la version 1.                          |
 | `report.js`               | Agrégation du rapport hebdomadaire et texte CSV.                                                                   |
 
@@ -249,8 +327,10 @@ npm run verify                       # depuis la racine : typecheck, lint, forma
   persistance, reprise des données de la version 1, deux onglets dans le même contexte :
   lecture seule, relecture, reprise du verrou ; IndexedDB indisponible ou bloqué ; import du
   repli). Toute requête qui n'est pas pour `127.0.0.1` est bloquée, et un test vérifie
-  qu'aucune n'est émise. Pas encore d'assertions axe : l'interface actuelle ne les passe pas, elles
-  arriveront avec le portage sur Covenant.
+  qu'aucune n'est émise. Des assertions axe (WCAG 2.0 A/AA, 2.1 AA, 2.2 AA) couvrent les quatre
+  vues, l'ajout rapide (les deux modes), l'éditeur de projet, les préférences et les espaces, en
+  clair et en sombre, à 1280 et 390 px, avec les données de démonstration ; une couleur libre
+  claire (`#ffff00`) est vérifiée sur un bloc de la Timeline (`tests/e2e/accessibility.spec.js`).
 - Le typecheck couvre tout `src` (vues comprises), `src/types.d.ts` et `tests/unit`.
 
 ## Déploiement

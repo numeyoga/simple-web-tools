@@ -334,12 +334,7 @@ export function createTodosView(store, opts) {
         'div',
         { class: 'ch-row ch-center ch-wrap ch-gap-3 ch-shrink-0' },
         project
-          ? el(
-              'span',
-              { class: 'ch-meta ch-row ch-center ch-gap-3' },
-              el('span', { class: 'ch-swatch', style: { background: project.color } }),
-              project.name,
-            )
+          ? UI.projectName(project, 'ch-meta')
           : el('span', { class: 'ch-subtle ch-italic' }, 'Sans projet'),
 
         t.dueDate && !t.done ? dueDateBadge(t) : null,

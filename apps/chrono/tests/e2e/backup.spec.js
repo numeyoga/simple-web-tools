@@ -20,7 +20,7 @@ test('JSON export then import into an empty workspace: the data is restored', as
   const download = await downloadEvent;
   const content = await readFile(await download.path());
   const exported = JSON.parse(content.toString('utf8'));
-  expect(exported).toMatchObject({ app: 'chrono', format: 'chrono-workspace', version: 2 });
+  expect(exported).toMatchObject({ app: 'chrono', format: 'chrono-workspace', version: 3 });
   expect(exported.data.projects.map((/** @type {{ name: string }} */ p) => p.name)).toEqual([
     'Alpha',
   ]);

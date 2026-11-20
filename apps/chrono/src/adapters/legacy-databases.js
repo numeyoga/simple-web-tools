@@ -1,9 +1,9 @@
 // Version 1 workspaces whose id the registry refuses (see `planLegacyWorkspaces`): their data is
 // in the database `chrono__<version 1 id>`, which has no valid workspace name. Each one is copied
-// once into the database of its new id, converted with the same `v1ToV2`. The old database is
+// once into the database of its new id, converted with the same `v1ToV2` and `v2ToV3`. The old database is
 // opened with the raw IndexedDB API (no name validation), read, and never modified or deleted.
 
-import { v1ToV2 } from '../core/migrations.js';
+import { v1ToV2, v2ToV3 } from '../core/migrations.js';
 import { openWorkspaceDatabase } from './idb.js';
 import { legacyDatabaseName } from './names.js';
 import {
@@ -73,12 +73,14 @@ async function copyOne({ from, to }) {
   const source = await readRawDatabase(legacyDatabaseName(from));
   if (!source) return;
   const converted = /** @type {Partial<ChronoData>} */ (
-    v1ToV2({
-      projets: source.projets ?? source.projects ?? [],
-      todos: source.todos ?? [],
-      sessions: source.sessions ?? [],
-      pointage: source.pointage ?? source.attendance ?? [],
-    })
+    v2ToV3(
+      v1ToV2({
+        projets: source.projets ?? source.projects ?? [],
+        todos: source.todos ?? [],
+        sessions: source.sessions ?? [],
+        pointage: source.pointage ?? source.attendance ?? [],
+      }),
+    )
   );
   const target = await openWorkspaceDatabase(to);
   try {

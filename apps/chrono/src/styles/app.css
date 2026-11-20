@@ -253,14 +253,6 @@ body {
 .ch-project-card {
   position: relative;
   overflow: hidden;
-  padding-left: var(--cv-space-7);
-}
-.ch-card-stripe {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 0.25rem;
 }
 
 .ch-grid-cards {
@@ -368,6 +360,10 @@ body {
 .ch-live h2.cv-overline {
   white-space: nowrap;
 }
+/* The title of the timers keeps its own line when the buttons do not fit next to it. */
+.ch-live-head {
+  flex: 1 1 14rem;
+}
 .ch-timers {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
@@ -435,18 +431,6 @@ body {
 .ch-line-button:hover {
   background: var(--cv-surface-2);
 }
-.ch-stripe {
-  align-self: stretch;
-  flex-shrink: 0;
-  width: 0.25rem;
-  border-radius: var(--cv-radius-xs);
-}
-.ch-swatch {
-  flex-shrink: 0;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--cv-radius-xs);
-}
 .ch-clamp-2 {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -497,33 +481,64 @@ body {
   font-size: var(--cv-text-lg);
 }
 
-/* --- Colour picker of the project form ------------------------------------ */
+/* --- Colour picker of the project form: 16 category radios and the free colour ----------
+   Each choice is a native input (radio, or the colour input) laid over its swatch: it takes the
+   focus and the clicks, the swatch shows the marker colour of `data-cat`. */
 .ch-swatches {
   display: flex;
   flex-wrap: wrap;
   gap: var(--cv-space-3);
 }
-.ch-swatch-btn {
-  box-sizing: border-box;
+.ch-swatch-choice {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
   width: 1.75rem;
   height: 1.75rem;
-  padding: 0;
-  border: 2px solid transparent;
-  border-radius: var(--cv-radius-md);
-  cursor: pointer;
 }
-.ch-swatch-btn[aria-pressed='true'] {
-  border-color: var(--cv-border-selected);
-  box-shadow: inset 0 0 0 2px var(--cv-surface);
-}
-.ch-color-input {
+.ch-swatch-radio {
   position: absolute;
-  width: 0;
-  height: 0;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   padding: 0;
   border: 0;
   opacity: 0;
+  cursor: pointer;
+}
+.ch-swatch-btn {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px solid transparent;
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-cat);
   pointer-events: none;
+}
+.ch-swatch-radio:checked + .ch-swatch-btn,
+.is-selected > .ch-swatch-btn {
+  border-color: var(--cv-border-selected);
+  box-shadow: inset 0 0 0 2px var(--cv-surface-raised);
+}
+.ch-swatch-radio:focus-visible + .ch-swatch-btn {
+  outline: 2px solid var(--cv-border-focus);
+  outline-offset: 2px;
+}
+/* No free colour yet: a dashed outline with a plus sign, as the former "+" button. */
+.is-unset > .ch-swatch-btn {
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--cv-border-control);
+  background: transparent;
+}
+.is-unset > .ch-swatch-btn::before {
+  content: '+';
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-md);
+  line-height: 1;
 }
 
 /* --- Project choice of the quick add (radios) ----------------------------- */
@@ -569,7 +584,12 @@ body {
   overflow-y: hidden;
   padding: var(--cv-space-5) 0 var(--cv-space-4);
 }
+.ch-chart-scroll--now {
+  padding-bottom: 2.25rem; /* room for the label of the current time, under the plot */
+}
 .ch-session-block {
+  /* The fill and the white label come from `cv-cat-block` (data-cat or Covenant.setCategory).
+     The lanes keep Chrono's pixel placement: see TimelineView. */
   position: absolute;
   display: flex;
   flex-direction: column;
@@ -578,10 +598,15 @@ body {
   padding: var(--cv-space-2) var(--cv-space-3);
   border: 0;
   border-radius: var(--cv-radius-sm);
-  color: var(--cv-fg-on-cat);
   font: var(--cv-weight-medium) var(--cv-text-xs) / 1.2 var(--cv-font-sans);
   text-align: left;
+  white-space: normal;
   cursor: pointer;
+}
+/* A session whose project no longer exists: the neutral inverse roles, no category. */
+.ch-session-block--neutral {
+  background: var(--cv-surface-inverse);
+  color: var(--cv-fg-inverse);
 }
 .ch-session-block--compact {
   flex-direction: row;
@@ -593,7 +618,7 @@ body {
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 50%;
-  background: var(--cv-fg-on-cat);
+  background: currentcolor;
 }
 .ch-now-label {
   padding: var(--cv-space-1) var(--cv-space-2);
@@ -631,6 +656,11 @@ body {
 }
 .ch-scroll-x {
   overflow-x: auto;
+}
+.ch-cat-chip {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
 }
 .ch-legend-swatch {
   width: 0.875rem;
