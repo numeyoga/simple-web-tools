@@ -86,6 +86,13 @@ export default {
     dismissNotification: 'Fermer la notification',
   },
 
+  pwa: {
+    updateTitle: 'Une nouvelle version est prête',
+    updateBody: 'Rechargez Chrono pour l’utiliser. Elle est déjà disponible hors ligne.',
+    reload: 'Recharger',
+    reloading: 'Rechargement…',
+  },
+
   nav: {
     timeline: 'Timeline',
     todos: 'Todos',

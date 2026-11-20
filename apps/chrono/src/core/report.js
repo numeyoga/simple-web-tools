@@ -3,6 +3,7 @@
 import { createTranslator } from '@simple-web-tools/i18n';
 import { catalogs } from '../i18n/index.js';
 import { formatLocalDate } from './dates.js';
+import { timeOfDayOptions } from './format.js';
 import { liveDuration } from './presence.js';
 
 /** @typedef {import('../types.js').Session} Session */
@@ -153,8 +154,8 @@ export function buildReportCsv(sessions, projects, now, { locale = 'fr' } = {}) 
   const cell = (/** @type {unknown} */ v) => `"${String(v).replace(/"/g, '""')}"`;
   const day = (/** @type {number} */ ts) =>
     formatDate(formatLocalDate(ts), { year: 'numeric', month: '2-digit', day: '2-digit' });
-  const hhmm = (/** @type {number} */ ts) =>
-    formatDateTime(ts, { hour: '2-digit', minute: '2-digit' });
+  const clock = timeOfDayOptions(locale);
+  const hhmm = (/** @type {number} */ ts) => formatDateTime(ts, clock);
 
   const rows = [
     [

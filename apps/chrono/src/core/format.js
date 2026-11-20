@@ -8,9 +8,23 @@ import { formatDuration as formatDurationMs, formatLocalDate } from './dates.js'
 /** @typedef {import('@simple-web-tools/i18n').Translator} Translator */
 
 /**
+ * The options that show a time of day the way a locale writes it: no leading zero on a 12-hour
+ * clock (`9:05 AM`), two digits on a 24-hour one (`09:05`).
+ * @param {string} locale
+ * @returns {Intl.DateTimeFormatOptions}
+ */
+export function timeOfDayOptions(locale) {
+  const twelve = ['h11', 'h12'].includes(
+    new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions().hourCycle ?? '',
+  );
+  return { hour: twelve ? 'numeric' : '2-digit', minute: '2-digit' };
+}
+
+/**
  * @param {Pick<Translator, 'locale' | 'formatDate' | 'formatDateTime' | 'formatDuration'>} i18n
  */
 export function createFormatters(i18n) {
+  const timeOptions = timeOfDayOptions(i18n.locale);
   return {
     /**
      * `HH:MM` through the translator; `HH:MM:SS` and the compact form (`1h05`, `12m`, `30s`)
@@ -23,9 +37,9 @@ export function createFormatters(i18n) {
       return i18n.formatDuration(Math.floor(Math.max(0, ms) / 60_000), { style: 'clock' });
     },
 
-    /** The time of day of an instant: `09:05`, `9:05 AM`. @param {number} ts */
+    /** The time of day of an instant: `09:05`, `9:05 AM` (no leading zero on a 12-hour clock). @param {number} ts */
     formatTime(ts) {
-      return i18n.formatDateTime(ts, { hour: '2-digit', minute: '2-digit' });
+      return i18n.formatDateTime(ts, timeOptions);
     },
 
     /**
@@ -33,13 +47,7 @@ export function createFormatters(i18n) {
      * was), `7:00 AM` on a 12-hour one. @param {number} hour 0 to 23
      */
     formatHour(hour) {
-      const twelve = ['h11', 'h12'].includes(
-        new Intl.DateTimeFormat(i18n.locale, { hour: 'numeric' }).resolvedOptions().hourCycle ?? '',
-      );
-      return i18n.formatDateTime(new Date(2000, 0, 1, hour), {
-        hour: twelve ? 'numeric' : '2-digit',
-        minute: '2-digit',
-      });
+      return i18n.formatDateTime(new Date(2000, 0, 1, hour), timeOptions);
     },
 
     /**
