@@ -674,13 +674,31 @@ dialog::backdrop {
 }
 
 /* Native SVG Whiteboard Canvas */
+
+/*
+ * Whiteboard artwork tokens (`--lc-wb-*`): app-level tokens built only from Covenant semantic
+ * roles, so they follow the theme and no primitive scale token (`--cv-accent-500`...) is used.
+ * Three values per colour: `-fill` (inside a shape or a sticky note, with `--cv-fg` text on it:
+ * 4.5:1), `-stroke` (outline of a shape or note) and `-line` (arrows, freehand, arrow heads).
+ * Strokes and lines are graphic elements and must reach 3:1 against the canvas (`--cv-bg`,
+ * WCAG 1.4.11); fills are tints that only have to carry the text. Measured in both themes by
+ * the e2e of this app. The export reads these values from the computed style (see
+ * `buildStandaloneSvg`) and writes concrete colours into the file.
+ */
 .lc-wb-container {
+  /* Neutral: a surface, an outline from the control boundary role (3:1 or more on every
+     surface, unlike `--cv-border-strong` at 1.4:1) and the main text colour for lines. */
   --lc-wb-neutral-fill: var(--cv-surface);
-  --lc-wb-neutral-stroke: var(--cv-border-strong);
+  --lc-wb-neutral-stroke: var(--cv-border-control);
   --lc-wb-neutral-line: var(--cv-fg);
+  /* Accent: the tint of selected rows for the fill; the brand orange, a graphic-only role, for
+     outline and lines (3.4:1 on the light canvas, 7.9:1 on the dark one). */
   --lc-wb-accent-fill: var(--cv-bg-accent-subtle);
-  --lc-wb-accent-stroke: var(--cv-accent-500);
-  --lc-wb-accent-line: var(--cv-accent-500);
+  --lc-wb-accent-stroke: var(--cv-brand-accent);
+  --lc-wb-accent-line: var(--cv-brand-accent);
+  /* Status colours: the themed status surface behind the text (light theme; dark theme below),
+     the status text colour (`--cv-fg-<status>`, 4.5:1 on the canvas in both themes) for outline
+     and lines. */
   --lc-wb-success-fill: var(--cv-success-surface);
   --lc-wb-success-stroke: var(--cv-fg-success);
   --lc-wb-success-line: var(--cv-fg-success);
@@ -690,6 +708,9 @@ dialog::backdrop {
   --lc-wb-danger-fill: var(--cv-danger-surface);
   --lc-wb-danger-stroke: var(--cv-fg-danger);
   --lc-wb-danger-line: var(--cv-fg-danger);
+  /* Working feedback (marquee, arrow handles, snap guides): the selection indicator role, 4.7:1
+     or more on the canvas in both themes. */
+  --lc-wb-feedback: var(--cv-border-selected);
   display: flex;
   flex-direction: column;
   max-width: 100%;
@@ -700,21 +721,20 @@ dialog::backdrop {
 }
 
 [data-theme='dark'] .lc-wb-container {
+  /* Dark fills must stay far from the canvas and from each other (the e2e asks for an RGB
+     distance of 40 and 45) while `--cv-fg` text keeps 4.5:1 on them: the status surfaces are
+     too close to the canvas for that, so the fills are saturated tints built from two roles.
+     Neutral: one step above the canvas, as before. */
   --lc-wb-neutral-fill: var(--cv-surface-3);
-  --lc-wb-neutral-stroke: var(--cv-border-control);
-  --lc-wb-neutral-line: var(--cv-fg);
-  --lc-wb-accent-fill: var(--cv-accent-800);
-  --lc-wb-accent-stroke: var(--cv-fg-accent);
-  --lc-wb-accent-line: var(--cv-accent-500);
-  --lc-wb-success-fill: var(--cv-success-700);
-  --lc-wb-success-stroke: var(--cv-fg-success);
-  --lc-wb-success-line: var(--cv-fg-success);
-  --lc-wb-warning-fill: var(--cv-warning-600);
-  --lc-wb-warning-stroke: var(--cv-fg-warning);
-  --lc-wb-warning-line: var(--cv-fg-warning);
-  --lc-wb-danger-fill: var(--cv-danger-700);
-  --lc-wb-danger-stroke: var(--cv-fg-danger);
-  --lc-wb-danger-line: var(--cv-fg-danger);
+  /* No role gives an opaque tint of the accent, success or warning in dark, so each is 40 % of
+     its role over `--cv-surface`: the accent fill (the orange that carries white text), then the
+     status text colours. Opaque, so that a note hides what is behind its text. */
+  --lc-wb-accent-fill: color-mix(in srgb, var(--cv-accent-fill) 40%, var(--cv-surface));
+  --lc-wb-success-fill: color-mix(in srgb, var(--cv-fg-success) 40%, var(--cv-surface));
+  --lc-wb-warning-fill: color-mix(in srgb, var(--cv-fg-warning) 40%, var(--cv-surface));
+  /* Danger: the destructive fill role is the crimson used before (#9f1239), 7.4:1 under
+     `--cv-fg`, and it keeps the danger colour clearly apart from the warning amber. */
+  --lc-wb-danger-fill: var(--cv-danger-fill);
 }
 
 .lc-wb-container:focus-within {
@@ -1001,7 +1021,7 @@ dialog::backdrop {
 .lc-wb-marquee {
   fill: var(--cv-bg-accent-subtle);
   fill-opacity: 0.35;
-  stroke: var(--cv-accent-500);
+  stroke: var(--lc-wb-feedback);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
   pointer-events: none;
@@ -1009,23 +1029,23 @@ dialog::backdrop {
 
 .lc-wb-arrow-handle {
   fill: var(--cv-surface);
-  stroke: var(--cv-accent-500);
+  stroke: var(--lc-wb-feedback);
   stroke-width: 2;
   cursor: crosshair;
 }
 
 .lc-wb-snap-ring {
   fill: none;
-  stroke: var(--cv-accent-500);
+  stroke: var(--lc-wb-feedback);
   stroke-width: 2;
   stroke-dasharray: 4 2;
   pointer-events: none;
 }
 
 .lc-wb-snap-dot {
-  fill: var(--cv-accent-500);
+  fill: var(--lc-wb-feedback);
   fill-opacity: 0.25;
-  stroke: var(--cv-accent-500);
+  stroke: var(--lc-wb-feedback);
   stroke-width: 2;
   pointer-events: none;
 }
@@ -1240,7 +1260,9 @@ dialog::backdrop {
 
 .lc-cal-legend__swatch--weekend {
   background: var(--cv-warning-surface);
-  border: 1px solid var(--cv-warning-600);
+  /* The hairline is decoration; the 3 px top edge in the status text colour (3:1 or more) and
+     the word next to the swatch say what it is. */
+  border: 1px solid var(--cv-warning-border);
   border-top-width: 3px;
   border-top-color: var(--cv-fg-warning);
 }
@@ -1248,16 +1270,8 @@ dialog::backdrop {
 .lc-cal-legend__swatch--offhours {
   background: var(--cv-info-surface);
   border: 1px solid var(--cv-info-border);
-  border-inline-start: 4px solid var(--cv-info-600);
-}
-
-[data-theme='dark'] .lc-cal-legend__swatch--weekend {
-  border-color: var(--cv-warning-border);
-  border-top-color: var(--cv-fg-warning);
-}
-
-[data-theme='dark'] .lc-cal-legend__swatch--offhours {
-  border-inline-start-color: var(--cv-fg-info);
+  /* Same stripe as the off-hours slots it stands for: the status text colour, 3:1 or more. */
+  border-inline-start: 4px solid var(--cv-fg-info);
 }
 
 .lc-cal-wrap {
@@ -1312,13 +1326,10 @@ dialog::backdrop {
 
 .lc-cal-cell.is-weekend {
   background: var(--cv-warning-surface);
-  border-color: var(--cv-warning-600);
-  border-top-width: 3px;
-  border-top-color: var(--cv-fg-warning);
-}
-
-[data-theme='dark'] .lc-cal-cell.is-weekend {
+  /* The hairline is decoration: the Weekend badge in the header carries the meaning, and the
+     3 px top edge in the status text colour keeps 3:1 or more. */
   border-color: var(--cv-warning-border);
+  border-top-width: 3px;
   border-top-color: var(--cv-fg-warning);
 }
 
@@ -1367,13 +1378,9 @@ dialog::backdrop {
 
 .lc-cal-weekend-tag {
   background: var(--cv-surface);
-  border-color: var(--cv-warning-600);
+  border-color: var(--cv-warning-border);
   color: var(--cv-fg-warning);
   padding: 0 var(--cv-space-2);
-}
-
-[data-theme='dark'] .lc-cal-weekend-tag {
-  border-color: var(--cv-warning-border);
 }
 
 .lc-cal-cell__add {
@@ -1434,19 +1441,14 @@ dialog::backdrop {
 
 .lc-cal-slot--offhours {
   background: var(--cv-info-surface);
-  border-inline-start: 4px solid var(--cv-info-600);
+  /* The stripe also tells the band apart without reading the hour: `--cv-info-border` is far
+     below 3:1, so it takes the status text colour (3:1 or more in both themes). The hour is
+     in the semibold info colour and the 18h-7h pill with a moon opens the band. */
+  border-inline-start: 4px solid var(--cv-fg-info);
 }
 
 .lc-cal-slot--boundary {
-  border-top: 2px dashed var(--cv-info-600);
-}
-
-[data-theme='dark'] .lc-cal-slot--offhours {
-  border-inline-start-color: var(--cv-fg-info);
-}
-
-[data-theme='dark'] .lc-cal-slot--boundary {
-  border-top-color: var(--cv-fg-info);
+  border-top: 2px dashed var(--cv-fg-info);
 }
 
 .lc-cal-slot.is-drop-target,
@@ -1498,16 +1500,19 @@ dialog::backdrop {
   min-width: 0;
 }
 
+/* Priority stripes: the only visual cue of the priority on a calendar card (the accessible
+   name has it as a word). `--cv-<status>-border` is far below 3:1, so the stripes take the
+   status text colours (3:1 or more on the card in both themes). */
 .lc-cal-task--high {
-  border-left-color: var(--cv-danger-500);
+  border-left-color: var(--cv-fg-danger);
 }
 
 .lc-cal-task--medium {
-  border-left-color: var(--cv-warning-500);
+  border-left-color: var(--cv-fg-warning);
 }
 
 .lc-cal-task--low {
-  border-left-color: var(--cv-info-500);
+  border-left-color: var(--cv-fg-info);
 }
 
 .lc-cal-task.is-offhours {
@@ -2163,12 +2168,9 @@ dialog::backdrop {
 
 .lc-offhours-pill {
   background: var(--cv-info-surface);
-  border-color: var(--cv-info-500);
-  color: var(--cv-fg-info);
-}
-
-[data-theme='dark'] .lc-offhours-pill {
+  /* A moon icon and the 18h-7h range sit inside the pill: the border is decoration. */
   border-color: var(--cv-info-border);
+  color: var(--cv-fg-info);
 }
 
 /* Dedicated Archives screen */

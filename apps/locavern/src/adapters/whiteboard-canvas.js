@@ -2657,41 +2657,74 @@ export function mountWhiteboardCanvas({
       return val ? resolveCssExpr(val, fallback) : fallback;
     };
 
-    const bgColor = readVar('--cv-bg', '#fafafa');
-    const fgColor = readVar('--cv-fg', '#18181b');
+    // Standalone files outlive the page: every colour written into one is a concrete value, never
+    // a `var()` and never a CSS function a viewer may not know (a dark-theme token is a
+    // `color-mix()`, which computes to `color(srgb ...)`). A canvas parses any colour the browser
+    // knows; the pixel it paints gives `#rrggbb`, or `#rrggbbaa` when translucent.
+    const probeCanvas = document.createElement('canvas');
+    probeCanvas.width = 1;
+    probeCanvas.height = 1;
+    const probe = probeCanvas.getContext('2d', { willReadFrequently: true });
+    /** @param {string} css @returns {string | null} */
+    const toConcreteColor = (css) => {
+      if (!probe) return null;
+      // A value the canvas cannot parse leaves the style unchanged: two different starting
+      // points tell it apart from a colour that happens to equal one of them.
+      /** @type {string[]} */
+      const results = [];
+      for (const start of ['#010203', '#fdfcfb']) {
+        probe.fillStyle = start;
+        probe.fillStyle = css;
+        probe.clearRect(0, 0, 1, 1);
+        probe.fillRect(0, 0, 1, 1);
+        const px = probe.getImageData(0, 0, 1, 1).data;
+        const [r = 0, g = 0, b = 0, a = 0] = px;
+        const hex = (/** @type {number} */ v) => v.toString(16).padStart(2, '0');
+        // `#rrggbb`, or `#rrggbbaa` for a translucent colour.
+        results.push(`#${hex(r)}${hex(g)}${hex(b)}${a === 255 ? '' : hex(a)}`);
+      }
+      return results[0] === results[1] ? (results[0] ?? null) : null;
+    };
+    const readColor = (/** @type {string} */ name, /** @type {string} */ fallback) => {
+      const value = readVar(name, fallback);
+      return toConcreteColor(value) ?? toConcreteColor(fallback) ?? fallback;
+    };
+
+    const bgColor = readColor('--cv-bg', '#fafafa');
+    const fgColor = readColor('--cv-fg', '#18181b');
     const fontFamily = readVar('--cv-font-sans', 'sans-serif');
 
     /** @type {Record<WhiteboardColorToken, { fill: string; stroke: string; line: string; text: string }>} */
     const palette = {
       neutral: {
-        fill: readVar(COLOR_TOKENS.neutral.fillVar, '#ffffff'),
-        stroke: readVar(COLOR_TOKENS.neutral.strokeVar, '#d4d4d8'),
-        line: readVar(COLOR_TOKENS.neutral.lineVar, fgColor),
-        text: readVar(COLOR_TOKENS.neutral.textVar, fgColor),
+        fill: readColor(COLOR_TOKENS.neutral.fillVar, '#ffffff'),
+        stroke: readColor(COLOR_TOKENS.neutral.strokeVar, '#d4d4d8'),
+        line: readColor(COLOR_TOKENS.neutral.lineVar, fgColor),
+        text: readColor(COLOR_TOKENS.neutral.textVar, fgColor),
       },
       accent: {
-        fill: readVar(COLOR_TOKENS.accent.fillVar, '#fff7ed'),
-        stroke: readVar(COLOR_TOKENS.accent.strokeVar, '#ea580c'),
-        line: readVar(COLOR_TOKENS.accent.lineVar, '#ea580c'),
-        text: readVar(COLOR_TOKENS.accent.textVar, fgColor),
+        fill: readColor(COLOR_TOKENS.accent.fillVar, '#fff7ed'),
+        stroke: readColor(COLOR_TOKENS.accent.strokeVar, '#ea580c'),
+        line: readColor(COLOR_TOKENS.accent.lineVar, '#ea580c'),
+        text: readColor(COLOR_TOKENS.accent.textVar, fgColor),
       },
       success: {
-        fill: readVar(COLOR_TOKENS.success.fillVar, '#f0fdf4'),
-        stroke: readVar(COLOR_TOKENS.success.strokeVar, '#15803d'),
-        line: readVar(COLOR_TOKENS.success.lineVar, '#15803d'),
-        text: readVar(COLOR_TOKENS.success.textVar, fgColor),
+        fill: readColor(COLOR_TOKENS.success.fillVar, '#f0fdf4'),
+        stroke: readColor(COLOR_TOKENS.success.strokeVar, '#15803d'),
+        line: readColor(COLOR_TOKENS.success.lineVar, '#15803d'),
+        text: readColor(COLOR_TOKENS.success.textVar, fgColor),
       },
       warning: {
-        fill: readVar(COLOR_TOKENS.warning.fillVar, '#fefce8'),
-        stroke: readVar(COLOR_TOKENS.warning.strokeVar, '#a16207'),
-        line: readVar(COLOR_TOKENS.warning.lineVar, '#a16207'),
-        text: readVar(COLOR_TOKENS.warning.textVar, fgColor),
+        fill: readColor(COLOR_TOKENS.warning.fillVar, '#fefce8'),
+        stroke: readColor(COLOR_TOKENS.warning.strokeVar, '#a16207'),
+        line: readColor(COLOR_TOKENS.warning.lineVar, '#a16207'),
+        text: readColor(COLOR_TOKENS.warning.textVar, fgColor),
       },
       danger: {
-        fill: readVar(COLOR_TOKENS.danger.fillVar, '#fdf2f8'),
-        stroke: readVar(COLOR_TOKENS.danger.strokeVar, '#be123c'),
-        line: readVar(COLOR_TOKENS.danger.lineVar, '#be123c'),
-        text: readVar(COLOR_TOKENS.danger.textVar, fgColor),
+        fill: readColor(COLOR_TOKENS.danger.fillVar, '#fdf2f8'),
+        stroke: readColor(COLOR_TOKENS.danger.strokeVar, '#be123c'),
+        line: readColor(COLOR_TOKENS.danger.lineVar, '#be123c'),
+        text: readColor(COLOR_TOKENS.danger.textVar, fgColor),
       },
     };
 

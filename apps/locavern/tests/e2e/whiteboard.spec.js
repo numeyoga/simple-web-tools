@@ -658,6 +658,19 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     const metrics = await page.evaluate((paletteKeys) => {
       /** @param {string} raw */
       const parseRgba = (raw) => {
+        // `color-mix()` tokens compute to `color(srgb r g b / a)`, channels between 0 and 1.
+        const c =
+          /^color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)$/i.exec(
+            raw.trim(),
+          );
+        if (c) {
+          return {
+            r: Number(c[1]) * 255,
+            g: Number(c[2]) * 255,
+            b: Number(c[3]) * 255,
+            a: c[4] !== undefined ? Number(c[4]) : 1,
+          };
+        }
         const m =
           /^rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*(\d+(?:\.\d+)?))?\s*\)$/i.exec(
             raw.trim(),
