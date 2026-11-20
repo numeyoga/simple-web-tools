@@ -3,7 +3,7 @@
 // `@simple-web-tools/covenant`; nothing here styles a component.
 // Every helper returns an HTMLElement.
 
-import { appendChildren, el, fieldId, icon } from './lib.js';
+import { appendChildren, el, fieldId, icon, locale, t } from './lib.js';
 
 /** @typedef {import('./types.js').ButtonOptions} ButtonOptions */
 /** @typedef {import('./types.js').IconButtonOptions} IconButtonOptions */
@@ -287,7 +287,7 @@ function Textarea(opts = {}) {
  * @returns {import('./types.js').Field<HTMLSelectElement>}
  */
 function Select(opts) {
-  const { label, ariaLabel, value, options, onchange, className, name, mutates } = opts;
+  const { label, ariaLabel, value, options, hint, onchange, className, name, mutates } = opts;
   const select = el(
     'select',
     {
@@ -305,6 +305,7 @@ function Select(opts) {
     ariaLabel,
     control: select,
     controlId: fieldId('ch-select'),
+    hint,
     className,
     wrapControl: (control) => el('span', { class: 'cv-select' }, control),
   });
@@ -325,7 +326,7 @@ function Combobox(opts = {}) {
     placeholder,
     options = [],
     hint,
-    emptyText = 'Aucune suggestion.',
+    emptyText = t('projects.noSuggestion'),
     className,
     onchange,
     onkeydown,
@@ -334,7 +335,7 @@ function Combobox(opts = {}) {
   const id = fieldId('ch-combobox');
   const listId = `${id}-list`;
   const unique = Array.from(new Set(options.map((s) => s.trim()).filter(Boolean))).sort((a, b) =>
-    a.localeCompare(b, 'fr'),
+    a.localeCompare(b, locale),
   );
   const input = el('input', {
     type: 'text',
@@ -519,7 +520,7 @@ function Modal(opts) {
         {
           type: 'button',
           class: 'cv-btn cv-btn--ghost cv-btn--icon',
-          'aria-label': 'Fermer',
+          'aria-label': t('common.close'),
           'data-cv-close': '',
         },
         icon('x'),
@@ -595,7 +596,7 @@ function Modal(opts) {
  * @returns {Promise<boolean>}
  */
 function Confirm(opts) {
-  const { title, message, confirmLabel = 'Confirmer', danger = false, within } = opts;
+  const { title, message, confirmLabel = t('common.confirm'), danger = false, within } = opts;
   return new Promise((resolve) => {
     let settled = false;
     /** @type {(() => void) | null} */
@@ -611,7 +612,7 @@ function Confirm(opts) {
       resolve(value);
     };
     const cancel = Button({
-      children: 'Annuler',
+      children: t('common.cancel'),
       autoFocus: true,
       onclick: () => finish(false),
     });
@@ -639,9 +640,26 @@ function Confirm(opts) {
 /* Covenant.toast: success and info leave after 6 s (paused on hover and focus), warnings and
    errors stay until they are dismissed. */
 function ToastHost() {
+  /**
+   * Covenant's own labels are English. It creates the region of the toasts when the first one
+   * appears, and uses the one already in the page: the Toast page of the skill shows that
+   * markup, so the region is created here with its name in the language of the interface.
+   */
+  function ensureRegion() {
+    if (document.querySelector('.cv-toast-region')) return;
+    document.body.append(
+      el('section', { class: 'cv-toast-region', 'aria-label': t('shell.notifications') }),
+    );
+  }
+
   /** @param {ToastOptions} toast */
   function push({ variant = 'info', title, body }) {
-    window.Covenant?.toast?.({ status: variant, title, text: body ?? undefined });
+    ensureRegion();
+    const toast = window.Covenant?.toast?.({ status: variant, title, text: body ?? undefined });
+    // The dismiss button of each toast is built by Covenant with an English name.
+    toast
+      ?.querySelector('[data-cv-dismiss]')
+      ?.setAttribute('aria-label', t('shell.dismissNotification'));
   }
   return { push };
 }

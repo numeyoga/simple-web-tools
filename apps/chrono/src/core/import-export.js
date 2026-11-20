@@ -18,6 +18,22 @@ export const EXPORT_APP = 'chrono';
 export const EXPORT_FORMAT = 'chrono-workspace';
 export const EXPORT_VERSION = 3;
 
+/**
+ * An import that cannot be used. `code` tells the interface which message to show in the
+ * language of the user (`importErrorMessage`); `message` is the French text it always had.
+ */
+export class ImportError extends Error {
+  /**
+   * @param {'invalid-json' | 'invalid-format' | 'no-valid-data'} code
+   * @param {string} message
+   */
+  constructor(code, message) {
+    super(message);
+    this.name = 'ImportError';
+    this.code = code;
+  }
+}
+
 const SESSION_STATUSES = ['done', 'running', 'paused'];
 
 /**
@@ -98,7 +114,7 @@ export function validateImport(payload, now) {
   const data = /** @type {Partial<Record<keyof ChronoData, unknown>> | null | undefined} */ (
     payload
   );
-  if (!data || typeof data !== 'object') throw new Error('format invalide');
+  if (!data || typeof data !== 'object') throw new ImportError('invalid-format', 'format invalide');
   const raw = {
     projects: Array.isArray(data.projects) ? data.projects : [],
     todos: Array.isArray(data.todos) ? data.todos : [],
@@ -112,7 +128,7 @@ export function validateImport(payload, now) {
   const rawCount =
     raw.projects.length + raw.todos.length + raw.sessions.length + raw.attendance.length;
   if (rawCount > 0 && projects.length + todos.length + sessions.length + attendance.length === 0) {
-    throw new Error('aucune donnée valide');
+    throw new ImportError('no-valid-data', 'aucune donnée valide');
   }
   return { projects, todos, sessions, attendance };
 }

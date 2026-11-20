@@ -12,6 +12,9 @@ const {
   localToTimestamp,
   setProjectColor,
   timestampToLocal,
+  formatDay,
+  formatHour,
+  t,
 } = UI;
 
 const START_HOUR = 7;
@@ -19,10 +22,30 @@ const END_HOUR = 20;
 const PX_PER_HOUR = 84;
 
 const ATTENDANCE_TYPES = [
-  { value: 'arrival', label: 'Arrivée', icon: 'sign-in', tone: 'ch-success-text' },
-  { value: 'break_start', label: 'Début de pause', icon: 'pause', tone: 'ch-warning-text' },
-  { value: 'break_end', label: 'Fin de pause', icon: 'play', tone: 'ch-warning-text' },
-  { value: 'departure', label: 'Départ', icon: 'sign-out', tone: 'ch-muted-text' },
+  {
+    value: 'arrival',
+    label: t('timeline.attendance.arrival'),
+    icon: 'sign-in',
+    tone: 'ch-success-text',
+  },
+  {
+    value: 'break_start',
+    label: t('timeline.attendance.breakStart'),
+    icon: 'pause',
+    tone: 'ch-warning-text',
+  },
+  {
+    value: 'break_end',
+    label: t('timeline.attendance.breakEnd'),
+    icon: 'play',
+    tone: 'ch-warning-text',
+  },
+  {
+    value: 'departure',
+    label: t('timeline.attendance.departure'),
+    icon: 'sign-out',
+    tone: 'ch-muted-text',
+  },
 ];
 /** @type {Record<string, (typeof ATTENDANCE_TYPES)[number]>} */
 const ATTENDANCE_META = Object.fromEntries(ATTENDANCE_TYPES.map((p) => [p.value, p]));
@@ -39,6 +62,13 @@ const tsToPx = (/** @type {number} */ ts) => {
   const h = d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
   return hourToPx(h);
 };
+
+/**
+ * "09:05 → 10:30" of a session, or "09:05 → ongoing" while it has no end.
+ * @param {Pick<Session, 'start' | 'end' | 'status'>} s
+ */
+const timeRange = (s) =>
+  `${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : t('timeline.ongoing')}`;
 
 // Sets a stable focus key (dataset.focusKey) on an element that is already built. An icon button
 // is wrapped in its tooltip: the key goes on the button, which is what takes the focus.
@@ -104,20 +134,20 @@ export function createTimelineView(store, opts) {
     const projects = store.state.projects;
 
     const projectW = UI.Select({
-      label: 'Projet',
+      label: t('common.project'),
       value: s.projectId,
       options: projects.map((p) => ({
         value: p.id,
-        label: p.name + (p.archived ? ' (archivé)' : ''),
+        label: p.archived ? t('common.archivedName', { name: p.name }) : p.name,
       })),
     });
     const descW = UI.Input({
-      label: 'Description',
+      label: t('common.description'),
       value: s.description || '',
-      placeholder: 'Ex. maquette homepage v3',
+      placeholder: t('quickAdd.whatPlaceholder'),
     });
     const startW = UI.Input({
-      label: 'Début',
+      label: t('common.startLabel'),
       value: timestampToLocal(s.start),
       type: 'datetime-local',
       className: 'ch-field-wide',
@@ -125,7 +155,7 @@ export function createTimelineView(store, opts) {
     const endW =
       s.status === 'done'
         ? UI.Input({
-            label: 'Fin',
+            label: t('common.endLabel'),
             value: timestampToLocal(/** @type {number} */ (s.end)),
             type: 'datetime-local',
             className: 'ch-field-wide',
@@ -147,14 +177,16 @@ export function createTimelineView(store, opts) {
     function pauseLabel(ms) {
       const min = Math.max(1, Math.round(ms / 60000));
       const h = Math.floor(min / 60);
-      return h > 0 ? `${h} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
+      return h > 0
+        ? t('timeline.hoursUnit', { hours: h, minutes: String(min % 60).padStart(2, '0') })
+        : t('timeline.minutesUnit', { minutes: min });
     }
     const breaksNote =
       originalPauses > 0
         ? el(
             'div',
             { class: 'ch-meta ch-mt-2' },
-            `dont ${pauseLabel(originalPauses)} de pause déduites`,
+            t('timeline.breaksDeducted', { duration: pauseLabel(originalPauses) }),
           )
         : null;
     function recomputeDuration() {
@@ -191,7 +223,7 @@ export function createTimelineView(store, opts) {
         const newStart = patch.start ?? s.start;
         const newEnd = patch.end ?? s.end ?? newStart;
         if ((patch.start != null || patch.end != null) && newEnd <= newStart) {
-          endW.setError('La fin est avant le début. Choisis une fin postérieure au début.');
+          endW.setError(t('common.endBeforeStart'));
           endW.input.focus();
           return;
         }
@@ -206,7 +238,7 @@ export function createTimelineView(store, opts) {
     }
 
     const modal = UI.Modal({
-      title: 'Modifier la session',
+      title: t('timeline.editSession'),
       body: el(
         'div',
         { class: 'ch-stack ch-gap-4' },
@@ -217,27 +249,27 @@ export function createTimelineView(store, opts) {
           ? el(
               'div',
               null,
-              el('div', { class: 'cv-overline' }, 'Durée calculée'),
+              el('div', { class: 'cv-overline' }, t('timeline.calculatedDuration')),
               displayedDuration,
               breaksNote,
             )
           : UI.Alert({
               status: 'info',
-              title: 'Session encore active.',
-              text: 'La durée continue de courir.',
+              title: t('timeline.stillActive'),
+              text: t('timeline.keepsRunning'),
             }),
       ),
       footer: [
         UI.Button({
           variant: 'danger',
-          children: 'Supprimer',
+          children: t('common.delete'),
           onclick: originalDelete,
           className: 'ch-push',
         }),
-        UI.Button({ children: 'Annuler', onclick: () => modal.close() }),
+        UI.Button({ children: t('common.cancel'), onclick: () => modal.close() }),
         UI.Button({
           variant: 'primary',
-          children: 'Enregistrer',
+          children: t('common.save'),
           onclick: save,
         }),
       ],
@@ -312,7 +344,7 @@ export function createTimelineView(store, opts) {
               transform: 'translateX(-50%)',
             },
           },
-          `${String(h).padStart(2, '0')}:00`,
+          formatHour(h),
         ),
       );
     }
@@ -340,7 +372,10 @@ export function createTimelineView(store, opts) {
     for (const seg of presenceSegs) {
       line.appendChild(
         el('div', {
-          title: `Présence : ${formatTime(seg.start)} → ${seg.ongoing ? 'en cours' : formatTime(seg.end)}`,
+          title: t('timeline.presenceTitle', {
+            start: formatTime(seg.start),
+            end: seg.ongoing ? t('timeline.ongoing') : formatTime(seg.end),
+          }),
           style: {
             position: 'absolute',
             left: tsToPx(seg.start),
@@ -358,7 +393,10 @@ export function createTimelineView(store, opts) {
     for (const seg of pauseSegs) {
       line.appendChild(
         el('div', {
-          title: `Pause : ${formatTime(seg.start)} → ${seg.ongoing ? 'en cours' : formatTime(seg.end)}`,
+          title: t('timeline.breakTitle', {
+            start: formatTime(seg.start),
+            end: seg.ongoing ? t('timeline.ongoing') : formatTime(seg.end),
+          }),
           style: {
             position: 'absolute',
             left: tsToPx(seg.start),
@@ -472,7 +510,7 @@ export function createTimelineView(store, opts) {
         type: 'button',
         class: `cv-cat-block ch-session-block${compact ? ' ch-session-block--compact' : ''}${project ? '' : ' ch-session-block--neutral'}`,
         dataset: { focusKey: `session-block:${s.id}` },
-        title: `${project?.name || 'Sans projet'} · ${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'} · ${formatDuration(durationMs)}`,
+        title: `${project?.name || t('common.noProject')} · ${timeRange(s)} · ${formatDuration(durationMs)}`,
         onclick: () => openSessionEditor(s),
         style: {
           left,
@@ -489,7 +527,7 @@ export function createTimelineView(store, opts) {
       const title = el(
         'div',
         { class: 'ch-grow' },
-        el('div', { class: 'ch-ellipsis ch-strong' }, project?.name || 'Sans projet'),
+        el('div', { class: 'ch-ellipsis ch-strong' }, project?.name || t('common.noProject')),
         !compact && s.description && width > 80
           ? el('div', { class: 'ch-ellipsis ch-mt-1' }, s.description)
           : null,
@@ -551,7 +589,7 @@ export function createTimelineView(store, opts) {
         class: `ch-chart-scroll${isToday ? ' ch-chart-scroll--now' : ''}`,
         // A scrollable region is reachable with the keyboard (WCAG 2.1.1).
         role: 'region',
-        'aria-label': 'Journée en continu',
+        'aria-label': t('timeline.dayChart'),
         tabindex: 0,
         dataset: { role: 'timeline-scroll', day: String(dayStart), focusKey: 'chart-scroll' },
       },
@@ -582,13 +620,13 @@ export function createTimelineView(store, opts) {
       daySessions.length === 0
         ? UI.EmptyState({
             icon: 'hourglass-low',
-            title: 'Aucune session pour ce jour.',
+            title: t('timeline.noSessions'),
             actions: [
               withFocusKey(
                 UI.Button({
                   variant: 'primary',
                   icon: 'play',
-                  children: 'Démarrer un chrono',
+                  children: t('common.timerStart'),
                   mutates: true,
                   onclick: opts.onOpenQuickAdd,
                 }),
@@ -599,9 +637,9 @@ export function createTimelineView(store, opts) {
                 ? withFocusKey(
                     UI.Button({
                       icon: 'flask',
-                      children: 'Charger des données de démonstration',
+                      children: t('timeline.loadDemo'),
                       mutates: true,
-                      onclick: () => store.actions.loadDemoData(),
+                      onclick: () => store.actions.loadDemoData(t),
                     }),
                     'sessions-empty:demo',
                   )
@@ -631,18 +669,14 @@ export function createTimelineView(store, opts) {
                     'div',
                     { class: 'ch-strong ch-ellipsis' },
                     s.description ||
-                      el('span', { class: 'ch-subtle ch-italic' }, 'Sans description'),
+                      el('span', { class: 'ch-subtle ch-italic' }, t('timeline.noDescription')),
                   ),
                   el(
                     'div',
                     { class: 'ch-meta ch-row ch-gap-3 ch-mt-1' },
-                    project ? UI.projectName(project) : el('span', null, 'Sans projet'),
+                    project ? UI.projectName(project) : el('span', null, t('common.noProject')),
                     el('span', null, '·'),
-                    el(
-                      'span',
-                      { class: 'cv-num' },
-                      `${formatTime(s.start)} → ${s.end != null && s.status === 'done' ? formatTime(s.end) : 'en cours'}`,
-                    ),
+                    el('span', { class: 'cv-num' }, timeRange(s)),
                   ),
                 ),
                 el(
@@ -654,11 +688,11 @@ export function createTimelineView(store, opts) {
                   ? el(
                       'div',
                       { class: 'ch-row ch-center ch-gap-3 ch-shrink-0' },
-                      UI.Badge({ variant: 'accent', children: 'En cours' }),
+                      UI.Badge({ variant: 'accent', children: t('common.running') }),
                       withFocusKey(
                         UI.IconButton({
                           icon: 'pause',
-                          label: 'Mettre en pause',
+                          label: t('common.pause'),
                           size: 'sm',
                           mutates: true,
                           onclick: () => store.actions.pauseSession(s.id),
@@ -668,7 +702,7 @@ export function createTimelineView(store, opts) {
                       withFocusKey(
                         UI.IconButton({
                           icon: 'stop',
-                          label: 'Arrêter',
+                          label: t('common.stop'),
                           size: 'sm',
                           mutates: true,
                           onclick: () => store.actions.stopSession(s.id),
@@ -680,11 +714,11 @@ export function createTimelineView(store, opts) {
                     ? el(
                         'div',
                         { class: 'ch-row ch-center ch-gap-3 ch-shrink-0' },
-                        UI.Badge({ variant: 'warning', children: 'En pause' }),
+                        UI.Badge({ variant: 'warning', children: t('common.paused') }),
                         withFocusKey(
                           UI.IconButton({
                             icon: 'play',
-                            label: 'Reprendre',
+                            label: t('common.resume'),
                             size: 'sm',
                             mutates: true,
                             onclick: () => store.actions.resumeSession(s.id),
@@ -694,7 +728,7 @@ export function createTimelineView(store, opts) {
                         withFocusKey(
                           UI.IconButton({
                             icon: 'stop',
-                            label: 'Arrêter',
+                            label: t('common.stop'),
                             size: 'sm',
                             mutates: true,
                             onclick: () => store.actions.stopSession(s.id),
@@ -708,7 +742,7 @@ export function createTimelineView(store, opts) {
                         withFocusKey(
                           UI.IconButton({
                             icon: 'play',
-                            label: 'Reprendre ce projet',
+                            label: t('timeline.resumeProject'),
                             mutates: true,
                             onclick: () => opts.onStartOnProject(s.projectId, s.description),
                           }),
@@ -717,7 +751,7 @@ export function createTimelineView(store, opts) {
                         withFocusKey(
                           UI.IconButton({
                             icon: 'pencil-simple',
-                            label: 'Modifier',
+                            label: t('common.edit'),
                             size: 'sm',
                             onclick: () => openSessionEditor(s),
                           }),
@@ -726,7 +760,7 @@ export function createTimelineView(store, opts) {
                         withFocusKey(
                           UI.IconButton({
                             icon: 'trash',
-                            label: 'Supprimer',
+                            label: t('common.delete'),
                             size: 'sm',
                             mutates: true,
                             onclick: () => store.actions.deleteSession(s.id),
@@ -745,7 +779,7 @@ export function createTimelineView(store, opts) {
       el(
         'header',
         { class: 'ch-card-header' },
-        el('h2', { class: 'cv-card__title' }, 'Sessions du jour'),
+        el('h2', { class: 'cv-card__title' }, t('timeline.sessionsOfDay')),
         el(
           'div',
           { class: 'ch-end' },
@@ -753,7 +787,7 @@ export function createTimelineView(store, opts) {
             UI.Button({
               size: 'sm',
               icon: 'plus',
-              children: 'Nouvelle',
+              children: t('timeline.newSession'),
               mutates: true,
               onclick: opts.onOpenQuickAdd,
             }),
@@ -790,8 +824,8 @@ export function createTimelineView(store, opts) {
       el(
         'header',
         { class: 'ch-card-header ch-stack ch-align-start ch-gap-1' },
-        el('h2', { class: 'cv-card__title' }, 'Répartition par projet'),
-        el('div', { class: 'ch-meta' }, 'Clique pour relancer'),
+        el('h2', { class: 'cv-card__title' }, t('timeline.distribution')),
+        el('div', { class: 'ch-meta' }, t('timeline.distributionHint')),
       ),
       listEl.length === 0
         ? el(
@@ -799,8 +833,8 @@ export function createTimelineView(store, opts) {
             { class: 'ch-card-body' },
             UI.EmptyState({
               icon: 'chart-pie-slice',
-              title: 'Rien à afficher.',
-              text: 'Lance un chrono.',
+              title: t('timeline.nothingToShow'),
+              text: t('timeline.startATimer'),
             }),
           )
         : el(
@@ -853,27 +887,27 @@ export function createTimelineView(store, opts) {
     const tsInitial = p?.at ?? dayStart + 9 * 3600_000;
 
     const typeW = UI.Select({
-      label: 'Type',
+      label: t('timeline.attendance.type'),
       value: p?.type || 'arrival',
-      options: ATTENDANCE_TYPES.map((t) => ({ value: t.value, label: t.label })),
+      options: ATTENDANCE_TYPES.map((type) => ({ value: type.value, label: type.label })),
     });
     const timeW = UI.Input({
-      label: 'Heure',
+      label: t('timeline.attendance.time'),
       type: 'datetime-local',
       value: timestampToLocal(tsInitial),
       autoFocus: true,
     });
 
     function save() {
-      const t = localToTimestamp(timeW.input.value);
-      if (t == null) {
-        timeW.setError('Heure illisible. Renseigne une date et une heure valides.');
+      const at = localToTimestamp(timeW.input.value);
+      if (at == null) {
+        timeW.setError(t('timeline.attendance.unreadable'));
         timeW.input.focus();
         return;
       }
       const type = /** @type {import('../../types.js').AttendanceType} */ (typeW.input.value);
-      if (!p) store.actions.addAttendance(type, t);
-      else store.actions.updateAttendance(p.id, { type, at: t });
+      if (!p) store.actions.addAttendance(type, at);
+      else store.actions.updateAttendance(p.id, { type, at });
       modal.close();
     }
     function originalDelete() {
@@ -891,22 +925,22 @@ export function createTimelineView(store, opts) {
       footer.push(
         UI.Button({
           variant: 'danger',
-          children: 'Supprimer',
+          children: t('common.delete'),
           onclick: originalDelete,
           className: 'ch-push',
         }),
       );
-    footer.push(UI.Button({ children: 'Annuler', onclick: () => modal.close() }));
+    footer.push(UI.Button({ children: t('common.cancel'), onclick: () => modal.close() }));
     footer.push(
       UI.Button({
         variant: 'primary',
-        children: 'Enregistrer',
+        children: t('common.save'),
         onclick: save,
       }),
     );
 
     const modal = UI.Modal({
-      title: isNew ? 'Ajouter un pointage' : 'Modifier le pointage',
+      title: isNew ? t('timeline.attendance.add') : t('timeline.attendance.edit'),
       body: el('div', { class: 'ch-stack ch-gap-4' }, typeW, timeW),
       footer,
     });
@@ -931,18 +965,14 @@ export function createTimelineView(store, opts) {
         el(
           'div',
           { class: 'ch-grow' },
-          el('h2', { class: 'cv-card__title' }, 'Pointages du jour'),
-          el(
-            'div',
-            { class: 'ch-meta ch-mt-1' },
-            'Arrivée, pauses, départ. Clique pour corriger une heure.',
-          ),
+          el('h2', { class: 'cv-card__title' }, t('timeline.attendance.section')),
+          el('div', { class: 'ch-meta ch-mt-1' }, t('timeline.attendance.sectionHint')),
         ),
         hasArrival
           ? el(
               'div',
               { class: 'ch-end ch-text-right' },
-              el('div', { class: 'cv-overline' }, 'Présence totale'),
+              el('div', { class: 'cv-overline' }, t('timeline.attendance.totalPresence')),
               el('div', { class: 'cv-num ch-kpi ch-kpi--sm ch-mt-2' }, formatDuration(presence)),
             )
           : null,
@@ -953,7 +983,7 @@ export function createTimelineView(store, opts) {
             UI.Button({
               size: 'sm',
               icon: 'plus',
-              children: 'Ajouter',
+              children: t('common.add'),
               mutates: true,
               onclick: () => openAttendanceEditor(null, dayStart),
             }),
@@ -967,8 +997,8 @@ export function createTimelineView(store, opts) {
             { class: 'ch-card-body' },
             UI.EmptyState({
               icon: 'clock',
-              title: 'Aucun pointage pour ce jour.',
-              text: 'Utilise « Ajouter » pour reconstituer la journée.',
+              title: t('timeline.attendance.none'),
+              text: t('timeline.attendance.noneHint'),
             }),
           )
         : el(
@@ -1045,21 +1075,14 @@ export function createTimelineView(store, opts) {
     const arrival = dayAttendance.find((p) => p.type === 'arrival');
     const lastDeparture = [...dayAttendance].reverse().find((p) => p.type === 'departure');
 
+    const longDate = /** @type {const} */ ({ weekday: 'long', day: 'numeric', month: 'long' });
     const dayLabel =
       dateOffset === 0
-        ? "Aujourd'hui"
+        ? t('common.today')
         : dateOffset === -1
-          ? 'Hier'
-          : new Date(dayStart).toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-            });
-    const dayLabelDate = new Date(dayStart).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    });
+          ? t('common.yesterday')
+          : formatDay(dayStart, longDate);
+    const dayLabelDate = formatDay(dayStart, longDate);
 
     headSlot.replaceChildren(
       // Date banner + stats
@@ -1072,7 +1095,7 @@ export function createTimelineView(store, opts) {
           withFocusKey(
             UI.IconButton({
               icon: 'caret-left',
-              label: 'Jour précédent',
+              label: t('timeline.previousDay'),
               onclick: () => {
                 dateOffset--;
                 render();
@@ -1089,7 +1112,7 @@ export function createTimelineView(store, opts) {
           withFocusKey(
             UI.IconButton({
               icon: 'caret-right',
-              label: 'Jour suivant',
+              label: t('timeline.nextDay'),
               disabled: dateOffset >= 0,
               onclick: () => {
                 dateOffset++;
@@ -1103,7 +1126,7 @@ export function createTimelineView(store, opts) {
                 UI.Button({
                   size: 'sm',
                   variant: 'ghost',
-                  children: "Aujourd'hui",
+                  children: t('common.today'),
                   onclick: () => {
                     dateOffset = 0;
                     render();
@@ -1117,16 +1140,20 @@ export function createTimelineView(store, opts) {
           'div',
           { class: 'ch-row ch-gap-7 ch-end' },
           statBlock(
-            'Temps travaillé',
+            t('timeline.timeWorked'),
             formatDuration(totalWorked),
-            `${daySessions.length} session${daySessions.length > 1 ? 's' : ''}`,
+            t('common.sessionsCount', { count: daySessions.length }),
           ),
           statBlock(
-            'Amplitude',
+            t('timeline.span'),
             arrival
               ? `${formatTime(arrival.at)} → ${lastDeparture ? formatTime(lastDeparture.at) : '···'}`
               : '—',
-            arrival ? (lastDeparture ? 'journée clôturée' : 'en cours') : 'pas encore arrivé',
+            arrival
+              ? lastDeparture
+                ? t('timeline.spanClosed')
+                : t('timeline.spanOngoing')
+              : t('timeline.spanNotArrived'),
           ),
         ),
       ),
@@ -1142,19 +1169,27 @@ export function createTimelineView(store, opts) {
           el(
             'div',
             null,
-            el('h2', { class: 'cv-card__title' }, 'Journée en continu'),
-            el(
-              'div',
-              { class: 'ch-meta ch-mt-1' },
-              'Les chronos en parallèle s’empilent en voies. Fais défiler pour voir le reste de la journée.',
-            ),
+            el('h2', { class: 'cv-card__title' }, t('timeline.dayChart')),
+            el('div', { class: 'ch-meta ch-mt-1' }, t('timeline.dayChartHint')),
           ),
           el(
             'div',
             { class: 'ch-row ch-center ch-gap-5 ch-meta ch-end' },
-            legendItem('var(--cv-success-surface)', 'var(--cv-fg-success)', 'Présence'),
-            legendItem('var(--cv-warning-surface)', 'var(--cv-fg-warning)', 'Pause'),
-            legendItem('var(--cv-surface-inverse)', 'var(--cv-surface-inverse)', 'Session'),
+            legendItem(
+              'var(--cv-success-surface)',
+              'var(--cv-fg-success)',
+              t('timeline.legendPresence'),
+            ),
+            legendItem(
+              'var(--cv-warning-surface)',
+              'var(--cv-fg-warning)',
+              t('timeline.legendBreak'),
+            ),
+            legendItem(
+              'var(--cv-surface-inverse)',
+              'var(--cv-surface-inverse)',
+              t('timeline.legendSession'),
+            ),
           ),
         ),
         timelineChart(dayStart, daySessions, dayAttendance, s.projects, isToday),

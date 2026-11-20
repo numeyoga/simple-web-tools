@@ -4,14 +4,15 @@
 
 import {
   formatLocalDate as coreFormatLocalDate,
-  formatDuration,
   startOfDay as coreStartOfDay,
 } from '../../core/dates.js';
+import { createFormatters } from '../../core/format.js';
 import {
   presenceDuration as corePresenceDuration,
   liveDuration as coreLiveDuration,
   presenceRanges as corePresenceRanges,
 } from '../../core/presence.js';
+import { i18n } from '../i18n.js';
 import { uid } from '../ids.js';
 
 /** @typedef {import('./types.js').Child} Child */
@@ -187,14 +188,46 @@ export function fieldId(prefix = 'ch-field') {
 }
 
 /* ------------------------------------------------------------------ */
-/* Formatting of durations / times / days                             */
+/* Text and formatting, in the language of the interface (adapters/i18n.js)  */
 
-export { formatDuration };
+export const t = i18n.t;
+export const formatNumber = i18n.formatNumber;
 
-/** @param {number} ts */
-export function formatTime(ts) {
-  return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+/**
+ * A message with DOM nodes in place of some of its placeholders (`{key}` holds a `<kbd>`, a
+ * styled figure...). The translator writes the sentence, so a language can move the node.
+ * @param {string} key
+ * @param {Record<string, Node>} nodes the node of each placeholder
+ * @param {Record<string, unknown>} [params] the other placeholders
+ * @returns {Node[]}
+ */
+export function tNodes(key, nodes, params = {}) {
+  const MARK = '\u0001';
+  const marks = Object.fromEntries(
+    Object.keys(nodes).map((name) => [name, `${MARK}${name}${MARK}`]),
+  );
+  return t(key, { ...params, ...marks })
+    .split(MARK)
+    .map((part, index) => {
+      if (index % 2 === 0) return document.createTextNode(part);
+      return /** @type {Node} */ (nodes[part]).cloneNode(true);
+    })
+    .filter((node) => node.nodeType !== Node.TEXT_NODE || node.textContent);
 }
+
+const formatters = createFormatters(i18n);
+export const {
+  formatDuration,
+  formatTime,
+  formatHour,
+  formatDay,
+  formatIsoDate,
+  capitalize,
+  weekdayName,
+} = formatters;
+
+/** The language of the interface, for `localeCompare` and the like. */
+export const locale = i18n.locale;
 
 /** @param {Date | number} [d] */
 export function startOfDay(d = new Date()) {

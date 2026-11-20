@@ -6,7 +6,7 @@ import {
 } from '../../core/due-dates.js';
 import * as UI from './ui.js';
 
-const { el } = UI;
+const { el, t, formatIsoDate, formatNumber, weekdayName, capitalize } = UI;
 
 // A due date is stored as a local date 'YYYY-MM-DD' (or null).
 // The interface shortcuts ('today', 'tomorrow', 'fri', 'mon', 'week'...) are only
@@ -20,17 +20,12 @@ const presetToDate = (/** @type {string} */ preset, ref = Date.now()) =>
 const bucket = (/** @type {Pick<Todo, 'done' | 'dueDate'>} */ todo, ref = Date.now()) =>
   bucketAt(todo, ref);
 
-// Short date for the badge: "ven. 21 nov.".
+// Short date for the badge: "ven. 21 nov." / "Fri, Nov 21".
 /** @param {unknown} str */
 function formatShortDueDate(str) {
-  const ts = dueDateToTimestamp(str);
-  return ts == null
+  return dueDateToTimestamp(str) == null
     ? ''
-    : new Date(ts).toLocaleDateString('fr-FR', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-      });
+    : formatIsoDate(String(str), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 
 /** @type {import('./types.js').ViewFactory} */
@@ -69,11 +64,15 @@ export function createTodosView(store, opts) {
 
   function renderHeader() {
     const { todos } = store.state;
-    const open = todos.filter((t) => !t.done).length;
-    const done = todos.filter((t) => t.done).length;
+    const open = todos.filter((todo) => !todo.done).length;
+    const done = todos.filter((todo) => todo.done).length;
     // The page title is in the top bar: the header keeps the summary.
     headerSlot.replaceChildren(
-      el('p', { class: 'ch-figure ch-page-title' }, `${open} en cours · ${done} terminées`),
+      el(
+        'p',
+        { class: 'ch-figure ch-page-title' },
+        t('todos.summary', { open: formatNumber(open), done: formatNumber(done) }),
+      ),
     );
   }
 
@@ -82,9 +81,9 @@ export function createTodosView(store, opts) {
     const projects = store.state.projects;
 
     const inputW = UI.Input({
-      label: 'Nouvelle tâche',
+      label: t('todos.newTask'),
       value: '',
-      placeholder: "Qu'est-ce qu'il faut faire ?",
+      placeholder: t('todos.newTaskPlaceholder'),
       icon: 'plus',
       onkeydown: (e) => {
         if (e.key === 'Enter') submit();
@@ -94,11 +93,11 @@ export function createTodosView(store, opts) {
     inputTitle = inputW.input;
 
     const selectProjectW = UI.Select({
-      label: 'Projet',
+      label: t('common.project'),
       value: draftProject || 'none',
       onchange: (v) => (draftProject = v),
       options: [
-        { value: 'none', label: 'Sans projet' },
+        { value: 'none', label: t('common.noProject') },
         ...projects.filter((p) => !p.archived).map((p) => ({ value: p.id, label: p.name })),
       ],
       className: 'ch-field-md',
@@ -106,14 +105,14 @@ export function createTodosView(store, opts) {
     selectProject = selectProjectW.input;
 
     const selectDueW = UI.Select({
-      label: 'Échéance',
+      label: t('todos.due'),
       value: draftDueDate,
       onchange: (v) => (draftDueDate = v),
       options: [
-        { value: 'today', label: "Aujourd'hui" },
-        { value: 'tomorrow', label: 'Demain' },
-        { value: 'fri', label: 'Cette semaine' },
-        { value: 'none', label: 'Sans échéance' },
+        { value: 'today', label: t('common.today') },
+        { value: 'tomorrow', label: t('common.tomorrow') },
+        { value: 'fri', label: t('todos.dueWeek') },
+        { value: 'none', label: t('todos.dueNone') },
       ],
       className: 'ch-field-sm',
     });
@@ -129,7 +128,7 @@ export function createTodosView(store, opts) {
         UI.Button({
           variant: 'primary',
           icon: 'arrow-right',
-          children: 'Ajouter',
+          children: t('common.add'),
           mutates: true,
           onclick: submit,
         }),
@@ -156,15 +155,15 @@ export function createTodosView(store, opts) {
     const projects = store.state.projects;
     filtersSlot.replaceChildren(
       UI.Select({
-        label: 'Filtrer par projet',
+        label: t('todos.filter'),
         value: projectFilter,
         onchange: (v) => {
           projectFilter = v;
           renderList();
         },
         options: [
-          { value: 'all', label: 'Tous les projets' },
-          { value: 'none', label: 'Sans projet' },
+          { value: 'all', label: t('todos.allProjects') },
+          { value: 'none', label: t('common.noProject') },
           ...projects.filter((p) => !p.archived).map((p) => ({ value: p.id, label: p.name })),
         ],
         className: 'ch-field-md',
@@ -172,59 +171,61 @@ export function createTodosView(store, opts) {
     );
   }
 
-  /** @param {Todo} t */
-  function dueDateBadge(t) {
-    const b = bucket(t);
+  /** @param {Todo} todo */
+  function dueDateBadge(todo) {
+    const b = bucket(todo);
     /** @type {Partial<Record<ReturnType<typeof bucket>, { label: string, variant: import('./types.js').BadgeOptions['variant'] }>>} */
     const map = {
-      overdue: { label: 'En retard', variant: 'danger' },
-      today: { label: "Aujourd'hui", variant: 'accent' },
-      tomorrow: { label: 'Demain', variant: 'neutral' },
+      overdue: { label: t('todos.overdue'), variant: 'danger' },
+      today: { label: t('common.today'), variant: 'accent' },
+      tomorrow: { label: t('common.tomorrow'), variant: 'neutral' },
       // beyond tomorrow: the short date is more useful than "this week"
-      week: { label: formatShortDueDate(t.dueDate) || 'Cette semaine', variant: 'neutral' },
+      week: { label: formatShortDueDate(todo.dueDate) || t('todos.dueWeek'), variant: 'neutral' },
     };
     const m = map[b];
     if (!m) return null;
     return UI.Badge({ variant: m.variant, children: m.label });
   }
 
-  /** @param {Todo} t */
-  function openTodoEditor(t) {
+  /** @param {Todo} todo */
+  function openTodoEditor(todo) {
     const projects = store.state.projects;
-    const nameW = UI.Input({ label: 'Titre', value: t.title, autoFocus: true });
+    const nameW = UI.Input({ label: t('todos.title'), value: todo.title, autoFocus: true });
     const descW = UI.Textarea({
-      label: 'Description',
-      value: t.description || '',
-      placeholder: 'Notes, détails, critères d’acceptation… (facultatif)',
+      label: t('common.description'),
+      value: todo.description || '',
+      placeholder: t('todos.notesPlaceholder'),
       maxLength: 2000,
       rows: 4,
     });
     const projectW = UI.Select({
-      label: 'Projet',
-      value: t.projectId || 'none',
+      label: t('common.project'),
+      value: todo.projectId || 'none',
       options: [
-        { value: 'none', label: 'Sans projet' },
-        ...projects.map((p) => ({ value: p.id, label: p.name + (p.archived ? ' (archivé)' : '') })),
+        { value: 'none', label: t('common.noProject') },
+        ...projects.map((p) => ({
+          value: p.id,
+          label: p.archived ? t('common.archivedName', { name: p.name }) : p.name,
+        })),
       ],
     });
     // Due date: editable absolute date + shortcuts that fill the field (relative to today).
     const dueW = UI.Input({
-      label: 'Échéance',
+      label: t('todos.due'),
       type: 'date',
-      value: dueDateToTimestamp(t.dueDate) != null ? t.dueDate : '',
+      value: dueDateToTimestamp(todo.dueDate) != null ? todo.dueDate : '',
     });
-    /** @type {[string, string][]} */
     const shortcuts = [
-      ['today', "Aujourd'hui"],
-      ['tomorrow', 'Demain'],
-      ['fri', 'Vendredi'],
-      ['mon', 'Lundi'],
-      ['none', 'Aucune'],
+      { preset: 'today', label: t('common.today') },
+      { preset: 'tomorrow', label: t('common.tomorrow') },
+      { preset: 'fri', label: capitalize(weekdayName(4)) },
+      { preset: 'mon', label: capitalize(weekdayName(0)) },
+      { preset: 'none', label: t('todos.shortcutNone') },
     ];
     const shortcutsRow = el(
       'div',
       { class: 'ch-row ch-wrap ch-gap-3' },
-      shortcuts.map(([preset, label]) =>
+      shortcuts.map(({ preset, label }) =>
         UI.Button({
           size: 'sm',
           children: label,
@@ -237,13 +238,13 @@ export function createTodosView(store, opts) {
     function save() {
       const title = nameW.input.value.trim();
       if (!title) {
-        nameW.setError('Le titre est vide. Saisis le titre de la tâche.');
+        nameW.setError(t('todos.titleEmpty'));
         nameW.input.focus();
         return;
       }
       const due = dueW.input.value; // 'YYYY-MM-DD' or '' (field cleared)
       const project = projectW.input.value;
-      store.actions.updateTodo(t.id, {
+      store.actions.updateTodo(todo.id, {
         title,
         description: descW.input.value.trim().slice(0, 2000),
         projectId: project === 'none' ? null : project,
@@ -253,14 +254,14 @@ export function createTodosView(store, opts) {
     }
     async function originalDelete() {
       const ok = await UI.Confirm({
-        title: 'Effacer la tâche ?',
-        message: `« ${t.title} » sera effacée. Tu ne pourras pas annuler.`,
-        confirmLabel: 'Effacer la tâche',
+        title: t('todos.deleteTitle'),
+        message: t('todos.deleteMessage', { title: todo.title }),
+        confirmLabel: t('todos.deleteConfirm'),
         danger: true,
         within: modal,
       });
       if (!ok) return;
-      store.actions.deleteTodo(t.id);
+      store.actions.deleteTodo(todo.id);
       modal.close();
     }
     nameW.input.addEventListener('keydown', (e) => {
@@ -268,19 +269,19 @@ export function createTodosView(store, opts) {
     });
     nameW.input.addEventListener('input', () => nameW.setError(null));
     const modal = UI.Modal({
-      title: 'Modifier la tâche',
+      title: t('todos.edit'),
       body: el('div', { class: 'ch-stack ch-gap-4' }, nameW, descW, projectW, dueW, shortcutsRow),
       footer: [
         UI.Button({
           variant: 'danger',
-          children: 'Effacer',
+          children: t('todos.deleteLabel'),
           onclick: originalDelete,
           className: 'ch-push',
         }),
-        UI.Button({ children: 'Annuler', onclick: () => modal.close() }),
+        UI.Button({ children: t('common.cancel'), onclick: () => modal.close() }),
         UI.Button({
           variant: 'primary',
-          children: 'Enregistrer',
+          children: t('common.save'),
           onclick: save,
         }),
       ],
@@ -288,44 +289,44 @@ export function createTodosView(store, opts) {
   }
 
   /**
-   * @param {Todo} t
+   * @param {Todo} todo
    * @param {boolean} isDone
    */
-  function todoRow(t, isDone) {
-    const project = store.state.projects.find((p) => p.id === t.projectId);
-    const hasDesc = !!(t.description && t.description.trim());
+  function todoRow(todo, isDone) {
+    const project = store.state.projects.find((p) => p.id === todo.projectId);
+    const hasDesc = !!(todo.description && todo.description.trim());
     const row = el(
       'div',
       { class: 'ch-line ch-line--top ch-wrap' },
       UI.Checkbox({
-        ariaLabel: t.title,
-        checked: t.done,
+        ariaLabel: todo.title,
+        checked: todo.done,
         mutates: true,
-        onchange: () => store.actions.toggleTodo(t.id),
+        onchange: () => store.actions.toggleTodo(todo.id),
       }),
 
       el(
         'div',
         { class: 'ch-grow ch-todo-main' },
         isDone
-          ? el('div', { class: 'ch-ellipsis ch-done' }, t.title)
+          ? el('div', { class: 'ch-ellipsis ch-done' }, todo.title)
           : el(
               'button',
               {
                 type: 'button',
                 class: 'ch-todo-title ch-ellipsis',
-                onclick: () => openTodoEditor(t),
+                onclick: () => openTodoEditor(todo),
               },
-              t.title,
+              todo.title,
             ),
         hasDesc
           ? el(
               'div',
               {
                 class: `ch-meta ch-clamp-2 ch-mt-1${isDone ? ' ch-done' : ''}`,
-                title: t.description,
+                title: todo.description,
               },
-              t.description,
+              todo.description,
             )
           : null,
       ),
@@ -335,42 +336,42 @@ export function createTodosView(store, opts) {
         { class: 'ch-row ch-center ch-wrap ch-gap-3 ch-shrink-0' },
         project
           ? UI.projectName(project, 'ch-meta')
-          : el('span', { class: 'ch-subtle ch-italic' }, 'Sans projet'),
+          : el('span', { class: 'ch-subtle ch-italic' }, t('common.noProject')),
 
-        t.dueDate && !t.done ? dueDateBadge(t) : null,
+        todo.dueDate && !todo.done ? dueDateBadge(todo) : null,
 
         el(
           'div',
           { class: 'ch-row ch-gap-1' },
-          !t.done
+          !todo.done
             ? UI.IconButton({
                 icon: 'play',
-                label: 'Démarrer un chrono sur cette tâche',
+                label: t('todos.startOnTask'),
                 mutates: true,
-                onclick: () => opts.onStartOnTodo(t.projectId, t.title),
+                onclick: () => opts.onStartOnTodo(todo.projectId, todo.title),
               })
             : null,
-          !t.done
+          !todo.done
             ? UI.IconButton({
                 icon: 'pencil-simple',
-                label: 'Modifier',
+                label: t('common.edit'),
                 size: 'sm',
-                onclick: () => openTodoEditor(t),
+                onclick: () => openTodoEditor(todo),
               })
             : null,
           UI.IconButton({
             icon: 'trash',
-            label: 'Effacer',
+            label: t('todos.deleteLabel'),
             size: 'sm',
             mutates: true,
             onclick: async () => {
               const ok = await UI.Confirm({
-                title: 'Effacer la tâche ?',
-                message: `« ${t.title} » sera effacée. Tu ne pourras pas annuler.`,
-                confirmLabel: 'Effacer la tâche',
+                title: t('todos.deleteTitle'),
+                message: t('todos.deleteMessage', { title: todo.title }),
+                confirmLabel: t('todos.deleteConfirm'),
                 danger: true,
               });
-              if (ok) store.actions.deleteTodo(t.id);
+              if (ok) store.actions.deleteTodo(todo.id);
             },
           }),
         ),
@@ -381,22 +382,25 @@ export function createTodosView(store, opts) {
 
   function renderList() {
     const { todos } = store.state;
-    const filtered = todos.filter((t) => projectFilter === 'all' || t.projectId === projectFilter);
+    const filtered = todos.filter(
+      (todo) => projectFilter === 'all' || todo.projectId === projectFilter,
+    );
 
-    const groups = {
-      'En retard': filtered.filter((t) => bucket(t) === 'overdue'),
-      "Aujourd'hui": filtered.filter((t) => bucket(t) === 'today'),
-      Demain: filtered.filter((t) => bucket(t) === 'tomorrow'),
-      'Cette semaine': filtered.filter((t) => bucket(t) === 'week'),
-      'Sans échéance': filtered.filter((t) => bucket(t) === 'none'),
-      Terminé: filtered.filter((t) => bucket(t) === 'done'),
-    };
+    const groups = [
+      { id: 'overdue', label: t('todos.overdue') },
+      { id: 'today', label: t('common.today') },
+      { id: 'tomorrow', label: t('common.tomorrow') },
+      { id: 'week', label: t('todos.dueWeek') },
+      { id: 'none', label: t('todos.dueNone') },
+      { id: 'done', label: t('todos.done') },
+    ];
 
     const sections = [];
-    for (const [label, items] of Object.entries(groups)) {
+    for (const { id, label } of groups) {
+      const items = filtered.filter((todo) => bucket(todo) === id);
       if (items.length === 0) continue;
-      const isOverdue = label === 'En retard';
-      const isDone = label === 'Terminé';
+      const isOverdue = id === 'overdue';
+      const isDone = id === 'done';
       sections.push(
         el(
           'section',
@@ -409,21 +413,19 @@ export function createTodosView(store, opts) {
               { class: `cv-overline ch-title-reset${isOverdue ? ' ch-danger-text' : ''}` },
               label,
             ),
-            el('span', { class: 'cv-num ch-subtle' }, String(items.length)),
+            el('span', { class: 'cv-num ch-subtle' }, formatNumber(items.length)),
           ),
           el(
             'div',
             null,
-            items.map((t) => todoRow(t, isDone)),
+            items.map((todo) => todoRow(todo, isDone)),
           ),
         ),
       );
     }
 
     if (filtered.length === 0) {
-      sections.push(
-        UI.EmptyState({ icon: 'check-circle', title: 'Tout est à jour sur ce projet.' }),
-      );
+      sections.push(UI.EmptyState({ icon: 'check-circle', title: t('todos.allDone') }));
     }
 
     listSlot.replaceChildren(...sections);

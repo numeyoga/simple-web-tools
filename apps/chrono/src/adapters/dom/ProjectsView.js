@@ -3,27 +3,27 @@ import { getShowProjectTotals, setShowProjectTotals } from '../preferences.js';
 import { nextCategory } from '../../core/categories.js';
 import * as UI from './ui.js';
 
-const { el, formatDuration, liveDuration } = UI;
+const { el, formatDuration, liveDuration, t } = UI;
 
 /* The 16 categories of the Covenant palette (`data-cat` 1 to 16), by hue: the accessible name of
    each choice of the colour picker. A project can also keep a free colour (`customColor`). */
 const CATEGORY_NAMES = [
-  'Orange',
-  'Ambre',
-  'Jaune',
-  'Citron vert',
-  'Vert',
-  'Sarcelle',
-  'Cyan',
-  'Bleu ciel',
-  'Bleu',
-  'Indigo',
-  'Violet',
-  'Pourpre',
-  'Fuchsia',
-  'Rose',
-  'Framboise',
-  'Ardoise',
+  t('hues.orange'),
+  t('hues.amber'),
+  t('hues.yellow'),
+  t('hues.lime'),
+  t('hues.green'),
+  t('hues.teal'),
+  t('hues.cyan'),
+  t('hues.sky'),
+  t('hues.blue'),
+  t('hues.indigo'),
+  t('hues.violet'),
+  t('hues.purple'),
+  t('hues.fuchsia'),
+  t('hues.pink'),
+  t('hues.rose'),
+  t('hues.slate'),
 ];
 
 /** @typedef {import('../../types.js').Project} Project */
@@ -126,9 +126,9 @@ export function createProjectsView(store, opts) {
     paintCustom();
 
     const nameW = UI.Input({
-      label: 'Nom du projet',
+      label: t('projects.name'),
       value: draft.name,
-      placeholder: 'Ex. Refonte site — Acme',
+      placeholder: t('projects.namePlaceholder'),
       autoFocus: true,
       required: true,
     });
@@ -143,23 +143,21 @@ export function createProjectsView(store, opts) {
       ),
     );
     const clientHint =
-      knownClients.length > 0
-        ? `${knownClients.length} client${knownClients.length > 1 ? 's' : ''} déjà saisi${knownClients.length > 1 ? 's' : ''}, ou tape un nouveau nom`
-        : null;
+      knownClients.length > 0 ? t('projects.clientsKnown', { count: knownClients.length }) : null;
     const clientW =
       knownClients.length > 0
         ? UI.Combobox({
-            label: 'Client',
+            label: t('common.client'),
             value: draft.client,
             options: knownClients,
-            placeholder: 'Ex. Acme SAS (facultatif)',
+            placeholder: t('projects.clientPlaceholder'),
             hint: clientHint,
-            emptyText: 'Aucun client correspondant. Ce nom sera créé.',
+            emptyText: t('projects.noMatchingClient'),
           })
         : UI.Input({
-            label: 'Client',
+            label: t('common.client'),
             value: draft.client,
-            placeholder: 'Ex. Acme SAS (facultatif)',
+            placeholder: t('projects.clientPlaceholder'),
           });
     const inputName = nameW.input;
     const inputClient = clientW.input;
@@ -172,13 +170,13 @@ export function createProjectsView(store, opts) {
       el(
         'fieldset',
         { class: 'cv-fieldset' },
-        el('legend', { class: 'cv-label' }, 'Couleur'),
+        el('legend', { class: 'cv-label' }, t('projects.color')),
         swatchRow,
         el(
           'div',
           { class: 'ch-row ch-center ch-gap-3 ch-mt-3' },
           customChoice,
-          el('label', { class: 'cv-label ch-fg', for: customId }, 'Couleur personnalisée'),
+          el('label', { class: 'cv-label ch-fg', for: customId }, t('projects.customColor')),
         ),
       ),
     );
@@ -186,7 +184,7 @@ export function createProjectsView(store, opts) {
     function save() {
       const name = inputName.value.trim();
       if (!name) {
-        nameW.setError('Le nom est vide. Saisis le nom du projet.');
+        nameW.setError(t('projects.nameEmpty'));
         inputName.focus();
         return;
       }
@@ -205,15 +203,19 @@ export function createProjectsView(store, opts) {
       if (!existing) return;
       const { sessions, todos } = store.state;
       const n = sessions.filter((s) => s.projectId === existing.id).length;
-      const m = todos.filter((t) => t.projectId === existing.id).length;
+      const m = todos.filter((todo) => todo.projectId === existing.id).length;
       const msg =
         n + m > 0
-          ? `Le projet « ${existing.name} » sera supprimé avec ${n} session${n > 1 ? 's' : ''} et ${m} tâche${m > 1 ? 's' : ''}. Tu ne pourras pas annuler.`
-          : `Le projet « ${existing.name} » sera supprimé. Tu ne pourras pas annuler.`;
+          ? t('projects.deleteWith', {
+              name: existing.name,
+              sessions: t('common.sessionsCount', { count: n }),
+              tasks: t('common.tasksCount', { count: m }),
+            })
+          : t('projects.deleteAlone', { name: existing.name });
       const ok = await UI.Confirm({
-        title: `Supprimer le projet « ${existing.name} » ?`,
+        title: t('projects.deleteTitle', { name: existing.name }),
         message: msg,
-        confirmLabel: 'Supprimer le projet',
+        confirmLabel: t('projects.deleteConfirm'),
         danger: true,
         within: modal,
       });
@@ -224,7 +226,7 @@ export function createProjectsView(store, opts) {
 
     const saveButton = UI.Button({
       variant: 'primary',
-      children: isEdit ? 'Enregistrer' : 'Créer',
+      children: isEdit ? t('common.save') : t('common.create'),
       onclick: save,
     });
     const updateDisabled = () => {
@@ -244,16 +246,16 @@ export function createProjectsView(store, opts) {
       footer.push(
         UI.Button({
           variant: 'danger',
-          children: 'Supprimer',
+          children: t('common.delete'),
           onclick: originalDelete,
           className: 'ch-push',
         }),
       );
-    footer.push(UI.Button({ children: 'Annuler', onclick: () => modal.close() }));
+    footer.push(UI.Button({ children: t('common.cancel'), onclick: () => modal.close() }));
     footer.push(saveButton);
 
     const modal = UI.Modal({
-      title: isEdit ? 'Modifier le projet' : 'Nouveau projet',
+      title: isEdit ? t('projects.editProject') : t('projects.newProject'),
       body,
       footer,
     });
@@ -275,7 +277,7 @@ export function createProjectsView(store, opts) {
         'div',
         { class: 'ch-row ch-center ch-wrap ch-gap-4 ch-end' },
         UI.Checkbox({
-          label: 'Afficher les totaux',
+          label: t('projects.showTotals'),
           switchRole: true,
           checked: showTotals,
           onchange: (checked) => {
@@ -286,11 +288,11 @@ export function createProjectsView(store, opts) {
           },
         }),
         UI.Segmented({
-          legend: 'Projets affichés',
+          legend: t('projects.shown'),
           name: 'projects-shown',
           options: [
-            { value: 'active', label: 'Actifs' },
-            { value: 'archived', label: 'Archivés' },
+            { value: 'active', label: t('projects.shownActive') },
+            { value: 'archived', label: t('projects.shownArchived') },
           ],
           value: showArchived ? 'archived' : 'active',
           onchange: (value) => {
@@ -301,7 +303,7 @@ export function createProjectsView(store, opts) {
         UI.Button({
           variant: 'primary',
           icon: 'plus',
-          children: 'Nouveau projet',
+          children: t('projects.newProject'),
           mutates: true,
           onclick: openCreationModal,
         }),
@@ -323,21 +325,22 @@ export function createProjectsView(store, opts) {
     }
     /** @type {Record<string, { open: number, done: number }>} */
     const todosByProject = {};
-    for (const t of todos) {
-      const counts = (todosByProject[String(t.projectId)] ??= { open: 0, done: 0 });
-      if (t.done) counts.done += 1;
+    for (const todo of todos) {
+      const counts = (todosByProject[String(todo.projectId)] ??= { open: 0, done: 0 });
+      if (todo.done) counts.done += 1;
       else counts.open += 1;
     }
 
-    metaNode.textContent = `${projects.filter((p) => !p.archived).length} actifs · ${projects.filter((p) => p.archived).length} archivés`;
+    metaNode.textContent = t('projects.activeCount', {
+      active: projects.filter((p) => !p.archived).length,
+      archived: projects.filter((p) => p.archived).length,
+    });
     gridSlot.replaceChildren(
       listEl.length === 0
         ? UI.EmptyState({
             icon: 'folder-open',
-            title: `Aucun projet ${showArchived ? 'archivé' : 'actif'}.`,
-            text: showArchived
-              ? 'Les projets que tu archives apparaissent ici.'
-              : 'Crée un projet pour y rattacher des chronos et des todos.',
+            title: showArchived ? t('projects.noneArchived') : t('projects.noneActive'),
+            text: showArchived ? t('projects.noneArchivedHint') : t('projects.noneActiveHint'),
           })
         : el(
             'div',
@@ -355,10 +358,10 @@ export function createProjectsView(store, opts) {
 
   /**
    * @param {Project} p
-   * @param {{ duration: number, count: number }} t
+   * @param {{ duration: number, count: number }} totalsOf
    * @param {{ open: number, done: number }} td
    */
-  function projectCard(p, t, td) {
+  function projectCard(p, totalsOf, td) {
     return UI.setProjectColor(
       el(
         'article',
@@ -374,12 +377,12 @@ export function createProjectsView(store, opts) {
           ? el(
               'div',
               null,
-              el('div', { class: 'cv-overline' }, 'Temps total'),
-              el('div', { class: 'cv-num ch-kpi ch-mt-3' }, formatDuration(t.duration)),
+              el('div', { class: 'cv-overline' }, t('projects.totalTime')),
+              el('div', { class: 'cv-num ch-kpi ch-mt-3' }, formatDuration(totalsOf.duration)),
               el(
                 'div',
                 { class: 'ch-subtle ch-mt-1' },
-                `${t.count} session${t.count > 1 ? 's' : ''} enregistrée${t.count > 1 ? 's' : ''}`,
+                t('projects.sessionsRecorded', { count: totalsOf.count }),
               ),
             )
           : el(
@@ -388,7 +391,7 @@ export function createProjectsView(store, opts) {
               UI.Button({
                 size: 'sm',
                 icon: 'clock-countdown',
-                children: 'Calculer le temps',
+                children: t('projects.computeTime'),
                 onclick: () => {
                   computed.add(p.id);
                   render();
@@ -399,8 +402,13 @@ export function createProjectsView(store, opts) {
         el(
           'div',
           { class: 'ch-row ch-wrap ch-gap-3' },
-          UI.Tag(`${td.open} todo${td.open > 1 ? 's' : ''}`),
-          td.done > 0 ? UI.Badge({ variant: 'success', children: `${td.done} faites` }) : null,
+          UI.Tag(t('projects.todosTag', { count: td.open })),
+          td.done > 0
+            ? UI.Badge({
+                variant: 'success',
+                children: t('projects.doneBadge', { count: td.done }),
+              })
+            : null,
         ),
 
         el(
@@ -412,21 +420,21 @@ export function createProjectsView(store, opts) {
                   size: 'sm',
                   variant: 'primary',
                   icon: 'play',
-                  children: 'Démarrer',
+                  children: t('common.start'),
                   mutates: true,
                   onclick: () => opts.onStartOnProject(p.id),
                   className: 'ch-grow',
                 }),
                 UI.IconButton({
                   icon: 'pencil-simple',
-                  label: 'Modifier',
+                  label: t('common.edit'),
                   variant: 'secondary',
                   size: 'sm',
                   onclick: () => openProjectModal(p),
                 }),
                 UI.IconButton({
                   icon: 'archive',
-                  label: 'Archiver',
+                  label: t('projects.archive'),
                   variant: 'secondary',
                   size: 'sm',
                   mutates: true,
@@ -438,14 +446,14 @@ export function createProjectsView(store, opts) {
                   size: 'sm',
                   variant: 'secondary',
                   icon: 'arrow-counter-clockwise',
-                  children: 'Désarchiver',
+                  children: t('projects.unarchive'),
                   mutates: true,
                   onclick: () => store.actions.toggleProjectArchived(p.id),
                   className: 'ch-grow',
                 }),
                 UI.IconButton({
                   icon: 'pencil-simple',
-                  label: 'Modifier',
+                  label: t('common.edit'),
                   variant: 'secondary',
                   size: 'sm',
                   onclick: () => openProjectModal(p),

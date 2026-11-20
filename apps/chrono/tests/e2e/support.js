@@ -1,6 +1,9 @@
 // Helpers shared by the journeys. Black box: everything goes through the UI.
 import { expect } from '@playwright/test';
 
+/** The name of the main navigation, in the language of the interface (the suites run in French). */
+const NAV_NAME = /^(Navigation principale|Main navigation)$/;
+
 /** Wednesday 2026-11-18, 10:00 (local time of the browser). */
 export const FROZEN_NOW = new Date(2026, 10, 18, 10, 0, 0);
 
@@ -45,7 +48,7 @@ export async function openApp(page, { demo = false, clock = false } = {}) {
   // closed drawer, so it is only expected to be visible from there.
   await expect(page.getByRole('heading', { level: 1, name: 'Timeline' })).toBeVisible();
   if ((page.viewportSize()?.width ?? 1280) >= 1024) {
-    await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: NAV_NAME })).toBeVisible();
   }
   if (demo) await loadDemoData(page);
   return { errors, blockedHosts };
@@ -56,7 +59,9 @@ export async function openApp(page, { demo = false, clock = false } = {}) {
  * @param {import('@playwright/test').Page} page
  */
 export async function loadDemoData(page) {
-  const button = page.getByRole('button', { name: 'Charger des données de démonstration' });
+  const button = page.getByRole('button', {
+    name: /Charger des données de démonstration|Load demo data/,
+  });
   await button.click();
   await expect(button).toHaveCount(0);
 }
@@ -71,7 +76,7 @@ export async function goToSection(page, label) {
   const menu = page.getByRole('button', { name: 'Menu' });
   if (await menu.isVisible()) await menu.click();
   await page
-    .getByRole('navigation', { name: 'Navigation principale' })
+    .getByRole('navigation', { name: NAV_NAME })
     .getByRole('button', { name: label, exact: true })
     .click();
 }

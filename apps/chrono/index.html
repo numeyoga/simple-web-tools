@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="fr" data-theme="light">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
-    <title>Chrono · suivi du temps</title>
+    <title>Chrono · time tracking</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <!-- Sets data-theme and data-text-size before the first paint (a classic script: no inline
-         script, so the strict CSP of roadmap step 4 can forbid them). -->
+    <!-- Sets data-theme, data-text-size and lang before the first paint (a classic script: no inline
+         script, so the strict CSP of roadmap step 4 can forbid them). The interface language
+         is chosen again, with the same rule, by src/adapters/i18n.js. -->
     <script src="./theme-init.js"></script>
     <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
     <script type="module" src="./src/main.js"></script>

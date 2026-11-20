@@ -69,10 +69,11 @@ async function importJsonIntoWorkspace(id, payload) {
 /**
  * Loads the demo data into the (empty) database of a workspace.
  * @param {string} id
+ * @param {(key: string) => string} [text] the translator of the interface (French when omitted)
  * @returns {Promise<void>}
  */
-async function seedWorkspace(id) {
-  const demo = seed(Date.now());
+async function seedWorkspace(id, text) {
+  const demo = seed(Date.now(), text);
   const db = await openWorkspaceDatabase(id);
   try {
     const tx = db.transaction([...STORE_NAMES], 'readwrite');
@@ -100,11 +101,12 @@ export const WORKSPACES = {
   /**
    * Adds a workspace; with `seedDemo` its database starts with the demo data (the user asked
    * for it in the creation form). Only the writer tab calls it.
-   * @param {{ label?: string, seedDemo?: boolean }} [options]
+   * @param {{ label?: string, seedDemo?: boolean, text?: (key: string) => string }} [options]
+   *   `text`: the translator of the interface, for the language of the demo data
    */
-  async create({ label, seedDemo = false } = {}) {
+  async create({ label, seedDemo = false, text } = {}) {
     const ws = getRegistry().create(label?.trim() || 'espace');
-    if (seedDemo) await seedWorkspace(ws.id);
+    if (seedDemo) await seedWorkspace(ws.id, text);
     return ws;
   },
 
