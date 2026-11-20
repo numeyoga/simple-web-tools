@@ -187,9 +187,6 @@ export function mountRichTextEditor({
     root.append(surface);
   }
   container.replaceChildren(root);
-  if (editable) {
-    initTooltips(toolbar);
-  }
 
   const initialContent = /** @type {Content} */ (
     /** @type {unknown} */ (sanitizeRichTextDoc(initialDoc ?? EMPTY_RICH_DOC))
@@ -404,6 +401,11 @@ export function mountRichTextEditor({
     btnLink,
     btnImage,
   );
+  // The toolbar is filled just above and the container is already in the page when the editor
+  // arrives from its lazy chunk: wire the tooltips now, the caller's own pass has run before.
+  if (editable) {
+    initTooltips(toolbar);
+  }
 
   function syncToolbarState() {
     btnBold.setAttribute('aria-pressed', String(editor.isActive('bold')));

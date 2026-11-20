@@ -66,7 +66,7 @@ import { openTaskDrawer } from './adapters/dom/task-drawer.js';
 import { renderTaskListView } from './adapters/dom/task-list-view.js';
 import { renderTodayView } from './adapters/dom/today-view.js';
 import { openWhiteboardDialog } from './adapters/dom/whiteboard-dialog.js';
-import { renderWhiteboardView } from './adapters/dom/whiteboard-view.js';
+import { renderWhiteboardView } from './adapters/dom/whiteboard-view-lazy.js';
 import { t } from './adapters/i18n.js';
 import { errorText } from './core/messages.js';
 

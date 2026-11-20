@@ -95,7 +95,14 @@ no longer carries its own copy.
 
 For rich text, **Tiptap Core** is used in headless mode (no React or Vue wrapper) behind a dedicated
 adapter, completed by a pure serializer (`src/core/markdown.js`) so that Markdown export needs no
-extra third-party converter.
+extra third-party converter. The editor and the whiteboard screen are code-split with dynamic
+`import()` (`src/adapters/rich-text-lazy.js`, `src/adapters/dom/whiteboard-view-lazy.js`), which keeps
+the startup bundle under Vite's 500 kB chunk warning; the service worker precaches every chunk
+listed in `precache-manifest.json`, so both open offline after a first visit.
+
+The whiteboard colours are app-level tokens (`--lc-wb-*` in `src/styles/app.css`) built only from
+Covenant semantic roles, never from primitive scale tokens. Exports (SVG, PNG) read their computed
+values and write concrete colours into the file.
 
 For the calendar, generating RFC 5545 files directly in `src/core/ical.js` (folding at 75 UTF-8
 bytes, escaped delimiters, all-day events) avoids any external library and keeps local

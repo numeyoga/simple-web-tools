@@ -14,7 +14,7 @@ import { instantiateNoteTemplate } from '../../core/templates.js';
 import { createTemplatePicker } from './template-picker.js';
 import { initTooltips, setTooltip } from './tooltip.js';
 import { saveArchiveBlob } from '../archive-file.js';
-import { mountRichTextEditor } from '../rich-text-tiptap.js';
+import { mountRichTextEditor } from '../rich-text-lazy.js';
 import { confirmAction, notify } from './app-shell.js';
 import { createLinkEditor } from './link-editor.js';
 import { createTagEditor } from './tag-editor.js';

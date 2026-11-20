@@ -65,9 +65,11 @@ src/
   core/               PURE business logic: store, model, schema, backup, crypto, dates, search,
                       iCalendar and Markdown serialization, templates, whiteboard geometry
   adapters/           everything that touches the browser: IndexedDB, files, service worker,
-    dom/              views and dialogs, Tiptap and SVG whiteboard engines
+    dom/              views and dialogs, Tiptap and SVG whiteboard engines (the editor and the
+                      whiteboard screen are separate chunks, loaded on first use: `*-lazy.js`)
   i18n/               en.js (the reference), fr.js, index.js
-  styles/app.css      layout and semantic roles (the rest comes from Covenant)
+  styles/app.css      layout and semantic roles (the rest comes from Covenant); the whiteboard
+                      colours are `--lc-wb-*` tokens built from semantic roles only
 tests/
   unit/               Vitest
   e2e/                Playwright and axe
