@@ -45,11 +45,11 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 - [x] Bundled fonts, strict CSP, PWA. Chrono then joins Locavern's architecture: its typecheck
       covers all of `src` and the unit tests (views included), and its README is in English.
 
-## 5. Translate Locavern
+## 5. Translate Locavern (done)
 
-- [ ] English identifiers are already in place: extract the French interface strings into
+- [x] English identifiers are already in place: extract the French interface strings into
       catalogs and add English.
-- [ ] Translate the user documentation, English first.
+- [x] Translate the user documentation, English first.
 
 ## Known issues inherited from the imported apps
 

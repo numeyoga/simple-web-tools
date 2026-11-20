@@ -15,9 +15,8 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 ## Rules that are easy to miss
 
 - English for code, comments, commits and docs. UI strings go through the translation
-  catalog, never inline (decision 0002). Locavern still has French UI text and French app
-  docs: translate them as part of its roadmap step (5), not opportunistically. Chrono is ported
-  (English and French catalogs, English docs).
+  catalog, never inline (decision 0002). Locavern and Chrono have English and French
+  catalogs and English docs.
 - No runtime framework, no CDN, no third-party request. New runtime dependencies need a
   reason in the app README (decision 0003).
 - `src/core` stays pure: no DOM, no IndexedDB, no `Date.now()`. Pass time in as an argument
