@@ -1,5 +1,8 @@
 // Weekly report: aggregation per day and per project, and the CSV text.
 
+import { createTranslator } from '@simple-web-tools/i18n';
+import { catalogs } from '../i18n/index.js';
+import { formatLocalDate } from './dates.js';
 import { liveDuration } from './presence.js';
 
 /** @typedef {import('../types.js').Session} Session */
@@ -117,37 +120,65 @@ export function aggregateWeek(sessions, projects, weekOffset, now) {
 }
 
 /**
- * Builds the CSV text of the report, ready for Excel in French: UTF-8 BOM (accents),
- * `;` separator, decimal comma, CRLF line ends.
+ * The conventions of the CSV for a language, for the spreadsheet that opens it: French
+ * spreadsheets expect `;` and a decimal comma, English ones `,` and a decimal point.
+ * @param {string} locale
+ * @returns {{ separator: string, decimal: string }}
+ */
+export function csvConvention(locale) {
+  return locale.split(/[-_]/)[0] === 'fr'
+    ? { separator: ';', decimal: ',' }
+    : { separator: ',', decimal: '.' };
+}
+
+/**
+ * Builds the CSV text of the report, ready for a spreadsheet: UTF-8 BOM (accents), CRLF line
+ * ends, and the headers, the dates, the times, the separator and the decimal mark of `locale`
+ * (French by default: `;` separator, decimal comma; English: `,` and a decimal point).
  * @param {Session[] | null | undefined} sessions
  * @param {Pick<Project, 'id' | 'name' | 'client'>[] | null | undefined} projects
  * @param {number} now end of the running sessions
+ * @param {{ locale?: string }} [options]
  * @returns {string}
  */
-export function buildReportCsv(sessions, projects, now) {
+export function buildReportCsv(sessions, projects, now, { locale = 'fr' } = {}) {
+  const { t, formatDate, formatDateTime } = createTranslator({ locale, catalogs });
+  const { separator, decimal } = csvConvention(locale);
   // Neutralises formula injection: a text cell starting with = + - @ (or tab / carriage
   // return) would be interpreted as a formula by the spreadsheet.
   const safeText = (/** @type {unknown} */ v) => {
-    const t = String(v ?? '');
-    return /^[=+\-@\t\r]/.test(t) ? "'" + t : t;
+    const text = String(v ?? '');
+    return /^[=+\-@\t\r]/.test(text) ? "'" + text : text;
   };
   const cell = (/** @type {unknown} */ v) => `"${String(v).replace(/"/g, '""')}"`;
+  const day = (/** @type {number} */ ts) =>
+    formatDate(formatLocalDate(ts), { year: 'numeric', month: '2-digit', day: '2-digit' });
   const hhmm = (/** @type {number} */ ts) =>
-    new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    formatDateTime(ts, { hour: '2-digit', minute: '2-digit' });
 
-  const rows = [['Date', 'Projet', 'Client', 'Description', 'Début', 'Fin', 'Durée (h)']];
+  const rows = [
+    [
+      t('csv.date'),
+      t('csv.project'),
+      t('csv.client'),
+      t('csv.description'),
+      t('csv.start'),
+      t('csv.end'),
+      t('csv.hours'),
+    ],
+  ];
   for (const s of (sessions || []).slice().sort((a, b) => a.start - b.start)) {
     const p = (projects || []).find((pr) => pr.id === s.projectId);
     const hours = liveDuration(s, now) / 3600_000;
     rows.push([
-      new Date(s.start).toLocaleDateString('fr-FR'),
+      day(s.start),
       safeText(p?.name),
       safeText(p?.client),
       safeText(s.description),
       hhmm(s.start),
       s.end ? hhmm(s.end) : '',
-      hours.toFixed(2).replace('.', ','),
+      hours.toFixed(2).replace('.', decimal),
     ]);
   }
-  return '﻿' + rows.map((r) => r.map(cell).join(';')).join('\r\n');
+  return '﻿' + rows.map((r) => r.map(cell).join(separator)).join('\r\n');
 }

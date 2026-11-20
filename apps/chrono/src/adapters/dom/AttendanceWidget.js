@@ -7,7 +7,7 @@
 
 import * as UI from './ui.js';
 
-const { el, icon, formatDuration, formatTime, liveDuration } = UI;
+const { el, icon, formatDuration, formatTime, liveDuration, t, tNodes } = UI;
 
 /** @typedef {import('../../types.js').AttendanceEvent} AttendanceEvent */
 /** @typedef {import('../../types.js').Session} Session */
@@ -43,32 +43,32 @@ function totalPauses(events) {
  */
 const PRESENCE_META = {
   not_arrived: {
-    label: 'Pas encore arrivé',
-    shortLabel: 'Absent',
+    label: t('presence.notArrived'),
+    shortLabel: t('presence.shortNotArrived'),
     variant: 'neutral',
     action: 'arrival',
-    cta: 'Pointer arrivée',
+    cta: t('presence.clockIn'),
     ctaVariant: 'primary',
   },
   present: {
-    label: 'Présent',
-    shortLabel: 'Présent',
+    label: t('presence.present'),
+    shortLabel: t('presence.shortPresent'),
     variant: 'success',
     action: 'break_start',
-    cta: 'Pause',
+    cta: t('presence.breakStart'),
     ctaVariant: 'secondary',
   },
   on_break: {
-    label: 'En pause',
-    shortLabel: 'En pause',
+    label: t('presence.onBreak'),
+    shortLabel: t('presence.shortOnBreak'),
     variant: 'warning',
     action: 'break_end',
-    cta: 'Reprendre',
+    cta: t('presence.breakEnd'),
     ctaVariant: 'primary',
   },
   left: {
-    label: 'Journée terminée',
-    shortLabel: 'Parti',
+    label: t('presence.left'),
+    shortLabel: t('presence.shortLeft'),
     variant: 'neutral',
     action: null,
     cta: null,
@@ -121,7 +121,7 @@ export function createAttendanceWidget(store, opts) {
     // ----- presence block -----
     const presenceBlock = el(
       'section',
-      { class: 'cv-card cv-card--compact', 'aria-label': 'Présence' },
+      { class: 'cv-card cv-card--compact', 'aria-label': t('presence.section') },
       el('div', null, UI.Badge({ variant: meta.variant, children: meta.label })),
 
       arrival && status !== 'not_arrived'
@@ -131,7 +131,7 @@ export function createAttendanceWidget(store, opts) {
             el(
               'div',
               { class: 'ch-row ch-between ch-gap-3 ch-baseline' },
-              el('div', { class: 'ch-meta' }, 'Présence'),
+              el('div', { class: 'ch-meta' }, t('presence.section')),
               live(el('div', { class: 'cv-num ch-kpi ch-kpi--md' }), () =>
                 formatDuration(presenceDuration()),
               ),
@@ -143,13 +143,15 @@ export function createAttendanceWidget(store, opts) {
               el(
                 'span',
                 null,
-                'Arrivée ',
-                el('span', { class: 'cv-num ch-fg' }, formatTime(arrival.at)),
+                tNodes('presence.arrival', {
+                  time: el('span', { class: 'cv-num ch-fg' }, formatTime(arrival.at)),
+                }),
               ),
               status === 'on_break'
-                ? live(
-                    el('span', { class: 'ch-end ch-warning-text' }),
-                    () => `pause · ${formatDuration(currentBreakDuration(), { compact: true })}`,
+                ? live(el('span', { class: 'ch-end ch-warning-text' }), () =>
+                    t('presence.breakDuration', {
+                      duration: formatDuration(currentBreakDuration(), { compact: true }),
+                    }),
                   )
                 : null,
             ),
@@ -176,7 +178,7 @@ export function createAttendanceWidget(store, opts) {
               variant: 'ghost',
               size: 'sm',
               icon: 'sign-out',
-              children: 'Partir',
+              children: t('presence.leave'),
               mutates: true,
               onclick: () => {
                 // On a break: close the break first to keep a clean history.
@@ -186,7 +188,9 @@ export function createAttendanceWidget(store, opts) {
               },
             })
           : null,
-        status === 'left' ? el('div', { class: 'ch-subtle ch-fill ch-center' }, 'À demain.') : null,
+        status === 'left'
+          ? el('div', { class: 'ch-subtle ch-fill ch-center' }, t('presence.seeYou'))
+          : null,
       ),
     );
 
@@ -197,7 +201,7 @@ export function createAttendanceWidget(store, opts) {
       const isRunning = active.status === 'running';
       return el(
         'section',
-        { class: 'ch-ink', 'aria-label': project?.name || 'Sans projet' },
+        { class: 'ch-ink', 'aria-label': project?.name || t('common.noProject') },
         el(
           'div',
           { class: 'ch-row ch-center ch-gap-3' },
@@ -211,15 +215,18 @@ export function createAttendanceWidget(store, opts) {
                   el('span', { class: 'cv-cat-block ch-cat-chip' }, project.name),
                   project,
                 )
-              : el('div', { class: 'ch-ellipsis ch-strong' }, 'Sans projet'),
+              : el('div', { class: 'ch-ellipsis ch-strong' }, t('common.noProject')),
             el(
               'div',
               { class: 'ch-caption ch-ellipsis' },
               active.description
-                ? `${isRunning ? 'En cours' : 'En pause'} · ${active.description}`
+                ? t('timers.runningWithDescription', {
+                    status: isRunning ? t('common.running') : t('common.paused'),
+                    description: active.description,
+                  })
                 : isRunning
-                  ? 'En cours'
-                  : 'En pause',
+                  ? t('common.running')
+                  : t('common.paused'),
             ),
           ),
         ),
@@ -232,7 +239,7 @@ export function createAttendanceWidget(store, opts) {
           isRunning
             ? UI.IconButton({
                 icon: 'pause',
-                label: 'Mettre en pause',
+                label: t('common.pause'),
                 variant: 'secondary',
                 size: 'sm',
                 mutates: true,
@@ -240,7 +247,7 @@ export function createAttendanceWidget(store, opts) {
               })
             : UI.IconButton({
                 icon: 'play',
-                label: 'Reprendre',
+                label: t('common.resume'),
                 variant: 'primary',
                 size: 'sm',
                 mutates: true,
@@ -248,7 +255,7 @@ export function createAttendanceWidget(store, opts) {
               }),
           UI.IconButton({
             icon: 'stop',
-            label: 'Arrêter & enregistrer',
+            label: t('timers.stopAndSave'),
             variant: 'secondary',
             size: 'sm',
             mutates: true,
@@ -262,18 +269,14 @@ export function createAttendanceWidget(store, opts) {
     if (actives.length === 0) {
       activeBlock = el(
         'section',
-        { class: 'cv-card cv-card--compact', 'aria-label': 'Chronos' },
+        { class: 'cv-card cv-card--compact', 'aria-label': t('timers.section') },
         el(
           'div',
           { class: 'ch-row ch-center ch-gap-3' },
           icon('timer'),
-          el('span', { class: 'ch-strong' }, 'Aucun chrono actif'),
+          el('span', { class: 'ch-strong' }, t('timers.none')),
         ),
-        el(
-          'div',
-          { class: 'ch-meta' },
-          'Lance un ou plusieurs chronos en parallèle, depuis un projet, une todo ou en un clic.',
-        ),
+        el('div', { class: 'ch-meta' }, t('timers.noneHint')),
         el(
           'div',
           null,
@@ -281,7 +284,7 @@ export function createAttendanceWidget(store, opts) {
             variant: 'primary',
             size: 'sm',
             icon: 'play',
-            children: 'Démarrer un chrono',
+            children: t('common.timerStart'),
             mutates: true,
             onclick: opts.onOpenQuickAdd,
             disabled: status === 'left',
@@ -296,10 +299,14 @@ export function createAttendanceWidget(store, opts) {
         el(
           'h2',
           { class: 'cv-overline ch-title-reset' },
-          actives.length > 1 ? `${actives.length} chronos en parallèle` : 'Chrono actif',
+          t('timers.heading', { count: actives.length }),
         ),
         actives.length > 1 && runningCount > 0
-          ? el('span', { class: 'cv-tag cv-tag--mono' }, `${runningCount} en cours`)
+          ? el(
+              'span',
+              { class: 'cv-tag cv-tag--mono' },
+              t('timers.runningTag', { count: runningCount }),
+            )
           : null,
       );
 
@@ -311,7 +318,7 @@ export function createAttendanceWidget(store, opts) {
                     variant: 'secondary',
                     size: 'sm',
                     icon: 'pause',
-                    children: 'Tout mettre en pause',
+                    children: t('common.pauseAll'),
                     mutates: true,
                     onclick: () => store.actions.pauseAll(),
                   })
@@ -319,13 +326,13 @@ export function createAttendanceWidget(store, opts) {
                     variant: 'secondary',
                     size: 'sm',
                     icon: 'play',
-                    children: 'Tout reprendre',
+                    children: t('common.resumeAll'),
                     mutates: true,
                     onclick: () => store.actions.resumeAll(),
                   }),
               UI.IconButton({
                 icon: 'stop',
-                label: 'Tout arrêter & enregistrer',
+                label: t('timers.stopAllAndSave'),
                 variant: 'secondary',
                 size: 'sm',
                 mutates: true,
@@ -336,7 +343,7 @@ export function createAttendanceWidget(store, opts) {
 
       activeBlock = el(
         'section',
-        { class: 'ch-stack ch-gap-3', 'aria-label': 'Chronos' },
+        { class: 'ch-stack ch-gap-3', 'aria-label': t('timers.section') },
         el(
           'div',
           { class: 'ch-row ch-center ch-wrap ch-gap-3' },
@@ -346,7 +353,7 @@ export function createAttendanceWidget(store, opts) {
             variant: 'secondary',
             size: 'sm',
             icon: 'plus',
-            children: 'Démarrer un autre chrono',
+            children: t('timers.startAnother'),
             mutates: true,
             onclick: opts.onOpenQuickAdd,
             disabled: status === 'left',
@@ -385,7 +392,7 @@ export function createTopbarStatus(store, opts) {
   const host = el('div', {
     class: 'ch-topstatus',
     role: 'group',
-    'aria-label': 'Présence et chronos',
+    'aria-label': t('presence.group'),
   });
 
   function render() {
@@ -398,7 +405,6 @@ export function createTopbarStatus(store, opts) {
     let count = null;
     if (actives.length > 0) {
       const shown = running > 0 ? running : actives.length;
-      const word = running > 0 ? 'en cours' : 'en pause';
       count = el(
         'span',
         { class: 'cv-tag cv-tag--mono' },
@@ -412,7 +418,7 @@ export function createTopbarStatus(store, opts) {
           el(
             'span',
             { class: 'ch-topstatus__text' },
-            ` ${shown > 1 ? 'chronos' : 'chrono'} ${word}`,
+            ` ${running > 0 ? t('timers.topRunning', { count: shown }) : t('timers.topPaused', { count: shown })}`,
           ),
         ),
       );
@@ -422,7 +428,7 @@ export function createTopbarStatus(store, opts) {
       running > 0
         ? UI.IconButton({
             icon: 'pause',
-            label: 'Tout mettre en pause',
+            label: t('common.pauseAll'),
             variant: 'secondary',
             size: 'sm',
             mutates: true,
@@ -431,7 +437,7 @@ export function createTopbarStatus(store, opts) {
         : actives.length > 0
           ? UI.IconButton({
               icon: 'play',
-              label: 'Tout reprendre',
+              label: t('common.resumeAll'),
               variant: 'primary',
               size: 'sm',
               mutates: true,
@@ -439,7 +445,7 @@ export function createTopbarStatus(store, opts) {
             })
           : UI.IconButton({
               icon: 'play',
-              label: 'Nouveau chrono',
+              label: t('common.newTimer'),
               variant: 'primary',
               size: 'sm',
               mutates: true,

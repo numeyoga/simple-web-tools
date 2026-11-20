@@ -449,10 +449,14 @@ export function createStore() {
   /** @returns {boolean} */
   const isEmpty = () => STORE_NAMES.every((n) => state[n].length === 0);
 
-  /** @returns {boolean} whether the demo data was loaded */
-  function loadDemoData() {
+  /**
+   * @param {(key: string) => string} [text] the translator of the interface: the names of the
+   *   demo data are in its language (French when omitted)
+   * @returns {boolean} whether the demo data was loaded
+   */
+  function loadDemoData(text) {
     if (!isEmpty()) return false;
-    apply(seed(Date.now()));
+    apply(seed(Date.now(), text));
     return true;
   }
 

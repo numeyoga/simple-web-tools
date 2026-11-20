@@ -2,7 +2,7 @@
 import { aggregateWeek, buildReportCsv as buildCsv } from '../../core/report.js';
 import * as UI from './ui.js';
 
-const { el, formatDuration } = UI;
+const { el, formatDuration, formatDay, formatNumber, locale, t, weekdayName, capitalize } = UI;
 
 /** @typedef {import('../../core/report.js').ReportDay} ReportDay */
 /** @typedef {import('../../core/report.js').WeekReport} WeekReport */
@@ -42,7 +42,6 @@ export function createReportView(store) {
     // Room under the baseline for the day labels: two lines, since the name and the date wrap
     // below 400 px. The bars start on the baseline, never over the labels.
     const L = 34;
-    const dayNames = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -170,7 +169,7 @@ export function createReportView(store) {
                 lineHeight: 1.2,
               },
             },
-            `${dayNames[i]} ${j.date.getDate()}`,
+            `${weekdayName(i, 'short')} ${j.date.getDate()}`,
           ),
         ),
       );
@@ -188,7 +187,6 @@ export function createReportView(store) {
    * @param {number} weekTotal
    */
   function dayTable(byDay, sortedProjects, weekTotal) {
-    const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const cols = sortedProjects; // [{ id, duration, project }]
@@ -208,14 +206,14 @@ export function createReportView(store) {
       el(
         'table',
         { class: 'cv-table' },
-        el('caption', { id: captionId }, 'Détail chiffré'),
+        el('caption', { id: captionId }, t('report.detail')),
         el(
           'thead',
           null,
           el(
             'tr',
             null,
-            el('th', { scope: 'col' }, 'Jour'),
+            el('th', { scope: 'col' }, t('report.day')),
             ...cols.map((c) =>
               el(
                 'th',
@@ -227,7 +225,7 @@ export function createReportView(store) {
                 ),
               ),
             ),
-            el('th', { scope: 'col', class: 'ch-th-end' }, 'Total'),
+            el('th', { scope: 'col', class: 'ch-th-end' }, t('common.total')),
           ),
         ),
         el(
@@ -244,7 +242,7 @@ export function createReportView(store) {
                   scope: 'row',
                   class: `ch-row-head${isToday ? ' ch-strong' : ''}${j.total === 0 ? ' ch-muted-cell' : ''}`,
                 },
-                `${dayNames[i]} ${j.date.getDate()}`,
+                `${capitalize(weekdayName(i))} ${j.date.getDate()}`,
               ),
               ...cols.map((c) => {
                 const v = j.byProject[c.id] || 0;
@@ -260,7 +258,7 @@ export function createReportView(store) {
           el(
             'tr',
             { class: 'ch-total-row' },
-            el('th', { scope: 'row', class: 'ch-row-head' }, 'Total'),
+            el('th', { scope: 'row', class: 'ch-row-head' }, t('common.total')),
             ...projectTotals.map((v) => el('td', { class: 'cv-num' }, cellTxt(v))),
             el('td', { class: 'cv-num' }, formatDuration(weekTotal)),
           ),
@@ -275,13 +273,13 @@ export function createReportView(store) {
    * @param {Date} monday
    */
   function exportCSV(weekSessions, projects, monday) {
-    const csv = buildCsv(weekSessions, projects, Date.now());
+    const csv = buildCsv(weekSessions, projects, Date.now(), { locale });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     // Local date (not toISOString, which switches to UTC: Monday 00:00 becomes Sunday).
     a.href = url;
-    a.download = `rapport-${UI.formatLocalDate(monday)}.csv`;
+    a.download = t('report.csvFileName', { date: UI.formatLocalDate(monday) });
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -303,13 +301,17 @@ export function createReportView(store) {
 
     const weekLabel =
       weekOffset === 0
-        ? 'Cette semaine'
+        ? t('report.thisWeek')
         : weekOffset === -1
-          ? 'Semaine dernière'
+          ? t('report.lastWeek')
           : weekOffset < 0
-            ? `Il y a ${-weekOffset} semaines`
-            : `Dans ${weekOffset} semaines`;
-    const weekDates = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} → ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+            ? t('report.weeksAgo', { count: -weekOffset })
+            : t('report.weeksAhead', { count: weekOffset });
+    const dayMonth = /** @type {const} */ ({ day: 'numeric', month: 'short' });
+    const weekDates = t('report.weekRange', {
+      start: formatDay(monday, dayMonth),
+      end: formatDay(sunday, dayMonth),
+    });
 
     const projectsTableId = UI.fieldId('ch-caption');
     host.replaceChildren(
@@ -322,7 +324,7 @@ export function createReportView(store) {
           { class: 'ch-row ch-center ch-gap-3' },
           UI.IconButton({
             icon: 'caret-left',
-            label: 'Semaine précédente',
+            label: t('report.previousWeek'),
             onclick: () => {
               weekOffset--;
               render();
@@ -336,7 +338,7 @@ export function createReportView(store) {
           ),
           UI.IconButton({
             icon: 'caret-right',
-            label: 'Semaine suivante',
+            label: t('report.nextWeek'),
             disabled: weekOffset >= 0,
             onclick: () => {
               weekOffset++;
@@ -347,7 +349,7 @@ export function createReportView(store) {
             ? UI.Button({
                 size: 'sm',
                 variant: 'ghost',
-                children: 'Cette semaine',
+                children: t('report.thisWeek'),
                 onclick: () => {
                   weekOffset = 0;
                   render();
@@ -357,7 +359,7 @@ export function createReportView(store) {
         ),
         UI.Button({
           icon: 'file-arrow-down',
-          children: 'Exporter CSV',
+          children: t('report.exportCsv'),
           className: 'ch-end',
           onclick: () => exportCSV(weekSessions, projects, monday),
         }),
@@ -367,7 +369,7 @@ export function createReportView(store) {
       el(
         'div',
         { class: 'ch-grid-stats' },
-        statCard('Total semaine', formatDuration(weekTotal), 'objectif 35h00', {
+        statCard(t('report.weekTotal'), formatDuration(weekTotal), t('report.target'), {
           extra: el(
             'div',
             {
@@ -378,14 +380,14 @@ export function createReportView(store) {
           ),
         }),
         statCard(
-          'Sessions',
-          String(totalSessions),
-          `réparties sur ${activeDays} jour${activeDays > 1 ? 's' : ''}`,
+          t('common.sessions'),
+          formatNumber(totalSessions),
+          t('report.spreadOver', { count: activeDays }),
         ),
         statCard(
-          'Moyenne / jour actif',
+          t('report.averagePerDay'),
           formatDuration(activeDays > 0 ? weekTotal / activeDays : 0),
-          activeDays > 0 ? 'sur jours travaillés' : 'aucun jour travaillé',
+          activeDays > 0 ? t('report.overDaysWorked') : t('report.noDayWorked'),
         ),
       ),
 
@@ -396,14 +398,14 @@ export function createReportView(store) {
         el(
           'div',
           { class: 'ch-row ch-baseline ch-wrap ch-gap-4 ch-mb-4' },
-          el('h2', { class: 'cv-card__title' }, 'Distribution par jour'),
-          el('div', { class: 'ch-meta ch-end' }, 'Segments colorés = projets'),
+          el('h2', { class: 'cv-card__title' }, t('report.distribution')),
+          el('div', { class: 'ch-meta ch-end' }, t('report.coloredSegments')),
         ),
         weekBars(byDay, projects, maxDay),
         sortedProjects.length > 0
           ? el(
               'ul',
-              { class: 'cv-cat-legend ch-mt-4', 'aria-label': 'Légende' },
+              { class: 'cv-cat-legend ch-mt-4', 'aria-label': t('report.legend') },
               sortedProjects.map(({ project }) =>
                 UI.setProjectColor(
                   el(
@@ -422,7 +424,7 @@ export function createReportView(store) {
 
       // Projects table
       sortedProjects.length === 0
-        ? UI.EmptyState({ icon: 'chart-bar', title: 'Aucune session sur cette semaine.' })
+        ? UI.EmptyState({ icon: 'chart-bar', title: t('report.none') })
         : el(
             'div',
             {
@@ -434,18 +436,18 @@ export function createReportView(store) {
             el(
               'table',
               { class: 'cv-table' },
-              el('caption', { id: projectsTableId }, 'Par projet'),
+              el('caption', { id: projectsTableId }, t('report.byProject')),
               el(
                 'thead',
                 null,
                 el(
                   'tr',
                   null,
-                  el('th', { scope: 'col' }, 'Projet'),
-                  el('th', { scope: 'col' }, 'Client'),
-                  el('th', { scope: 'col', class: 'ch-th-end' }, 'Sessions'),
-                  el('th', { scope: 'col', class: 'ch-th-end' }, 'Temps'),
-                  el('th', { scope: 'col', class: 'ch-th-end' }, 'Part'),
+                  el('th', { scope: 'col' }, t('common.project')),
+                  el('th', { scope: 'col' }, t('common.client')),
+                  el('th', { scope: 'col', class: 'ch-th-end' }, t('common.sessions')),
+                  el('th', { scope: 'col', class: 'ch-th-end' }, t('report.time')),
+                  el('th', { scope: 'col', class: 'ch-th-end' }, t('report.share')),
                 ),
               ),
               el(
@@ -462,19 +464,23 @@ export function createReportView(store) {
                       { scope: 'row', class: 'ch-row-head' },
                       UI.projectName(project, 'ch-strong'),
                     ),
-                    el('td', { class: 'ch-muted-cell' }, project.client || '—'),
-                    el('td', { class: 'cv-num' }, String(sessionsCount)),
+                    el('td', { class: 'ch-muted-cell' }, project.client || t('common.dash')),
+                    el('td', { class: 'cv-num' }, formatNumber(sessionsCount)),
                     el('td', { class: 'cv-num' }, formatDuration(duration)),
-                    el('td', { class: 'cv-num ch-muted-cell' }, `${part.toFixed(0)}\u00a0%`),
+                    el(
+                      'td',
+                      { class: 'cv-num ch-muted-cell' },
+                      t('report.percent', { value: part.toFixed(0) }),
+                    ),
                   );
                 }),
                 el(
                   'tr',
                   { class: 'ch-total-row' },
-                  el('th', { scope: 'row', colspan: 2, class: 'ch-row-head' }, 'Total'),
-                  el('td', { class: 'cv-num' }, String(totalSessions)),
+                  el('th', { scope: 'row', colspan: 2, class: 'ch-row-head' }, t('common.total')),
+                  el('td', { class: 'cv-num' }, formatNumber(totalSessions)),
                   el('td', { class: 'cv-num' }, formatDuration(weekTotal)),
-                  el('td', { class: 'cv-num ch-muted-cell' }, '100\u00a0%'),
+                  el('td', { class: 'cv-num ch-muted-cell' }, t('report.percent', { value: 100 })),
                 ),
               ),
             ),

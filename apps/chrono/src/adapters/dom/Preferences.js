@@ -1,5 +1,7 @@
-// The preferences dialog: theme, text size and single-key shortcuts, with the list of shortcuts.
-// The choices apply at once and are kept by adapters/preferences.js.
+// The preferences dialog: language, theme, text size and single-key shortcuts, with the list of
+// shortcuts. The choices apply at once and are kept by adapters/preferences.js (the language by
+// adapters/i18n.js: it reloads the page, since the interface is built in one language).
+import { getLocaleChoice, saveLocaleChoice } from '../i18n.js';
 import {
   getSingleKeyShortcuts,
   getTheme,
@@ -8,29 +10,28 @@ import {
 } from '../preferences.js';
 import * as UI from './ui.js';
 
-const { el } = UI;
+const { el, t } = UI;
 
 /** The shortcuts that need no modifier key (Single-key shortcuts preference, decision H). */
 const SHORTCUTS = [
-  { key: 'Espace', label: 'Démarrer, mettre en pause ou reprendre' },
-  { key: 'N', label: 'Nouveau chrono' },
-  { key: 'S', label: 'Tout arrêter' },
+  { key: t('prefs.keySpace'), label: t('prefs.shortcutToggle') },
+  { key: 'N', label: t('prefs.shortcutNew') },
+  { key: 'S', label: t('prefs.shortcutStopAll') },
 ];
 
 /** Wires the Covenant TextSize control (`data-cv-text-size-control`): its change is stored by the app. */
 function textSizeControl() {
-  /** @type {[string, string][]} */
   const options = [
-    ['auto', 'Automatique'],
-    ['standard', 'Standard'],
-    ['comfortable', 'Confortable'],
-    ['large', 'Grande'],
+    { value: 'auto', label: t('prefs.textSizeAuto') },
+    { value: 'standard', label: t('prefs.textSizeStandard') },
+    { value: 'comfortable', label: t('prefs.textSizeComfortable') },
+    { value: 'large', label: t('prefs.textSizeLarge') },
   ];
   return el(
     'fieldset',
     { class: 'cv-segmented', 'data-cv-text-size-control': '' },
-    el('legend', null, 'Taille du texte'),
-    options.map(([value, label]) =>
+    el('legend', null, t('prefs.textSize')),
+    options.map(({ value, label }) =>
       el(
         'label',
         null,
@@ -48,19 +49,19 @@ function textSizeControl() {
 export function openPreferences() {
   const theme = getTheme();
   const themeControl = UI.Segmented({
-    legend: 'Thème',
+    legend: t('prefs.theme'),
     name: 'preferences-theme',
     options: [
-      { value: 'system', label: 'Système' },
-      { value: 'light', label: 'Clair' },
-      { value: 'dark', label: 'Sombre' },
+      { value: 'system', label: t('prefs.themeSystem') },
+      { value: 'light', label: t('prefs.themeLight') },
+      { value: 'dark', label: t('prefs.themeDark') },
     ],
     value: theme ?? 'system',
     onchange: (value) => setTheme(value === 'light' || value === 'dark' ? value : null),
   });
 
   const shortcutsSwitch = UI.Checkbox({
-    label: 'Raccourcis à une touche',
+    label: t('prefs.singleKey'),
     switchRole: true,
     checked: getSingleKeyShortcuts(),
     onchange: (checked) => setSingleKeyShortcuts(checked),
@@ -72,45 +73,51 @@ export function openPreferences() {
   const textSize = textSizeControl();
   textSize.setAttribute('aria-describedby', textSizeHintId);
 
+  // The language: "Language / Langue" in both languages, so that it can be found whichever
+  // language the page is in. The names of the languages are written in their own language.
+  const languageField = UI.Select({
+    label: t('prefs.language'),
+    value: getLocaleChoice() ?? 'auto',
+    hint: t('prefs.languageHint'),
+    options: [
+      { value: 'auto', label: t('prefs.languageAuto') },
+      { value: 'en', label: t('prefs.languageEnglish') },
+      { value: 'fr', label: t('prefs.languageFrench') },
+    ],
+    onchange: (value) => {
+      saveLocaleChoice(value === 'auto' ? null : value);
+      location.reload();
+    },
+  });
+
   const body = el(
     'div',
     { class: 'ch-stack ch-gap-5' },
+    languageField,
     el(
       'div',
       { class: 'cv-field' },
-      el('span', { class: 'cv-label', 'aria-hidden': 'true' }, 'Thème'),
+      el('span', { class: 'cv-label', 'aria-hidden': 'true' }, t('prefs.theme')),
       themeControl,
-      el(
-        'span',
-        { class: 'cv-hint' },
-        'Système suit le réglage de ton appareil, clair et sombre le remplacent.',
-      ),
+      el('span', { class: 'cv-hint' }, t('prefs.themeHint')),
     ),
     el(
       'div',
       { class: 'cv-field' },
-      el('span', { class: 'cv-label', 'aria-hidden': 'true' }, 'Taille du texte'),
+      el('span', { class: 'cv-label', 'aria-hidden': 'true' }, t('prefs.textSize')),
       textSize,
-      el(
-        'span',
-        { class: 'cv-hint', id: textSizeHintId },
-        'Automatique agrandit le texte sur les grands écrans.',
-      ),
+      el('span', { class: 'cv-hint', id: textSizeHintId }, t('prefs.textSizeHint')),
     ),
     el(
       'div',
       { class: 'cv-field' },
       shortcutsSwitch,
-      el(
-        'span',
-        { class: 'cv-hint', id: shortcutsHintId },
-        'Espace, N et S agissent sans autre touche. Ils ne se déclenchent jamais pendant une saisie ni quand un dialogue est ouvert.',
-      ),
+      el('span', { class: 'cv-hint', id: shortcutsHintId }, t('prefs.singleKeyHint')),
     ),
     el(
       'div',
       { class: 'ch-stack ch-gap-3' },
-      el('h3', { class: 'cv-label ch-title-reset' }, 'Raccourcis'),
+      el('h3', { class: 'cv-label ch-title-reset' }, t('prefs.shortcuts')),
       el(
         'ul',
         { class: 'ch-shortcuts ch-meta' },
@@ -127,9 +134,9 @@ export function openPreferences() {
   );
 
   const modal = UI.Modal({
-    title: 'Préférences',
+    title: t('prefs.title'),
     body,
-    footer: UI.Button({ children: 'Fermer', onclick: () => modal.close() }),
+    footer: UI.Button({ children: t('common.close'), onclick: () => modal.close() }),
   });
   return modal;
 }

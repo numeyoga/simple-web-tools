@@ -49,3 +49,6 @@ export const showProjectTotalsKey = () => storageName(APP, 'show-project-totals'
 
 /** Version 1 key of the project totals preference (same `1` / `0` values). Read once, never deleted. */
 export const LEGACY_PROJECT_TOTALS_KEY = 'chrono.prefs.projetsTotaux';
+
+/** Language chosen in the preferences: `en` or `fr`; absent, the browser's language. `chrono-locale`. */
+export const localeKey = () => storageName(APP, 'locale');

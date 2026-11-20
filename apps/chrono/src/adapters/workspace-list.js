@@ -4,8 +4,10 @@
 // Each workspace has its own IndexedDB (`chrono__<id>`). Switching workspace reloads the page:
 // the store is rebuilt. Every storage name starts with the app name (decision 0005).
 
+import { createTranslator } from '@simple-web-tools/i18n';
 import { createWorkspaceRegistry, workspaceDatabaseName } from '@simple-web-tools/storage';
 import { planLegacyWorkspaces } from '../core/migrations.js';
+import { catalogs } from '../i18n/index.js';
 import {
   APP,
   LEGACY_ACTIVE_KEY,
@@ -76,6 +78,17 @@ function migrateLegacyRegistry(registry) {
 }
 
 /**
+ * Name of the workspace created on the first start: written once, in the language of that
+ * moment. French until the app tells otherwise (`setDefaultWorkspaceLabel`).
+ */
+let defaultLabel = createTranslator({ locale: 'fr', catalogs }).t('workspaces.defaultLabel');
+
+/** @param {string} label the name of the first workspace, in the language of the interface */
+export function setDefaultWorkspaceLabel(label) {
+  defaultLabel = label;
+}
+
+/**
  * The registry over the current `localStorage`. Cheap and stateless: call it where needed.
  * The first call after an update imports the version 1 list.
  */
@@ -84,7 +97,7 @@ export function getRegistry() {
     app: APP,
     storage: localStorage,
     now: () => Date.now(),
-    defaultLabel: 'Espace principal',
+    defaultLabel,
   });
   migrateLegacyRegistry(registry);
   return registry;

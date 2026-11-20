@@ -96,6 +96,7 @@ export interface SelectOptions {
   ariaLabel?: string;
   value?: string | null;
   options: SelectOption[];
+  hint?: string | null;
   onchange?: ((value: string) => void) | null;
   className?: string;
   name?: string;
@@ -160,7 +161,7 @@ export interface ModalHandle {
 export interface ConfirmOptions {
   title: string;
   message: string;
-  /** The label of the action, a verb (default: Confirmer). */
+  /** The label of the action, a verb (default: Confirm, translated). */
   confirmLabel?: string;
   /** A destructive action: the confirm button is the danger button. */
   danger?: boolean;

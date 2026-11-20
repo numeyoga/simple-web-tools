@@ -10,6 +10,7 @@ import {
   watchPreferences,
 } from '../preferences.js';
 import { WORKSPACES } from '../workspaces.js';
+import { setDefaultWorkspaceLabel } from '../workspace-list.js';
 import { createTopbarStatus } from './AttendanceWidget.js';
 import { openPreferences } from './Preferences.js';
 import { createProjectsView } from './ProjectsView.js';
@@ -20,18 +21,20 @@ import { createTodosView } from './TodosView.js';
 import * as UI from './ui.js';
 import { openWorkspaceManager } from './WorkspacesView.js';
 
-const { el, icon } = UI;
+const { el, icon, t } = UI;
 
 /** @type {{ id: string, icon: string, label: string, factory: import('./types.js').ViewFactory }[]} */
 const SECTIONS = [
-  { id: 'timeline', icon: 'timer', label: 'Timeline', factory: createTimelineView },
-  { id: 'todos', icon: 'list-checks', label: 'Todos', factory: createTodosView },
-  { id: 'projects', icon: 'folder-open', label: 'Projets', factory: createProjectsView },
-  { id: 'report', icon: 'chart-bar', label: 'Rapport', factory: createReportView },
+  { id: 'timeline', icon: 'timer', label: t('nav.timeline'), factory: createTimelineView },
+  { id: 'todos', icon: 'list-checks', label: t('nav.todos'), factory: createTodosView },
+  { id: 'projects', icon: 'folder-open', label: t('nav.projects'), factory: createProjectsView },
+  { id: 'report', icon: 'chart-bar', label: t('nav.report'), factory: createReportView },
 ];
 
 /** @param {HTMLElement} rootEl */
 export function start(rootEl) {
+  // The first workspace is named in the language of the interface, once, when it is created.
+  setDefaultWorkspaceLabel(t('workspaces.defaultLabel'));
   const store = createStore();
   const toasts = UI.ToastHost();
 
@@ -66,7 +69,7 @@ export function start(rootEl) {
       el(
         'span',
         { class: 'ch-grow ch-stack' },
-        el('span', { class: 'ch-meta' }, 'Espace de sauvegarde'),
+        el('span', { class: 'ch-meta' }, t('shell.workspace')),
         el('span', { class: 'ch-ellipsis ch-strong' }, ws.label),
       ),
       list.length > 1 ? UI.Tag(`${list.length}`, { mono: true }) : null,
@@ -106,12 +109,12 @@ export function start(rootEl) {
   // same on every view. The skill's own script opens and closes it below 1024 px.
   const sidebar = el(
     'nav',
-    { id: 'shell-nav', 'aria-label': 'Navigation principale', class: 'cv-sidebar' },
+    { id: 'shell-nav', 'aria-label': t('shell.navLabel'), class: 'cv-sidebar' },
     el(
       'div',
       { class: 'cv-sidebar__brand' },
       icon('timer', { weight: 'bold', className: 'ch-brand-icon' }),
-      'Chrono',
+      t('app.name'),
     ),
     el('div', { class: 'ch-sidebar-workspace' }, workspaceChip()),
     navList,
@@ -127,7 +130,7 @@ export function start(rootEl) {
       'data-cv-nav-toggle': '',
       'aria-controls': 'shell-nav',
       'aria-expanded': 'false',
-      'aria-label': 'Menu',
+      'aria-label': t('shell.menu'),
     },
     icon('list'),
   );
@@ -138,7 +141,11 @@ export function start(rootEl) {
     pageTitle,
     el('span', { class: 'cv-topbar__spacer' }),
     topbarStatus.el,
-    UI.IconButton({ icon: 'gear', label: 'Préférences', onclick: () => openPreferences() }),
+    UI.IconButton({
+      icon: 'gear',
+      label: t('shell.preferences'),
+      onclick: () => openPreferences(),
+    }),
   );
 
   const main = el('main', {
@@ -150,7 +157,7 @@ export function start(rootEl) {
   const shell = el(
     'div',
     { class: 'cv-shell' },
-    el('a', { class: 'cv-skip-link', href: '#shell-main' }, 'Aller au contenu'),
+    el('a', { class: 'cv-skip-link', href: '#shell-main' }, t('shell.skipLink')),
     sidebar,
     el('div', { class: 'cv-shell__scrim' }),
     el('div', { class: 'cv-shell__main' }, topbar, main),
@@ -180,8 +187,8 @@ export function start(rootEl) {
   function buildReadOnlyBanner() {
     const banner = UI.Alert({
       status: 'warning',
-      title: 'Chrono est ouvert dans un autre onglet.',
-      text: 'Cet onglet est en lecture seule.',
+      title: t('shell.readOnly.title'),
+      text: t('shell.readOnly.text'),
       live: true,
     });
     banner.dataset.testid = 'read-only-banner';
@@ -189,13 +196,13 @@ export function start(rootEl) {
     banner.append(
       UI.Button({
         size: 'sm',
-        children: 'Reprendre l’édition',
+        children: t('shell.readOnly.resume'),
         onclick: async () => {
           if (!(await store.retryWriteLock())) {
             toasts.push({
               variant: 'warning',
-              title: 'Un autre onglet écrit encore',
-              body: 'Ferme-le puis réessaie.',
+              title: t('shell.readOnly.stillWriting'),
+              body: t('shell.readOnly.closeIt'),
             });
           }
         },
@@ -272,7 +279,7 @@ export function start(rootEl) {
       ...opts,
       onStart: (projectId) => {
         const p = store.state.projects.find((x) => x.id === projectId);
-        toasts.push({ variant: 'success', title: 'Chrono démarré', body: p?.name });
+        toasts.push({ variant: 'success', title: t('shell.toasts.started'), body: p?.name });
       },
     });
   }
@@ -286,11 +293,11 @@ export function start(rootEl) {
   // which the key activates natively.
   /** @param {KeyboardEvent} e */
   function mayRunShortcut(e) {
-    const t = /** @type {HTMLElement | null} */ (e.target);
+    const target = /** @type {HTMLElement | null} */ (e.target);
     const inTextField =
-      !!t &&
-      (t.isContentEditable ||
-        !!t.closest?.(
+      !!target &&
+      (target.isContentEditable ||
+        !!target.closest?.(
           'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"]',
         ));
     return allowsSingleKeyShortcut({
@@ -303,7 +310,7 @@ export function start(rootEl) {
       repeat: e.repeat,
       inTextField,
       dialogOpen: !!document.querySelector('dialog[open]') || shell.hasAttribute('data-nav-open'),
-      onActivatable: !!t?.closest?.('button, a[href], [role="button"]'),
+      onActivatable: !!target?.closest?.('button, a[href], [role="button"]'),
     });
   }
 
@@ -320,13 +327,13 @@ export function start(rootEl) {
         store.actions.pauseAll();
         toasts.push({
           variant: 'info',
-          title: actives.length > 1 ? 'Chronos en pause' : 'Chrono en pause',
+          title: t('shell.toasts.paused', { count: actives.length }),
         });
       } else {
         store.actions.resumeAll();
         toasts.push({
           variant: 'success',
-          title: actives.length > 1 ? 'Chronos repris' : 'Chrono repris',
+          title: t('shell.toasts.resumed', { count: actives.length }),
         });
       }
     }
@@ -338,7 +345,7 @@ export function start(rootEl) {
       e.preventDefault();
       const n = store.activeSessions().length;
       store.actions.stopAll();
-      toasts.push({ variant: 'info', title: n > 1 ? 'Chronos arrêtés' : 'Chrono arrêté' });
+      toasts.push({ variant: 'info', title: t('shell.toasts.stopped', { count: n }) });
     }
   });
 
@@ -346,12 +353,12 @@ export function start(rootEl) {
   // The app is replaced by a message: nothing is read or written until the cause is fixed.
   const STORAGE_ERRORS = {
     blocked: {
-      title: 'Chrono est bloqué par un autre onglet',
-      body: 'Une autre fenêtre ou un autre onglet garde ouverte une ancienne version de Chrono et empêche la mise à jour de la base de données. Ferme tous les autres onglets Chrono, puis recharge cette page.',
+      title: t('shell.storageBlocked.title'),
+      body: t('shell.storageBlocked.body'),
     },
     unavailable: {
-      title: 'Chrono ne peut pas utiliser le stockage du navigateur',
-      body: 'Chrono enregistre tes données dans IndexedDB, qui est indisponible ici (navigation privée, stockage bloqué ou navigateur trop ancien). Rien n’a été lu ni écrit. Autorise le stockage pour ce site ou ouvre Chrono dans une fenêtre de navigation normale, puis recharge la page.',
+      title: t('shell.storageUnavailable.title'),
+      body: t('shell.storageUnavailable.body'),
     },
   };
 
@@ -371,7 +378,7 @@ export function start(rootEl) {
             'span',
             { class: 'ch-brand' },
             icon('timer', { weight: 'bold', className: 'ch-brand-icon' }),
-            'Chrono',
+            t('app.name'),
           ),
         ),
         el(
@@ -394,7 +401,7 @@ export function start(rootEl) {
               UI.Button({
                 variant: 'primary',
                 icon: 'arrow-clockwise',
-                children: 'Recharger la page',
+                children: t('shell.reload'),
                 onclick: () => location.reload(),
               }),
             ),
@@ -406,14 +413,14 @@ export function start(rootEl) {
 
   /* ---------------- initial load ---------------- */
   // Shows a loader during the initial load
-  const loader = el('p', { class: 'ch-meta ch-loading', role: 'status' }, 'Chargement…');
+  const loader = el('p', { class: 'ch-meta ch-loading', role: 'status' }, t('shell.loading'));
   main.appendChild(loader);
 
   store.onRefused(() => {
     toasts.push({
       variant: 'warning',
-      title: 'Lecture seule',
-      body: 'Chrono est ouvert dans un autre onglet. Cet onglet est en lecture seule.',
+      title: t('shell.readOnly.toastTitle'),
+      body: t('shell.readOnly.toastBody'),
     });
   });
   // The banner and the disabled controls follow the role of the tab, and the controls that a
@@ -424,8 +431,8 @@ export function start(rootEl) {
     if (wasReadOnly && !state.readOnly) {
       toasts.push({
         variant: 'success',
-        title: 'Édition rétablie',
-        body: 'Cet onglet peut de nouveau modifier les données.',
+        title: t('shell.readOnly.restored'),
+        body: t('shell.readOnly.restoredBody'),
       });
     }
     wasReadOnly = state.readOnly;
@@ -442,6 +449,6 @@ export function start(rootEl) {
     .catch((err) => {
       console.error('[App] init failed', err);
       if (err instanceof StorageError) showStorageError(err.code);
-      else loader.textContent = 'Erreur de chargement : ' + err.message;
+      else loader.textContent = t('shell.loadError', { message: err.message });
     });
 }

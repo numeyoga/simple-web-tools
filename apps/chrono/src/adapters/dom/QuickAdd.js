@@ -7,7 +7,7 @@
 //                is NOT made active because it already has an end.
 import * as UI from './ui.js';
 
-const { el, icon, formatDuration, localToTimestamp, timestampToLocal } = UI;
+const { el, icon, formatDuration, localToTimestamp, timestampToLocal, t, tNodes } = UI;
 
 /**
  * @param {import('./types.js').Store} store
@@ -35,11 +35,11 @@ export function openQuickAddModal(
 
   /* --- mode: a segmented control (native radios) --- */
   const segmented = UI.Segmented({
-    legend: 'Mode de saisie',
+    legend: t('quickAdd.mode'),
     name: fieldGroupName('mode'),
     options: [
-      { value: 'live', label: 'Démarrer maintenant' },
-      { value: 'manual', label: 'Saisir manuellement' },
+      { value: 'live', label: t('quickAdd.modeLive') },
+      { value: 'manual', label: t('quickAdd.modeManual') },
     ],
     value: mode,
     onchange: (value) => {
@@ -55,7 +55,7 @@ export function openQuickAddModal(
   function renderListView() {
     const projects = store.state.projects.filter((p) => !p.archived);
     listHost.replaceChildren(
-      el('legend', { class: 'cv-label' }, 'Projet'),
+      el('legend', { class: 'cv-label' }, t('common.project')),
       el(
         'div',
         { class: 'ch-radio-list ch-stack' },
@@ -83,9 +83,9 @@ export function openQuickAddModal(
 
   /* --- description --- */
   const descW = UI.Input({
-    label: 'Sur quoi as-tu travaillé ?',
+    label: t('quickAdd.what'),
     value: descriptionPrefill || '',
-    placeholder: 'Ex. maquette homepage v3',
+    placeholder: t('quickAdd.whatPlaceholder'),
     onkeydown: (e) => {
       if (e.key === 'Enter' && mode === 'live') submit();
     },
@@ -101,12 +101,12 @@ export function openQuickAddModal(
   const defaultStart = startPrefill != null ? startPrefill : defaultEnd - 60 * 60_000;
 
   const startW = UI.Input({
-    label: 'Début',
+    label: t('common.startLabel'),
     type: 'datetime-local',
     value: timestampToLocal(defaultStart),
   });
   const endW = UI.Input({
-    label: 'Fin',
+    label: t('common.endLabel'),
     type: 'datetime-local',
     value: timestampToLocal(defaultEnd),
   });
@@ -148,7 +148,7 @@ export function openQuickAddModal(
     el(
       'div',
       { class: 'ch-block ch-row ch-center ch-between' },
-      el('span', { class: 'cv-overline' }, 'Durée'),
+      el('span', { class: 'cv-overline' }, t('quickAdd.duration')),
       displayedDuration,
     ),
   );
@@ -158,17 +158,21 @@ export function openQuickAddModal(
   const submitBtn = UI.Button({
     variant: 'primary',
     icon: 'play',
-    children: 'Démarrer',
+    children: t('common.start'),
     onclick: () => submit(),
   });
 
   function paintFooter() {
     if (mode === 'live') {
-      footerHint.replaceChildren(UI.Kbd('Entrée'), document.createTextNode(' pour démarrer'));
-      submitBtn.replaceChildren(icon('play'), document.createTextNode('Démarrer'));
+      footerHint.replaceChildren(
+        ...tNodes('common.pressEnterToStart', { key: UI.Kbd(t('common.keyEnter')) }),
+      );
+      submitBtn.replaceChildren(icon('play'), document.createTextNode(t('common.start')));
     } else {
-      footerHint.replaceChildren(UI.Kbd('Entrée'), document.createTextNode(' pour enregistrer'));
-      submitBtn.replaceChildren(icon('check'), document.createTextNode('Enregistrer'));
+      footerHint.replaceChildren(
+        ...tNodes('common.pressEnterToSave', { key: UI.Kbd(t('common.keyEnter')) }),
+      );
+      submitBtn.replaceChildren(icon('check'), document.createTextNode(t('common.save')));
     }
   }
 
@@ -181,8 +185,8 @@ export function openQuickAddModal(
         ? manualBlock
         : UI.Alert({
             status: 'info',
-            title: 'Le chrono se lance maintenant.',
-            text: 'Il tourne en parallèle des chronos déjà actifs, jusqu’à ce que tu l’arrêtes.',
+            title: t('quickAdd.liveTitle'),
+            text: t('quickAdd.liveText'),
           }),
     );
   }
@@ -197,11 +201,11 @@ export function openQuickAddModal(
       const d = localToTimestamp(startW.input.value);
       const f = localToTimestamp(endW.input.value);
       if (d == null || f == null) {
-        failEnd('Début ou fin illisible. Renseigne un début et une fin valides.');
+        failEnd(t('quickAdd.unreadable'));
         return;
       }
       if (f <= d) {
-        failEnd('La fin est avant le début. Choisis une fin postérieure au début.');
+        failEnd(t('common.endBeforeStart'));
         return;
       }
       const id = store.actions.addManualSession({
@@ -211,7 +215,7 @@ export function openQuickAddModal(
         end: f,
       });
       if (!id) {
-        failEnd('Impossible d’enregistrer cette session. Vérifie le projet et les heures.');
+        failEnd(t('quickAdd.notSaved'));
         return;
       }
       onManualAdd && onManualAdd(id, projectId);
@@ -230,11 +234,11 @@ export function openQuickAddModal(
 
   const footer = [
     footerHint,
-    UI.Button({ children: 'Annuler', onclick: () => modal.close() }),
+    UI.Button({ children: t('common.cancel'), onclick: () => modal.close() }),
     submitBtn,
   ];
 
-  const modal = UI.Modal({ title: 'Ajouter un chrono', body, footer });
+  const modal = UI.Modal({ title: t('quickAdd.title'), body, footer });
   renderMode();
   inputDesc.focus();
 }
