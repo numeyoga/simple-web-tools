@@ -8,11 +8,11 @@ Convergence work between the apps, in order. Each step leaves `main` deployable.
 - [x] Locavern and Chrono imported with their history.
 - [x] Root docs: README, contributing guide, security policy, architecture decisions.
 
-## 2. Publish
+## 2. Publish (done)
 
 - [x] Create the public GitHub repository and enable Pages ("GitHub Actions" source).
-- [ ] Replace Locavern's old Pages site with a redirect to its new path.
-- [ ] Put a "this app has moved" notice on Chrono's GitLab Pages site, with a link to
+- [x] Replace Locavern's old Pages site with a redirect to its new path.
+- [x] Put a "this app has moved" notice on Chrono's GitLab Pages site, with a link to
       [Moving your data](moving-your-data.md). Archive the old repositories afterwards.
 
 ## 3. Shared packages
