@@ -653,13 +653,28 @@ function ToastHost() {
   }
 
   /** @param {ToastOptions} toast */
-  function push({ variant = 'info', title, body }) {
+  function push({ variant = 'info', title, body, timeout, action }) {
     ensureRegion();
-    const toast = window.Covenant?.toast?.({ status: variant, title, text: body ?? undefined });
+    const toast = window.Covenant?.toast?.({
+      status: variant,
+      title,
+      text: body ?? undefined,
+      timeout,
+    });
+    if (toast && action) {
+      const button = el('button', {
+        type: 'button',
+        class: 'cv-btn cv-btn--primary cv-btn--sm',
+        onclick: () => action.onclick(button),
+      });
+      button.textContent = action.label;
+      toast.querySelector('.cv-toast__body')?.append(button);
+    }
     // The dismiss button of each toast is built by Covenant with an English name.
     toast
       ?.querySelector('[data-cv-dismiss]')
       ?.setAttribute('aria-label', t('shell.dismissNotification'));
+    return toast ?? undefined;
   }
   return { push };
 }

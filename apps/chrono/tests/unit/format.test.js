@@ -35,11 +35,11 @@ describe('durations', () => {
 });
 
 describe('times', () => {
-  test('French 24 hours, English 12 hours', () => {
+  test('French 24 hours (09:05), English 12 hours without a leading zero (9:05 AM)', () => {
     expect(fr.formatTime(morning)).toBe('09:05');
     expect(fr.formatTime(evening)).toBe('17:30');
-    expect(en.formatTime(morning)).toMatch(/^09:05\sAM$/);
-    expect(en.formatTime(evening)).toMatch(/^05:30\sPM$/);
+    expect(en.formatTime(morning)).toMatch(/^9:05\sAM$/);
+    expect(en.formatTime(evening)).toMatch(/^5:30\sPM$/);
   });
 });
 

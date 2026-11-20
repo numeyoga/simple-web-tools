@@ -10,6 +10,7 @@ import {
   watchPreferences,
 } from '../preferences.js';
 import { WORKSPACES } from '../workspaces.js';
+import { registerServiceWorker } from '../pwa.js';
 import { setDefaultWorkspaceLabel } from '../workspace-list.js';
 import { createTopbarStatus } from './AttendanceWidget.js';
 import { openPreferences } from './Preferences.js';
@@ -440,6 +441,26 @@ export function start(rootEl) {
   new MutationObserver(() => {
     if (store.state.readOnly) paintReadOnly();
   }).observe(document.body, { childList: true, subtree: true });
+
+  // A new version waits in the background: the toast stays until the person reloads or dismisses it.
+  registerServiceWorker({
+    onUpdateReady(applyUpdate) {
+      toasts.push({
+        variant: 'info',
+        title: t('pwa.updateTitle'),
+        body: t('pwa.updateBody'),
+        timeout: 0,
+        action: {
+          label: t('pwa.reload'),
+          onclick: (button) => {
+            button.disabled = true;
+            button.textContent = t('pwa.reloading');
+            applyUpdate();
+          },
+        },
+      });
+    },
+  });
 
   store
     .init()

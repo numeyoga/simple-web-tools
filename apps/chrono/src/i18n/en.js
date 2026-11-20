@@ -88,6 +88,13 @@ export default {
     dismissNotification: 'Dismiss notification',
   },
 
+  pwa: {
+    updateTitle: 'A new version is ready',
+    updateBody: 'Reload Chrono to use it. It is already available offline.',
+    reload: 'Reload',
+    reloading: 'Reloading…',
+  },
+
   nav: {
     timeline: 'Timeline',
     todos: 'To-dos',

@@ -173,10 +173,14 @@ export interface ToastOptions {
   variant?: 'success' | 'warning' | 'danger' | 'info';
   title: string;
   body?: string | null;
+  /** Milliseconds before it leaves; `0` keeps it until it is dismissed. Default: Covenant's. */
+  timeout?: number;
+  /** A button under the text; `onclick` gets the button. */
+  action?: { label: string; onclick: (button: HTMLButtonElement) => void };
 }
 
 export interface ToastHost {
-  push: (toast: ToastOptions) => void;
+  push: (toast: ToastOptions) => HTMLElement | undefined;
 }
 
 /** What `App.js` gives a view to open the quick-add dialog. */

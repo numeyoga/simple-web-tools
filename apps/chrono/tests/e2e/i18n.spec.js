@@ -30,6 +30,11 @@ test.describe('browser in English (en-US)', () => {
     await expect(main.getByText('Wednesday, November 18')).toBeVisible();
     // The hour axis follows the clock of the language: 12 hours in en-US.
     await expect(main.getByText('1:00 PM', { exact: true })).toBeVisible();
+    // Times of day follow the same convention: no leading zero on a 12-hour clock (session rows,
+    // attendance, the label of the current time), as on the axis.
+    await expect(main.getByText('9:05 AM → 10:30 AM', { exact: true })).toBeVisible();
+    await expect(main.getByText('10:00 AM', { exact: true }).first()).toBeVisible();
+    await expect(main.getByText(/(^|\D)0\d:\d\d (AM|PM)/)).toHaveCount(0);
     await expect(main.getByRole('heading', { name: 'Sessions of the day' })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Attendance of the day' })).toBeVisible();
     await expect(main.getByRole('heading', { name: 'Breakdown by project' })).toBeVisible();

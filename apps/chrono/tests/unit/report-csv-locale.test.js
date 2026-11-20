@@ -66,7 +66,7 @@ describe('English CSV', () => {
   test('decimal point, mm/dd/yyyy date and the time of the English interface', () => {
     const row = lines('en', [session()])[1] ?? '';
     expect(row).toMatch(
-      /^"11\/16\/2026","Site, ""vitrine""","Café Müller","Mockup","09:00\sAM","10:30\sAM","1\.50"$/,
+      /^"11\/16\/2026","Site, ""vitrine""","Café Müller","Mockup","9:00\sAM","10:30\sAM","1\.50"$/,
     );
     expect(row).not.toContain('1,50');
   });
@@ -93,7 +93,7 @@ describe('English CSV', () => {
   test('sessions come out in the order of their start', () => {
     const later = session({ id: 'b', start: start + 3600_000, end: start + 7200_000 });
     const rows = lines('en', [later, session()]);
-    expect(rows[1]).toContain('"09:00');
+    expect(rows[1]).toContain('"9:00');
     expect(rows[2]).toContain('"10:00');
   });
 });
