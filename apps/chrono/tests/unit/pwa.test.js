@@ -5,6 +5,7 @@ import {
   CACHE_PREFIX,
   isChronoCache,
   isHandledRequest,
+  isTrustedClientMessage,
   precacheUrls,
   shellCacheName,
   staleCaches,
@@ -94,5 +95,32 @@ describe('isHandledRequest', () => {
   test('a write, or a URL that does not parse, is left to the browser', () => {
     expect(isHandledRequest({ method: 'POST', url: `${origin}/chrono/` }, origin)).toBe(false);
     expect(isHandledRequest({ method: 'GET', url: 'not a url' }, origin)).toBe(false);
+  });
+});
+
+describe('isTrustedClientMessage', () => {
+  const worker = { selfOrigin: 'https://me.github.io', scope: 'https://me.github.io/chrono/' };
+  const ok = {
+    origin: 'https://me.github.io',
+    sourceUrl: 'https://me.github.io/chrono/#/projects',
+    type: 'SKIP_WAITING',
+  };
+
+  test.each([
+    ['same origin, page in scope', ok, true],
+    ['the app root itself', { ...ok, sourceUrl: 'https://me.github.io/chrono/' }, true],
+    ['another origin', { ...ok, origin: 'https://evil.example' }, false],
+    ['same origin, another app', { ...ok, sourceUrl: 'https://me.github.io/locavern/' }, false],
+    [
+      'a sibling path sharing the prefix',
+      { ...ok, sourceUrl: 'https://me.github.io/chrono-x/' },
+      false,
+    ],
+    ['missing source', { ...ok, sourceUrl: undefined }, false],
+    ['missing origin', { ...ok, origin: undefined }, false],
+    ['unknown type', { ...ok, type: 'CLAIM' }, false],
+    ['missing type', { ...ok, type: undefined }, false],
+  ])('%s', (_name, message, expected) => {
+    expect(isTrustedClientMessage(message, worker)).toBe(expected);
   });
 });

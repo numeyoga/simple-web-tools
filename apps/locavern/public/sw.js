@@ -41,7 +41,16 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  // The origin is shared by every app: only a page inside this worker's scope may trigger the update.
+  const source = event.source;
+  if (
+    event.data &&
+    event.data.type === 'SKIP_WAITING' &&
+    event.origin === self.location.origin &&
+    source &&
+    typeof source.url === 'string' &&
+    source.url.startsWith(self.registration.scope)
+  ) {
     void self.skipWaiting();
   }
 });

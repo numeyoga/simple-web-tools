@@ -2,7 +2,13 @@
 // the root of the app (a classic script with no import left), registered with the scope of the
 // app's own path only. `__BUILD_ID__` is replaced at build time by a hash of the build output:
 // a new build changes this file, which is what makes the browser look for an update.
-import { isHandledRequest, precacheUrls, shellCacheName, staleCaches } from '../core/pwa.js';
+import {
+  isHandledRequest,
+  isTrustedClientMessage,
+  precacheUrls,
+  shellCacheName,
+  staleCaches,
+} from '../core/pwa.js';
 
 /**
  * The part of the worker scope that this file uses (the `webworker` library is not loaded: the
@@ -11,7 +17,7 @@ import { isHandledRequest, precacheUrls, shellCacheName, staleCaches } from '../
  * @property {{ origin: string }} location
  * @property {{ claim: () => Promise<void> }} clients
  * @property {() => Promise<void>} skipWaiting
- * @property {{ active: unknown }} registration
+ * @property {{ active: unknown, scope: string }} registration
  * @property {(type: string, listener: (event: any) => void) => void} addEventListener
  */
 const worker = /** @type {WorkerScope} */ (/** @type {unknown} */ (self));
@@ -34,9 +40,21 @@ worker.addEventListener('install', (/** @type {ExtendableEventLike} */ event) =>
   );
 });
 
-worker.addEventListener('message', (/** @type {MessageEvent} */ event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') void worker.skipWaiting();
-});
+worker.addEventListener(
+  'message',
+  (/** @type {{ origin: string, data: any, source: { url?: string } | null }} */ event) => {
+    // The origin is shared by every app: only a page inside this worker's scope may trigger the update.
+    const trusted = isTrustedClientMessage(
+      {
+        origin: event.origin,
+        sourceUrl: event.source?.url,
+        type: event.data && event.data.type,
+      },
+      { selfOrigin: worker.location.origin, scope: worker.registration.scope },
+    );
+    if (trusted) void worker.skipWaiting();
+  },
+);
 
 worker.addEventListener('activate', (/** @type {ExtendableEventLike} */ event) => {
   event.waitUntil(
