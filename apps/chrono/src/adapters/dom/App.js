@@ -1,8 +1,17 @@
-// Main shell: sidebar (logo, attendance widget, nav, shortcuts) + main area that swaps the views.
+// Main shell (the AppShell of the Covenant skill): skip link, sidebar (brand, workspace, the four
+// sections), sticky top bar (page title, presence and timers summary, preferences) and the main
+// region that swaps the views. Below 1024 px the sidebar is an off-canvas drawer.
 import { StorageError } from '../idb.js';
 import { createStore } from '../store.js';
+import { allowsSingleKeyShortcut } from '../../core/preferences.js';
+import {
+  getSingleKeyShortcuts,
+  migrateLegacyPreferences,
+  watchPreferences,
+} from '../preferences.js';
 import { WORKSPACES } from '../workspaces.js';
-import { createAttendanceWidget } from './AttendanceWidget.js';
+import { createTopbarStatus } from './AttendanceWidget.js';
+import { openPreferences } from './Preferences.js';
 import { createProjectsView } from './ProjectsView.js';
 import { openQuickAddModal } from './QuickAdd.js';
 import { createReportView } from './ReportView.js';
@@ -32,11 +41,12 @@ export function start(rootEl) {
   /** @type {Record<string, HTMLElement>} */
   const navButtons = {};
 
+  migrateLegacyPreferences();
+  watchPreferences();
+
   /* ---------------- shell ---------------- */
 
-  const widget = createAttendanceWidget(store, {
-    onOpenQuickAdd: () => openQuickAdd(),
-  });
+  const topbarStatus = createTopbarStatus(store, { onOpenQuickAdd: () => openQuickAdd() });
 
   function workspaceChip() {
     const ws = WORKSPACES.getActive();
@@ -45,14 +55,18 @@ export function start(rootEl) {
       'button',
       {
         type: 'button',
-        onclick: () => openWorkspaceManager({ store, toasts }),
+        onclick: () => {
+          // Below 1024 px the drawer closes first, so the dialog gives the focus back to the menu button.
+          closeNav({ focusToggle: true });
+          openWorkspaceManager({ store, toasts });
+        },
         class: 'cv-btn ch-workspace',
       },
       icon('database'),
       el(
         'span',
         { class: 'ch-grow ch-stack' },
-        el('span', { class: 'cv-overline' }, 'Espace de sauvegarde'),
+        el('span', { class: 'ch-meta' }, 'Espace de sauvegarde'),
         el('span', { class: 'ch-ellipsis ch-strong' }, ws.label),
       ),
       list.length > 1 ? UI.Tag(`${list.length}`, { mono: true }) : null,
@@ -61,27 +75,22 @@ export function start(rootEl) {
   }
 
   const navList = el(
-    'div',
+    'ul',
     null,
-    el('div', { class: 'cv-overline cv-sidebar__group' }, 'Espace'),
-    el(
-      'ul',
-      null,
-      ...SECTIONS.map((s) => {
-        const btn = el(
-          'button',
-          {
-            type: 'button',
-            onclick: () => goto(s.id),
-            class: 'cv-nav-item ch-nav-btn',
-          },
-          icon(s.icon),
-          s.label,
-        );
-        navButtons[s.id] = btn;
-        return el('li', null, btn);
-      }),
-    ),
+    ...SECTIONS.map((s) => {
+      const btn = el(
+        'button',
+        {
+          type: 'button',
+          onclick: () => goto(s.id),
+          class: 'cv-nav-item ch-nav-btn',
+        },
+        icon(s.icon),
+        s.label,
+      );
+      navButtons[s.id] = btn;
+      return el('li', null, btn);
+    }),
   );
 
   function paintNav() {
@@ -93,58 +102,74 @@ export function start(rootEl) {
     }
   }
 
-  /* Sidebar: fixed 100vh, in a flex column. Brand + workspaceChip are pinned at the top,
-       widget + nav scroll if needed inside an inner container (min-height:0 is required
-       so that the scroll happens in the sidebar rather than pushing the page), and the
-       Shortcuts block stays glued to the bottom. Guarantees that no overflow triggers a
-       page scroll, even on short screens. */
-  const middleScroll = el('div', { class: 'ch-sidebar-scroll' }, widget.el, navList);
-
+  // The sidebar is navigation only: brand, workspace, then the four sections. Its order is the
+  // same on every view. The skill's own script opens and closes it below 1024 px.
   const sidebar = el(
     'nav',
-    { 'aria-label': 'Navigation', class: 'cv-sidebar ch-sidebar' },
-    // Brand
-    el('div', { class: 'ch-brand ch-shrink-0' }, icon('timer', { weight: 'bold' }), 'Chrono'),
-
-    // Workspace selector (pinned at the top)
-    el('div', { class: 'ch-shrink-0' }, workspaceChip()),
-
-    // Scrollable area: attendance widget + nav
-    middleScroll,
-
-    // Shortcuts footer (pinned at the bottom)
+    { id: 'shell-nav', 'aria-label': 'Navigation principale', class: 'cv-sidebar' },
     el(
       'div',
-      { class: 'ch-shortcuts' },
-      el('div', { class: 'cv-overline' }, 'Raccourcis'),
-      el(
-        'div',
-        { class: 'ch-meta ch-stack ch-gap-2 ch-mt-3' },
-        el(
-          'div',
-          { class: 'ch-row ch-between ch-center' },
-          el('span', null, 'Démarrer / pause'),
-          UI.Kbd('Espace'),
-        ),
-        el(
-          'div',
-          { class: 'ch-row ch-between ch-center' },
-          el('span', null, 'Nouveau chrono'),
-          UI.Kbd('N'),
-        ),
-        el(
-          'div',
-          { class: 'ch-row ch-between ch-center' },
-          el('span', null, 'Tout arrêter'),
-          UI.Kbd('S'),
-        ),
-      ),
+      { class: 'cv-sidebar__brand' },
+      icon('timer', { weight: 'bold', className: 'ch-brand-icon' }),
+      'Chrono',
     ),
+    el('div', { class: 'ch-sidebar-workspace' }, workspaceChip()),
+    navList,
   );
 
-  const main = el('main', { class: 'ch-main' });
+  // The page title is the one h1 of the page (decision G); `goto` writes it.
+  const pageTitle = el('h1', { class: 'cv-topbar__title' });
+  const menuButton = el(
+    'button',
+    {
+      type: 'button',
+      class: 'cv-btn cv-btn--ghost cv-btn--icon cv-shell__menu',
+      'data-cv-nav-toggle': '',
+      'aria-controls': 'shell-nav',
+      'aria-expanded': 'false',
+      'aria-label': 'Menu',
+    },
+    icon('list'),
+  );
+  const topbar = el(
+    'header',
+    { class: 'cv-topbar' },
+    menuButton,
+    pageTitle,
+    el('span', { class: 'cv-topbar__spacer' }),
+    topbarStatus.el,
+    UI.IconButton({ icon: 'gear', label: 'Préférences', onclick: () => openPreferences() }),
+  );
 
-  rootEl.appendChild(el('div', { class: 'ch-app' }, sidebar, main));
+  const main = el('main', {
+    class: 'cv-shell__content',
+    id: 'shell-main',
+    tabindex: -1,
+  });
+
+  const shell = el(
+    'div',
+    { class: 'cv-shell' },
+    el('a', { class: 'cv-skip-link', href: '#shell-main' }, 'Aller au contenu'),
+    sidebar,
+    el('div', { class: 'cv-shell__scrim' }),
+    el('div', { class: 'cv-shell__main' }, topbar, main),
+  );
+
+  rootEl.appendChild(shell);
+
+  /** Closes the drawer of the narrow layout; `focusToggle` gives the focus back to its button. */
+  /** @param {{ focusToggle?: boolean }} [opts] */
+  function closeNav({ focusToggle = false } = {}) {
+    if (!shell.hasAttribute('data-nav-open')) return;
+    shell.removeAttribute('data-nav-open');
+    menuButton.setAttribute('aria-expanded', 'false');
+    if (focusToggle) menuButton.focus();
+  }
+  // From 1024 px the sidebar is fixed: a drawer left open must not keep its state.
+  window.matchMedia('(min-width: 1024px)').addEventListener('change', (e) => {
+    if (e.matches) closeNav();
+  });
 
   paintNav();
 
@@ -209,6 +234,12 @@ export function start(rootEl) {
   /* ---------------- views ---------------- */
   /** @param {string} sectionId */
   function goto(sectionId) {
+    // Picking a section in the drawer closes it; the focus goes to the content, since the
+    // drawer's own button is hidden again.
+    if (shell.hasAttribute('data-nav-open')) {
+      closeNav();
+      main.focus({ preventScroll: true });
+    }
     if (sectionId === currentSection && currentView) return;
     if (currentView && currentView.destroy) currentView.destroy();
     currentSection = sectionId;
@@ -216,6 +247,8 @@ export function start(rootEl) {
 
     const def = SECTIONS.find((s) => s.id === sectionId) ?? SECTIONS[0];
     if (!def) return;
+    pageTitle.textContent = def.label;
+    topbarStatus.el.dataset.view = def.id;
     const factory = def.factory;
     currentView = factory(store, {
       onOpenQuickAdd: () => openQuickAdd(),
@@ -245,29 +278,39 @@ export function start(rootEl) {
   }
 
   /* ---------------- Keyboard shortcuts ---------------- */
-  // Global shortcuts must never steal a key from a control
-  // that uses it: text input, open modal (a native <dialog>: the page behind is inert, "S"
-  // must not stop the timers in the background),
-  // combinations with Alt/Ctrl/Meta (browser or OS shortcuts),
-  // auto-repeat of a held key, and, for Space,
-  // buttons/links/role="button", which the key activates natively.
+  // Single-key shortcuts (Space, N, S) are on by default and the user can turn them off in the
+  // preferences (decision H, WCAG 2.1.4). They never steal a key from a control that uses it:
+  // a text field, an open dialog (a native <dialog>: the page behind is inert, "S" must not stop
+  // the timers in the background) or the open drawer, a combination with Shift, Alt, Ctrl or Meta
+  // (browser or OS shortcuts), the auto-repeat of a held key and, for Space, a button or a link,
+  // which the key activates natively.
   /** @param {KeyboardEvent} e */
-  function shouldIgnoreShortcut(e) {
+  function mayRunShortcut(e) {
     const t = /** @type {HTMLElement | null} */ (e.target);
-    if (t && t.isContentEditable) return true;
-    if (t && t.matches && t.matches('input, textarea, select')) return true;
-    if (document.querySelector('dialog[open]')) return true;
-    if (e.altKey || e.ctrlKey || e.metaKey) return true;
-    if (e.repeat) return true;
-    const isSpaceKey = e.key === ' ' || e.code === 'Space';
-    if (isSpaceKey && t && t.closest && t.closest('button, a[href], [role="button"]')) return true;
-    return false;
+    const inTextField =
+      !!t &&
+      (t.isContentEditable ||
+        !!t.closest?.(
+          'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="combobox"]',
+        ));
+    return allowsSingleKeyShortcut({
+      enabled: getSingleKeyShortcuts(),
+      key: e.key,
+      ctrl: e.ctrlKey,
+      alt: e.altKey,
+      meta: e.metaKey,
+      shift: e.shiftKey,
+      repeat: e.repeat,
+      inTextField,
+      dialogOpen: !!document.querySelector('dialog[open]') || shell.hasAttribute('data-nav-open'),
+      onActivatable: !!t?.closest?.('button, a[href], [role="button"]'),
+    });
   }
 
   window.addEventListener('keydown', (e) => {
     // Every shortcut starts, changes or stops a timer: none of them works in a read-only tab.
     if (store.state.readOnly) return;
-    if (shouldIgnoreShortcut(e)) return;
+    if (!mayRunShortcut(e)) return;
     if (e.key === ' ' || e.code === 'Space') {
       e.preventDefault();
       const actives = store.activeSessions();
@@ -315,27 +358,47 @@ export function start(rootEl) {
   /** @param {'blocked' | 'unavailable'} code */
   function showStorageError(code) {
     const message = STORAGE_ERRORS[code];
+    // The shell is replaced by a framed message: a top bar with the brand, then the message as
+    // the one h1 of the page. Nothing is read or written until the cause is fixed.
     rootEl.replaceChildren(
       el(
-        'main',
-        {
-          role: 'alert',
-          'data-testid': 'storage-error',
-          'data-code': code,
-          class: 'ch-error-screen',
-        },
-        icon('warning', { className: 'ch-warning-text ch-icon-xl' }),
-        el('h1', { class: 'cv-h1 ch-page-title' }, message.title),
-        el('p', { class: 'ch-message' }, message.body),
+        'div',
+        { class: 'cv-shell__main' },
         el(
-          'div',
-          null,
-          UI.Button({
-            variant: 'primary',
-            icon: 'arrow-clockwise',
-            children: 'Recharger la page',
-            onclick: () => location.reload(),
-          }),
+          'header',
+          { class: 'cv-topbar' },
+          el(
+            'span',
+            { class: 'ch-brand' },
+            icon('timer', { weight: 'bold', className: 'ch-brand-icon' }),
+            'Chrono',
+          ),
+        ),
+        el(
+          'main',
+          {
+            class: 'cv-shell__content',
+            id: 'shell-main',
+            'data-testid': 'storage-error',
+            'data-code': code,
+          },
+          el(
+            'div',
+            { role: 'alert', class: 'ch-error-screen' },
+            icon('warning', { className: 'ch-warning-text ch-icon-xl' }),
+            el('h1', { class: 'cv-h1 ch-page-title' }, message.title),
+            el('p', { class: 'ch-message' }, message.body),
+            el(
+              'div',
+              null,
+              UI.Button({
+                variant: 'primary',
+                icon: 'arrow-clockwise',
+                children: 'Recharger la page',
+                onclick: () => location.reload(),
+              }),
+            ),
+          ),
         ),
       ),
     );

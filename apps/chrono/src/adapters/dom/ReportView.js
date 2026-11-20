@@ -319,7 +319,7 @@ export function createReportView(store) {
           el(
             'div',
             null,
-            el('h1', { class: 'cv-h1 ch-page-title' }, weekLabel),
+            el('h2', { class: 'cv-h2 ch-page-title' }, weekLabel),
             el('div', { class: 'ch-meta ch-capitalize ch-mt-1' }, weekDates),
           ),
           UI.IconButton({

@@ -71,9 +71,9 @@ export function createTodosView(store, opts) {
     const { todos } = store.state;
     const open = todos.filter((t) => !t.done).length;
     const done = todos.filter((t) => t.done).length;
+    // The page title is in the top bar: the header keeps the summary.
     headerSlot.replaceChildren(
-      el('h1', { class: 'cv-h1 ch-page-title' }, 'Todos'),
-      el('div', { class: 'ch-meta ch-mt-1' }, `${open} en cours · ${done} terminées`),
+      el('p', { class: 'ch-figure ch-page-title' }, `${open} en cours · ${done} terminées`),
     );
   }
 

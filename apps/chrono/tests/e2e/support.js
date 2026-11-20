@@ -41,7 +41,12 @@ export async function openApp(page, { demo = false, clock = false } = {}) {
   if (clock) await page.clock.install({ time: FROZEN_NOW });
 
   await page.goto('/');
-  await expect(page.getByRole('navigation', { name: 'Navigation' })).toBeVisible();
+  // The app is ready once the first view has set the page title. Below 1024 px the sidebar is a
+  // closed drawer, so it is only expected to be visible from there.
+  await expect(page.getByRole('heading', { level: 1, name: 'Timeline' })).toBeVisible();
+  if ((page.viewportSize()?.width ?? 1280) >= 1024) {
+    await expect(page.getByRole('navigation', { name: 'Navigation principale' })).toBeVisible();
+  }
   if (demo) await loadDemoData(page);
   return { errors, blockedHosts };
 }
@@ -57,17 +62,32 @@ export async function loadDemoData(page) {
 }
 
 /**
+ * Opens a section from the sidebar. Below 1024 px the sidebar is a drawer: the menu button
+ * opens it first, and choosing a section closes it again.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label `Timeline`, `Todos`, `Projets` or `Rapport`
+ */
+export async function goToSection(page, label) {
+  const menu = page.getByRole('button', { name: 'Menu' });
+  if (await menu.isVisible()) await menu.click();
+  await page
+    .getByRole('navigation', { name: 'Navigation principale' })
+    .getByRole('button', { name: label, exact: true })
+    .click();
+}
+
+/**
  * Creates a project from the Projets view (French UI), then comes back to the Timeline.
  * @param {import('@playwright/test').Page} page
  * @param {string} name
  */
 export async function createProject(page, name) {
-  await page.getByRole('button', { name: 'Projets' }).click();
+  await goToSection(page, 'Projets');
   await page.getByRole('button', { name: 'Nouveau projet' }).click();
   await page.getByRole('textbox', { name: 'Nom du projet' }).fill(name);
   await page.getByRole('button', { name: 'Créer', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Timeline' }).click();
+  await goToSection(page, 'Timeline');
 }
 
 /**
@@ -76,7 +96,7 @@ export async function createProject(page, name) {
  * @param {{ description: string, end: string }} session `end` as `HH:MM`
  */
 export async function enterSession(page, { description, end }) {
-  await page.getByRole('button', { name: 'Timeline' }).click();
+  await goToSection(page, 'Timeline');
   await page.getByRole('main').getByRole('button', { name: 'Nouvelle' }).click();
   const addDialog = page.getByRole('dialog', { name: 'Ajouter un chrono' });
   await addDialog.getByRole('radio', { name: 'Saisir manuellement' }).check();
