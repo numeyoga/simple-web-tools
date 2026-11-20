@@ -73,3 +73,19 @@ export function isHandledRequest(request, origin) {
     return false;
   }
 }
+
+/**
+ * Whether a message posted to the worker comes from a page of this app and asks for the one thing
+ * it may ask: `SKIP_WAITING`. The origin is shared by every app (decision 0005), so a page of
+ * another app could otherwise post to this worker; its url is outside this worker's scope.
+ * @param {{ origin?: string, sourceUrl?: string, type?: unknown }} message `sourceUrl` is the url of the sending window client
+ * @param {{ selfOrigin: string, scope: string }} worker
+ */
+export function isTrustedClientMessage({ origin, sourceUrl, type }, { selfOrigin, scope }) {
+  return (
+    type === 'SKIP_WAITING' &&
+    origin === selfOrigin &&
+    typeof sourceUrl === 'string' &&
+    sourceUrl.startsWith(scope)
+  );
+}

@@ -269,6 +269,60 @@ test.describe('PWA', () => {
     await page.evaluate(() => caches.delete('locavern-shell-v4'));
   });
 
+  test('a message from a page outside the worker scope does not activate a waiting worker', async ({
+    context,
+    page,
+  }) => {
+    await page.goto('/');
+    await waitForController(page);
+    // Two workers on a narrower scope (`/assets/`). A tab inside that scope keeps the first one
+    // busy, so the second waits. The tab at `/` is outside the scope, like a page of another app
+    // on the shared origin; the tab in `/assets/` is a page of this app.
+    const manifest = JSON.parse(
+      (await (await page.request.get('/precache-manifest.json')).body()).toString('utf8'),
+    );
+    const asset = manifest.find((/** @type {string} */ f) => /^\.?\/?assets\/.*\.css$/.test(f));
+    const waitUntil = () =>
+      page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration('./assets/');
+        return registration?.waiting?.scriptURL ?? null;
+      });
+    await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.register('./sw.js?v=3', {
+        scope: './assets/',
+      });
+      while (!registration.active) await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    const inside = await context.newPage();
+    await inside.goto(`/${asset.replace(/^\.?\//, '')}`);
+    await inside.evaluate(async () => {
+      while (!navigator.serviceWorker.controller) await new Promise((r) => setTimeout(r, 50));
+    });
+    await page.evaluate(() =>
+      navigator.serviceWorker.register('./sw.js?v=4', { scope: './assets/' }),
+    );
+    await expect.poll(waitUntil).toContain('sw.js?v=4');
+
+    await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration('./assets/');
+      registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    });
+    await page.waitForTimeout(1500);
+    expect(await waitUntil()).toContain('sw.js?v=4'); // ignored: still waiting
+
+    // The same message from a page inside the scope is accepted.
+    await inside.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration('./assets/');
+      registration?.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    });
+    await expect.poll(waitUntil).toBeNull();
+    const active = await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration('./assets/');
+      return registration?.active?.scriptURL;
+    });
+    expect(active).toContain('sw.js?v=4');
+  });
+
   test('a toast offers to reload when a new version is waiting, and reloads on request', async ({
     page,
   }) => {
