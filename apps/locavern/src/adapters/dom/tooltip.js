@@ -497,7 +497,10 @@ function wireTrigger(trigger) {
     if (popId && nextEl instanceof HTMLElement && nextEl.id === popId) {
       nextEl.after(tip);
     } else {
-      trigger.after(tip);
+      // A trigger nested in a button (a decorative icon on a card) gets its tooltip after the
+      // button: a `div` is not valid phrasing content inside a `button`.
+      const host = trigger.parentElement?.closest('button');
+      (host ?? trigger).after(tip);
     }
   } else {
     if (tipText && normalizeText(tip.textContent) !== tipText) {
@@ -524,7 +527,15 @@ function wireTrigger(trigger) {
 
   const currentTip = tip;
 
-  if (supportsInterestFor) {
+  // `interestfor` only works on buttons, links and areas: other triggers (a decorative icon)
+  // take the scripted hover path below.
+  const nativeInterest =
+    supportsInterestFor &&
+    (trigger instanceof HTMLButtonElement ||
+      trigger instanceof HTMLAnchorElement ||
+      trigger instanceof HTMLAreaElement);
+
+  if (nativeInterest) {
     // Native `interestfor` manages hover/focus/hide; close on click/activation so it never covers menus/dialogs
     trigger.addEventListener('pointerdown', () => hideTooltip(trigger, currentTip));
     trigger.addEventListener('click', () => hideTooltip(trigger, currentTip));

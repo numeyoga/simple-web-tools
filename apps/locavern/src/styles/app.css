@@ -1519,8 +1519,8 @@ dialog::backdrop {
   min-width: 0;
 }
 
-/* Priority stripes: the only visual cue of the priority on a calendar card (the accessible
-   name has it as a word). `--cv-<status>-border` is far below 3:1, so the stripes take the
+/* Priority stripes: a colour cue that the priority icon (`.lc-cal-task__prio`) and the accessible
+   name (the word) back up. `--cv-<status>-border` is far below 3:1, so the stripes take the
    status text colours (3:1 or more on the card in both themes). */
 .lc-cal-task--high {
   border-left-color: var(--cv-fg-danger);
@@ -1582,10 +1582,43 @@ dialog::backdrop {
   color: var(--cv-fg);
 }
 
+.lc-cal-task__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cv-space-1);
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* The priority icon, next to the title: it reinforces the stripe with a shape (arrow up, equals,
+   arrow down) in the same status colours as the stripe. Decorative; the card's name has the word. */
+.lc-cal-task__prio {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  /* One title line (text-xs at normal line height) so the icon sits on the first line. */
+  height: calc(var(--cv-text-xs) * var(--cv-leading-normal));
+  font-size: var(--cv-text-sm);
+  cursor: default;
+}
+
+.lc-cal-task__prio--high {
+  color: var(--cv-fg-danger);
+}
+
+.lc-cal-task__prio--medium {
+  color: var(--cv-fg-warning);
+}
+
+.lc-cal-task__prio--low {
+  color: var(--cv-fg-info);
+}
+
 .lc-cal-task__title {
   font-size: var(--cv-text-xs);
   font-weight: var(--cv-weight-medium);
   overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .lc-cal-task__meta {

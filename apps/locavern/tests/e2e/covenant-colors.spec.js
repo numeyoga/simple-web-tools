@@ -253,7 +253,7 @@ test.describe('Covenant colours: whiteboard artwork, calendar stripes and export
     });
   }
 
-  test('calendar stripes keep 3:1 on their surface in both themes, and their words and icons stay', async ({
+  test('calendar stripes and priority icons keep 3:1 on their surface in both themes, and the words and icons stay', async ({
     page,
   }) => {
     // Fixed day: the layout of the week (and which days are weekend) depends on today's date.
@@ -304,6 +304,13 @@ test.describe('Covenant colours: whiteboard artwork, calendar stripes and export
             stripe,
             bgOf(/** @type {Element} */ (card.parentElement)),
           );
+          // The icon next to the title: same role as the stripe, 3:1 as a graphic on the card.
+          const icon = /** @type {Element} */ (card.querySelector('.lc-cal-task__prio i'));
+          rec(
+            `${priority} priority icon on its card`,
+            rgba(getComputedStyle(icon).color),
+            bgOf(card),
+          );
         }
         const slot = /** @type {Element} */ (document.querySelector('.lc-cal-slot--offhours'));
         const slotStripe = rgba(getComputedStyle(slot).borderInlineStartColor);
@@ -338,12 +345,33 @@ test.describe('Covenant colours: whiteboard artwork, calendar stripes and export
         }
         return out;
       });
-      expect(measures).toHaveLength(12);
+      expect(measures).toHaveLength(15);
       const failing = measures
         .filter((m) => m.ratio < 3)
         .map((m) => `${theme}: ${m.what} ${m.ratio.toFixed(2)}`);
       expect(failing).toEqual([]);
       await expectNoA11yViolations(page);
+
+      // The same icons in the month view (cards sit in the day cell, on the cell background).
+      await page.locator('input[name="calendar-view-mode"][value="month"]').check();
+      await expect(page.locator('.lc-cal-task')).toHaveCount(3);
+      const monthIcons = await page.evaluate(() => {
+        const { rgba, bgOf, ratio } = /** @type {any} */ (window).__measure;
+        return ['high', 'medium', 'low'].map((priority) => {
+          const card = /** @type {Element} */ (document.querySelector(`.lc-cal-task--${priority}`));
+          const icon = /** @type {Element} */ (card.querySelector('.lc-cal-task__prio i'));
+          return {
+            what: `month ${priority} priority icon on its card`,
+            ratio: ratio(rgba(getComputedStyle(icon).color), bgOf(card)),
+          };
+        });
+      });
+      expect(
+        monthIcons.filter((m) => m.ratio < 3).map((m) => `${theme}: ${m.what} ${m.ratio}`),
+      ).toEqual([]);
+      await expectNoA11yViolations(page);
+      await page.locator('input[name="calendar-view-mode"][value="week"]').check();
+      await expect(page.locator('.lc-cal-task')).toHaveCount(3);
     }
   });
 });
