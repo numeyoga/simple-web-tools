@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="fr" data-theme="light">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <script src="./theme-init.js"></script>
-    <title>Tâches · Locavern</title>
+    <title>Locavern</title>
     <link rel="icon" href="./favicon.ico" sizes="48x48" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
@@ -14,9 +14,9 @@
   </head>
   <body>
     <div class="cv-shell">
-      <a class="cv-skip-link" href="#shell-main">Aller au contenu</a>
+      <a class="cv-skip-link" href="#shell-main" data-i18n="shell.skipLink"></a>
 
-      <nav class="cv-sidebar" id="shell-nav" aria-label="Navigation principale">
+      <nav class="cv-sidebar" id="shell-nav" data-i18n-attrs="aria-label:shell.mainNav">
         <div class="cv-sidebar__brand">
           <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
             <g transform="translate(2,2)">
@@ -35,56 +35,56 @@
               <circle cx="18" cy="18" r="2" fill="var(--cv-brand-accent)" />
             </g>
           </svg>
-          <span>Locavern</span>
+          <span data-i18n="app.name"></span>
         </div>
 
         <ul>
           <li>
             <a class="cv-nav-item" href="#today" data-nav-view="today">
               <i class="ph ph-sun cv-icon" aria-hidden="true"></i>
-              <span>Aujourd’hui</span>
+              <span data-i18n="common.today"></span>
             </a>
           </li>
           <li>
             <a class="cv-nav-item" href="#tasks" data-nav-view="tasks" aria-current="page">
               <i class="ph ph-list-checks cv-icon" aria-hidden="true"></i>
-              <span>Tâches</span>
+              <span data-i18n="common.tasks"></span>
             </a>
           </li>
           <li>
             <a class="cv-nav-item" href="#projects" data-nav-view="projects">
               <i class="ph ph-folder-open cv-icon" aria-hidden="true"></i>
-              <span>Projets</span>
+              <span data-i18n="common.projects"></span>
             </a>
           </li>
           <li>
             <a class="cv-nav-item" href="#calendar" data-nav-view="calendar">
               <i class="ph ph-calendar-blank cv-icon" aria-hidden="true"></i>
-              <span>Calendrier</span>
+              <span data-i18n="common.calendar"></span>
             </a>
           </li>
           <li>
             <a class="cv-nav-item" href="#notes" data-nav-view="notes">
               <i class="ph ph-notebook cv-icon" aria-hidden="true"></i>
-              <span>Notes</span>
+              <span data-i18n="common.notes"></span>
             </a>
           </li>
           <li>
             <a class="cv-nav-item" href="#whiteboards" data-nav-view="whiteboards">
               <i class="ph ph-chalkboard-simple cv-icon" aria-hidden="true"></i>
-              <span>Tableaux blancs</span>
+              <span data-i18n="common.whiteboards"></span>
             </a>
           </li>
           <li>
             <a class="cv-nav-item" href="#archives" data-nav-view="archives">
               <i class="ph ph-archive cv-icon" aria-hidden="true"></i>
-              <span>Archives</span>
+              <span data-i18n="common.archives"></span>
               <span class="cv-badge lc-nav-badge" id="nav-archives-count" hidden>0</span>
             </a>
           </li>
         </ul>
 
-        <div class="cv-overline cv-sidebar__group">Données</div>
+        <div class="cv-overline cv-sidebar__group" data-i18n="shell.navData"></div>
         <ul>
           <li>
             <button
@@ -94,7 +94,7 @@
               data-cv-open="modal-backup"
             >
               <i class="ph ph-database cv-icon" aria-hidden="true"></i>
-              <span>Sauvegardes</span>
+              <span data-i18n="shell.navBackup"></span>
             </button>
           </li>
           <li>
@@ -105,13 +105,13 @@
               data-cv-open="modal-trash"
             >
               <i class="ph ph-trash cv-icon" aria-hidden="true"></i>
-              <span>Corbeille</span>
+              <span data-i18n="shell.navTrash"></span>
               <span class="cv-badge lc-nav-badge" id="nav-trash-count" hidden>0</span>
             </button>
           </li>
         </ul>
 
-        <div class="cv-overline cv-sidebar__group">Préférences</div>
+        <div class="cv-overline cv-sidebar__group" data-i18n="shell.navPreferences"></div>
         <ul>
           <li>
             <button
@@ -121,7 +121,7 @@
               data-cv-open="modal-preferences"
             >
               <i class="ph ph-sliders-horizontal cv-icon" aria-hidden="true"></i>
-              <span>Affichage</span>
+              <span data-i18n="shell.navDisplay"></span>
             </button>
           </li>
         </ul>
@@ -137,30 +137,33 @@
             data-cv-nav-toggle
             aria-controls="shell-nav"
             aria-expanded="false"
-            aria-label="Ouvrir le menu"
-            data-lc-tooltip="Menu de navigation"
+            data-i18n-attrs="aria-label:shell.openMenu;data-lc-tooltip:shell.navMenu"
           >
             <i class="ph ph-list cv-icon" aria-hidden="true"></i>
           </button>
 
-          <h1 class="cv-topbar__title" id="topbar-title">Tâches</h1>
+          <h1 class="cv-topbar__title" id="topbar-title" data-i18n="common.tasks"></h1>
           <span class="cv-topbar__spacer"></span>
 
           <button
             type="button"
             class="cv-search"
             data-cv-open="cmd-menu"
-            aria-label="Rechercher ou exécuter une commande"
-            data-lc-tooltip="Rechercher ou exécuter une commande (Ctrl+K)"
+            data-i18n-attrs="aria-label:palette.openLabel;data-lc-tooltip:palette.openTooltip"
           >
             <i class="ph ph-magnifying-glass cv-icon" aria-hidden="true"></i>
-            <span class="cv-search__label">Rechercher</span>
+            <span class="cv-search__label" data-i18n="common.search"></span>
             <kbd class="cv-kbd">Ctrl+K</kbd>
           </button>
 
           <label class="cv-check cv-switch lc-theme-switch" for="theme-switch">
-            <input type="checkbox" role="switch" id="theme-switch" aria-label="Thème sombre" />
-            <span class="lc-theme-switch__label">Sombre</span>
+            <input
+              type="checkbox"
+              role="switch"
+              id="theme-switch"
+              data-i18n-attrs="aria-label:shell.darkTheme"
+            />
+            <span class="lc-theme-switch__label" data-i18n="shell.dark"></span>
           </label>
 
           <button
@@ -168,11 +171,10 @@
             class="cv-btn cv-btn--sm"
             id="topbar-backup-btn"
             data-cv-open="modal-backup"
-            aria-label="Sauvegardes et import/export"
-            data-lc-tooltip="Sauvegardes et import/export"
+            data-i18n-attrs="aria-label:shell.backupLabel;data-lc-tooltip:shell.backupLabel"
           >
             <i class="ph ph-export cv-icon" aria-hidden="true"></i>
-            <span class="lc-topbar-btn-label">Sauvegarder</span>
+            <span class="lc-topbar-btn-label" data-i18n="shell.backUp"></span>
           </button>
         </header>
 
@@ -185,7 +187,12 @@
     </div>
 
     <!-- Command Menu (Ctrl+K / Cmd+K) -->
-    <dialog class="cv-cmd" id="cmd-menu" data-cv-shortcut="mod+k" aria-label="Palette de commandes">
+    <dialog
+      class="cv-cmd"
+      id="cmd-menu"
+      data-cv-shortcut="mod+k"
+      data-i18n-attrs="aria-label:palette.title"
+    >
       <div class="cv-combobox" data-cv-inline data-cv-combobox="1">
         <div class="cv-cmd__search">
           <i class="ph ph-magnifying-glass cv-icon" aria-hidden="true"></i>
@@ -195,78 +202,82 @@
             role="combobox"
             aria-expanded="true"
             aria-controls="cmd-list"
-            aria-label="Commande ou recherche"
-            placeholder="Taper une commande ou rechercher"
             autocomplete="off"
+            data-i18n-attrs="aria-label:palette.inputLabel;placeholder:palette.placeholder"
           />
           <kbd class="cv-kbd">esc</kbd>
         </div>
-        <ul class="cv-listbox" id="cmd-list" role="listbox" aria-label="Commandes">
+        <ul
+          class="cv-listbox"
+          id="cmd-list"
+          role="listbox"
+          data-i18n-attrs="aria-label:palette.listLabel"
+        >
           <li class="cv-option" role="option" data-value="view:today">
             <i class="ph ph-sun cv-icon" aria-hidden="true"></i>
-            Aller à Aujourd’hui
+            <span data-i18n="palette.goToday"></span>
           </li>
           <li class="cv-option" role="option" data-value="view:tasks">
             <i class="ph ph-list-checks cv-icon" aria-hidden="true"></i>
-            Aller aux tâches
+            <span data-i18n="palette.goTasks"></span>
           </li>
           <li class="cv-option" role="option" data-value="view:projects">
             <i class="ph ph-folder-open cv-icon" aria-hidden="true"></i>
-            Aller aux projets
+            <span data-i18n="palette.goProjects"></span>
           </li>
           <li class="cv-option" role="option" data-value="view:calendar">
             <i class="ph ph-calendar-blank cv-icon" aria-hidden="true"></i>
-            Aller au calendrier
+            <span data-i18n="palette.goCalendar"></span>
           </li>
           <li class="cv-option" role="option" data-value="view:notes">
             <i class="ph ph-notebook cv-icon" aria-hidden="true"></i>
-            Aller aux notes
+            <span data-i18n="palette.goNotes"></span>
           </li>
           <li class="cv-option" role="option" data-value="view:whiteboards">
             <i class="ph ph-chalkboard-simple cv-icon" aria-hidden="true"></i>
-            Aller aux tableaux blancs
+            <span data-i18n="palette.goWhiteboards"></span>
           </li>
           <li class="cv-option" role="option" data-value="view:archives">
             <i class="ph ph-archive cv-icon" aria-hidden="true"></i>
-            Aller aux archives
+            <span data-i18n="palette.goArchive"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:new-task">
             <i class="ph ph-plus cv-icon" aria-hidden="true"></i>
-            Créer une tâche
+            <span data-i18n="palette.newTask"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:new-project">
             <i class="ph ph-folder-plus cv-icon" aria-hidden="true"></i>
-            Créer un projet
+            <span data-i18n="projects.createCta"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:new-note">
             <i class="ph ph-note-pencil cv-icon" aria-hidden="true"></i>
-            Créer une note
+            <span data-i18n="notes.createCta"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:new-whiteboard">
             <i class="ph ph-chalkboard-simple cv-icon" aria-hidden="true"></i>
-            Créer un tableau blanc
+            <span data-i18n="whiteboards.createCta"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:open-statuses">
             <i class="ph ph-columns cv-icon" aria-hidden="true"></i>
-            Configurer les statuts du Kanban
+            <span data-i18n="palette.statuses"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:open-backup">
             <i class="ph ph-database cv-icon" aria-hidden="true"></i>
-            Ouvrir les sauvegardes
+            <span data-i18n="palette.openBackup"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:open-trash">
             <i class="ph ph-trash cv-icon" aria-hidden="true"></i>
-            Ouvrir la corbeille
+            <span data-i18n="palette.openTrash"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:open-preferences">
             <i class="ph ph-sliders-horizontal cv-icon" aria-hidden="true"></i>
-            Ouvrir les préférences d’affichage
+            <span data-i18n="palette.openPreferences"></span>
           </li>
           <li class="cv-option" role="option" data-value="action:toggle-theme">
             <i class="ph ph-moon cv-icon" aria-hidden="true"></i>
-            Basculer le thème clair/sombre
+            <span data-i18n="palette.toggleTheme"></span>
           </li>
-          <li class="cv-listbox__empty" hidden>Aucun résultat.</li>
+          <li class="cv-listbox__empty" hidden data-i18n="palette.noResults"></li>
         </ul>
       </div>
     </dialog>
@@ -279,13 +290,12 @@
       aria-labelledby="drawer-task-title"
     >
       <header class="cv-drawer__header">
-        <h2 class="cv-drawer__title" id="drawer-task-title">Détails de la tâche</h2>
+        <h2 class="cv-drawer__title" id="drawer-task-title" data-i18n="shell.dialogTask"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -302,13 +312,12 @@
       aria-labelledby="modal-project-title"
     >
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="modal-project-title">Nouveau projet</h2>
+        <h2 class="cv-modal__title" id="modal-project-title" data-i18n="projects.newTitle"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -325,13 +334,12 @@
       aria-labelledby="dialog-note-title"
     >
       <header class="cv-drawer__header">
-        <h2 class="cv-drawer__title" id="dialog-note-title">Nouvelle note</h2>
+        <h2 class="cv-drawer__title" id="dialog-note-title" data-i18n="notes.new"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -348,13 +356,12 @@
       aria-labelledby="dialog-whiteboard-title"
     >
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="dialog-whiteboard-title">Nouveau tableau blanc</h2>
+        <h2 class="cv-modal__title" id="dialog-whiteboard-title" data-i18n="whiteboards.new"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -371,13 +378,16 @@
       aria-labelledby="dialog-whiteboard-max-title"
     >
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="dialog-whiteboard-max-title">Tableau blanc</h2>
+        <h2
+          class="cv-modal__title"
+          id="dialog-whiteboard-max-title"
+          data-i18n="common.whiteboard"
+        ></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -388,13 +398,16 @@
     <!-- Destructive Confirmation Modal -->
     <dialog class="cv-modal" id="modal-confirm" aria-labelledby="modal-confirm-title">
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="modal-confirm-title">Confirmer la suppression</h2>
+        <h2
+          class="cv-modal__title"
+          id="modal-confirm-title"
+          data-i18n="shell.dialogConfirmDelete"
+        ></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -411,40 +424,38 @@
       aria-labelledby="modal-trash-title"
     >
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="modal-trash-title">Corbeille locale</h2>
+        <h2 class="cv-modal__title" id="modal-trash-title" data-i18n="shell.dialogTrash"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
       </header>
       <div class="cv-modal__body" id="modal-trash-body"></div>
       <footer class="cv-modal__footer" id="modal-trash-footer">
-        <button type="button" class="cv-btn" data-cv-close>Fermer</button>
+        <button type="button" class="cv-btn" data-cv-close data-i18n="common.close"></button>
       </footer>
     </dialog>
 
     <!-- Backup & Storage Modal -->
     <dialog class="cv-modal lc-modal--wide" id="modal-backup" aria-labelledby="modal-backup-title">
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="modal-backup-title">Sauvegardes et stockage</h2>
+        <h2 class="cv-modal__title" id="modal-backup-title" data-i18n="shell.dialogBackup"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
       </header>
       <div class="cv-modal__body" id="modal-backup-body"></div>
       <footer class="cv-modal__footer">
-        <button type="button" class="cv-btn" data-cv-close>Fermer</button>
+        <button type="button" class="cv-btn" data-cv-close data-i18n="common.close"></button>
       </footer>
     </dialog>
 
@@ -456,13 +467,12 @@
       aria-labelledby="modal-statuses-title"
     >
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="modal-statuses-title">Statuts du Kanban</h2>
+        <h2 class="cv-modal__title" id="modal-statuses-title" data-i18n="shell.dialogStatuses"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
@@ -479,50 +489,73 @@
       aria-labelledby="modal-preferences-title"
     >
       <header class="cv-modal__header">
-        <h2 class="cv-modal__title" id="modal-preferences-title">Préférences d’affichage</h2>
+        <h2 class="cv-modal__title" id="modal-preferences-title" data-i18n="prefs.title"></h2>
         <button
           type="button"
           class="cv-btn cv-btn--ghost cv-btn--icon"
-          aria-label="Fermer"
           data-cv-close
-          data-lc-tooltip="Fermer"
+          data-i18n-attrs="aria-label:common.close;data-lc-tooltip:common.close"
         >
           <i class="ph ph-x cv-icon" aria-hidden="true"></i>
         </button>
       </header>
       <div class="cv-modal__body">
         <div class="cv-field">
-          <span class="cv-label" aria-hidden="true">Taille du texte</span>
+          <label class="cv-label" for="pref-language" data-i18n="prefs.language"></label>
+          <span class="cv-select">
+            <select
+              class="cv-input"
+              id="pref-language"
+              name="language"
+              aria-describedby="pref-language-hint"
+            >
+              <option value="auto" data-i18n="prefs.languageAuto"></option>
+              <option value="en" data-i18n="prefs.languageEnglish"></option>
+              <option value="fr" data-i18n="prefs.languageFrench"></option>
+            </select>
+          </span>
+          <span class="cv-hint" id="pref-language-hint" data-i18n="prefs.languageHint"></span>
+        </div>
+
+        <div class="cv-field">
+          <span class="cv-label" aria-hidden="true" data-i18n="prefs.textSize"></span>
           <fieldset
             class="cv-segmented"
             data-cv-text-size-control
             aria-describedby="pref-text-size-hint"
           >
-            <legend>Taille du texte</legend>
+            <legend data-i18n="prefs.textSize"></legend>
             <label
               ><input type="radio" name="text-size" value="auto" checked /><span
-                >Automatique</span
-              ></label
-            >
+                data-i18n="prefs.textSizeAuto"
+              ></span
+            ></label>
             <label
-              ><input type="radio" name="text-size" value="standard" /><span>Standard</span></label
-            >
+              ><input type="radio" name="text-size" value="standard" /><span
+                data-i18n="prefs.textSizeStandard"
+              ></span
+            ></label>
             <label
               ><input type="radio" name="text-size" value="comfortable" /><span
-                >Confortable</span
-              ></label
-            >
-            <label><input type="radio" name="text-size" value="large" /><span>Grande</span></label>
+                data-i18n="prefs.textSizeComfortable"
+              ></span
+            ></label>
+            <label
+              ><input type="radio" name="text-size" value="large" /><span
+                data-i18n="prefs.textSizeLarge"
+              ></span
+            ></label>
           </fieldset>
-          <span class="cv-hint" id="pref-text-size-hint">
-            Automatique adapte l’échelle aux grands écrans (×1,125 dès 2000 px, ×1,25 dès 2400 px).
-          </span>
+          <span class="cv-hint" id="pref-text-size-hint" data-i18n="prefs.textSizeHint"></span>
         </div>
 
         <div class="cv-field">
-          <span class="cv-label" id="pref-input-presentation-label" aria-hidden="true">
-            Visuel de saisie par écran
-          </span>
+          <span
+            class="cv-label"
+            id="pref-input-presentation-label"
+            aria-hidden="true"
+            data-i18n="prefs.inputPresentation"
+          ></span>
           <div
             class="lc-pref-input-list"
             role="group"
@@ -530,75 +563,90 @@
             aria-describedby="pref-input-presentation-hint"
           >
             <div class="lc-pref-input-row">
-              <span class="lc-pref-input-row__label" aria-hidden="true">Tâches</span>
+              <span
+                class="lc-pref-input-row__label"
+                aria-hidden="true"
+                data-i18n="common.tasks"
+              ></span>
               <fieldset class="cv-segmented" data-input-screen="tasks">
-                <legend>Visuel de saisie pour Tâches</legend>
+                <legend data-i18n="prefs.inputForTasks"></legend>
                 <label>
                   <input type="radio" name="input-presentation-tasks" value="drawer" checked />
-                  <span>Tiroir latéral</span>
+                  <span data-i18n="prefs.drawer"></span>
                 </label>
                 <label>
                   <input type="radio" name="input-presentation-tasks" value="modal" />
-                  <span>Modale</span>
+                  <span data-i18n="prefs.modal"></span>
                 </label>
               </fieldset>
             </div>
 
             <div class="lc-pref-input-row">
-              <span class="lc-pref-input-row__label" aria-hidden="true">Projets</span>
+              <span
+                class="lc-pref-input-row__label"
+                aria-hidden="true"
+                data-i18n="common.projects"
+              ></span>
               <fieldset class="cv-segmented" data-input-screen="projects">
-                <legend>Visuel de saisie pour Projets</legend>
+                <legend data-i18n="prefs.inputForProjects"></legend>
                 <label>
                   <input type="radio" name="input-presentation-projects" value="drawer" />
-                  <span>Tiroir latéral</span>
+                  <span data-i18n="prefs.drawer"></span>
                 </label>
                 <label>
                   <input type="radio" name="input-presentation-projects" value="modal" checked />
-                  <span>Modale</span>
+                  <span data-i18n="prefs.modal"></span>
                 </label>
               </fieldset>
             </div>
 
             <div class="lc-pref-input-row">
-              <span class="lc-pref-input-row__label" aria-hidden="true">Notes</span>
+              <span
+                class="lc-pref-input-row__label"
+                aria-hidden="true"
+                data-i18n="common.notes"
+              ></span>
               <fieldset class="cv-segmented" data-input-screen="notes">
-                <legend>Visuel de saisie pour Notes</legend>
+                <legend data-i18n="prefs.inputForNotes"></legend>
                 <label>
                   <input type="radio" name="input-presentation-notes" value="drawer" checked />
-                  <span>Tiroir latéral</span>
+                  <span data-i18n="prefs.drawer"></span>
                 </label>
                 <label>
                   <input type="radio" name="input-presentation-notes" value="modal" />
-                  <span>Modale</span>
+                  <span data-i18n="prefs.modal"></span>
                 </label>
               </fieldset>
             </div>
 
             <div class="lc-pref-input-row">
-              <span class="lc-pref-input-row__label" aria-hidden="true">Tableaux blancs</span>
+              <span
+                class="lc-pref-input-row__label"
+                aria-hidden="true"
+                data-i18n="common.whiteboards"
+              ></span>
               <fieldset class="cv-segmented" data-input-screen="whiteboards">
-                <legend>Visuel de saisie pour Tableaux blancs</legend>
+                <legend data-i18n="prefs.inputForWhiteboards"></legend>
                 <label>
                   <input type="radio" name="input-presentation-whiteboards" value="drawer" />
-                  <span>Tiroir latéral</span>
+                  <span data-i18n="prefs.drawer"></span>
                 </label>
                 <label>
                   <input type="radio" name="input-presentation-whiteboards" value="modal" checked />
-                  <span>Modale</span>
+                  <span data-i18n="prefs.modal"></span>
                 </label>
               </fieldset>
             </div>
           </div>
-          <span class="cv-hint" id="pref-input-presentation-hint">
-            Choisissez d’ouvrir la saisie dans un tiroir latéral ou dans une modale pour chaque
-            écran.
-          </span>
+          <span
+            class="cv-hint"
+            id="pref-input-presentation-hint"
+            data-i18n="prefs.inputPresentationHint"
+          ></span>
         </div>
 
         <div class="cv-field">
-          <label class="cv-label" for="pref-toast-duration">
-            Durée des notifications (secondes)
-          </label>
+          <label class="cv-label" for="pref-toast-duration" data-i18n="prefs.toastDuration"></label>
           <input
             class="cv-input cv-input--mono lc-pref-duration-input"
             id="pref-toast-duration"
@@ -613,17 +661,19 @@
             aria-describedby="pref-toast-duration-hint"
           />
           <span class="cv-error" id="pref-toast-duration-error" aria-live="polite" hidden></span>
-          <span class="cv-hint" id="pref-toast-duration-hint">
-            Délai en secondes (1 à 60 s, 6 s par défaut) avant fermeture automatique des
-            notifications de succès et d’information. Les avertissements et erreurs restent affichés
-            jusqu’à fermeture manuelle.
-          </span>
+          <span
+            class="cv-hint"
+            id="pref-toast-duration-hint"
+            data-i18n="prefs.toastDurationHint"
+          ></span>
         </div>
 
         <div class="cv-field">
-          <label class="cv-label" for="pref-trash-retention">
-            Rétention de la corbeille (jours)
-          </label>
+          <label
+            class="cv-label"
+            for="pref-trash-retention"
+            data-i18n="prefs.trashRetention"
+          ></label>
           <input
             class="cv-input cv-input--mono lc-pref-duration-input"
             id="pref-trash-retention"
@@ -638,31 +688,29 @@
             aria-describedby="pref-trash-retention-hint"
           />
           <span class="cv-error" id="pref-trash-retention-error" aria-live="polite" hidden></span>
-          <span class="cv-hint" id="pref-trash-retention-hint">
-            Délai en jours (1 à 365 j, 30 j par défaut) pendant lequel les éléments supprimés sont
-            conservés localement avant purge automatique définitive.
-          </span>
+          <span
+            class="cv-hint"
+            id="pref-trash-retention-hint"
+            data-i18n="prefs.trashRetentionHint"
+          ></span>
         </div>
 
         <div class="cv-field">
-          <span class="cv-label">Colonnes du Kanban</span>
+          <span class="cv-label" data-i18n="statuses.listLabel"></span>
           <div>
             <button type="button" class="cv-btn" id="btn-pref-open-statuses">
               <i class="ph ph-columns cv-icon" aria-hidden="true"></i>
-              Configurer les statuts du Kanban
+              <span data-i18n="palette.statuses"></span>
             </button>
           </div>
-          <span class="cv-hint">
-            Ajoutez, renommez, réordonnez ou supprimez les colonnes de statut affichées dans le
-            Kanban.
-          </span>
+          <span class="cv-hint" data-i18n="prefs.kanbanHint"></span>
         </div>
       </div>
       <footer class="cv-modal__footer">
-        <button type="button" class="cv-btn" data-cv-close>Fermer</button>
+        <button type="button" class="cv-btn" data-cv-close data-i18n="common.close"></button>
       </footer>
     </dialog>
 
-    <section class="cv-toast-region" aria-label="Notifications"></section>
+    <section class="cv-toast-region" data-i18n-attrs="aria-label:shell.notifications"></section>
   </body>
 </html>

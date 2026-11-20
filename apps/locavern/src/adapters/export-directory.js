@@ -4,6 +4,9 @@
  * }} ExportDirectoryHandle
  */
 
+import { LocavernError } from '../core/messages.js';
+import { t } from './i18n.js';
+
 const META_KEY = 'exportDirectory';
 /** @type {ExportDirectoryHandle | null} */
 let directory = null;
@@ -40,8 +43,7 @@ export function getExportDirectoryName() {
 
 /** Must be invoked directly from a user gesture. */
 export async function chooseExportDirectory() {
-  if (!supportsExportDirectory())
-    throw new Error('La sauvegarde dans un dossier est indisponible.');
+  if (!supportsExportDirectory()) throw new LocavernError('errors.exportDirectory.unavailable');
   const picker =
     /** @type {{ showDirectoryPicker: (options: unknown) => Promise<ExportDirectoryHandle> }} */ (
       /** @type {unknown} */ (window)
@@ -49,7 +51,7 @@ export async function chooseExportDirectory() {
   const selected = await picker.showDirectoryPicker({ id: 'locavern-exports', mode: 'readwrite' });
   directory = selected;
   try {
-    if (!database) throw new Error('Stockage indisponible');
+    if (!database) throw new Error('Storage unavailable');
     await database.put('meta', { key: META_KEY, value: selected });
     return { remembered: true };
   } catch {
@@ -69,10 +71,7 @@ export async function ensureExportDirectoryPermission() {
   if (!selected) return;
   const permission = await selected.requestPermission({ mode: 'readwrite' });
   if (permission !== 'granted') {
-    throw new DOMException(
-      'Autorisez l’accès au dossier ou retirez ce dossier dans Sauvegardes.',
-      'NotAllowedError',
-    );
+    throw new DOMException(t('errors.exportDirectory.notAllowed'), 'NotAllowedError');
   }
 }
 
@@ -90,7 +89,7 @@ export async function saveBlobToExportDirectory(blob, filename) {
     /[\\/]/u.test(filename) ||
     Array.from(filename).some((character) => character.charCodeAt(0) < 32)
   ) {
-    throw new TypeError('Nom de fichier invalide.');
+    throw new TypeError('Invalid file name.');
   }
   await ensureExportDirectoryPermission();
   const handle = await selected.getFileHandle(filename, { create: true });

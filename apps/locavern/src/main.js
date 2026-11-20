@@ -1,10 +1,14 @@
 import '@simple-web-tools/covenant';
 import './styles/app.css';
 
-/** @import { LocalRef, ActiveView, AssetMeta, Note, Task, TaskDueFilter, TaskPriority, TaskStatus, TaskStatusFilter, Whiteboard } from './types.d.ts' */
+/** @import { HydratePayload, LocalRef, ActiveView, AssetMeta, Note, Task, TaskDueFilter, TaskPriority, TaskStatus, TaskStatusFilter, Whiteboard } from './types.d.ts' */
 
 import { getTodayIsoDate } from './core/dates.js';
-import { getDefaultInitialTaskStatusId, getTaskStatusMeta } from './core/model.js';
+import {
+  createDefaultTaskStatuses,
+  getDefaultInitialTaskStatusId,
+  getTaskStatusMeta,
+} from './core/model.js';
 import {
   extractNoteSearchText,
   extractTaskSearchText,
@@ -35,6 +39,7 @@ import {
   waitForWriteLock,
 } from './adapters/storage-idb.js';
 import { setupServiceWorkerUpdates } from './adapters/sw-update.js';
+import { translateStaticMarkup } from './adapters/dom/static-text.js';
 import { hideAllTooltips, initTooltips } from './adapters/dom/tooltip.js';
 import {
   initCovenant,
@@ -62,10 +67,27 @@ import { renderTaskListView } from './adapters/dom/task-list-view.js';
 import { renderTodayView } from './adapters/dom/today-view.js';
 import { openWhiteboardDialog } from './adapters/dom/whiteboard-dialog.js';
 import { renderWhiteboardView } from './adapters/dom/whiteboard-view.js';
+import { t } from './adapters/i18n.js';
+import { errorText } from './core/messages.js';
 
 const APP_VERSION = '0.2.0';
 
+/**
+ * A workspace that never saved its Kanban statuses starts with the default ones, named in the
+ * language of the page. Once saved, they keep their names whatever the language becomes.
+ * @param {HydratePayload} payload
+ * @returns {HydratePayload}
+ */
+function withDefaultStatuses(payload) {
+  if (Array.isArray(payload.preferences?.taskStatuses)) return payload;
+  return {
+    ...payload,
+    preferences: { ...payload.preferences, taskStatuses: createDefaultTaskStatuses(t) },
+  };
+}
+
 async function bootstrap() {
+  translateStaticMarkup();
   const viewContainer = document.getElementById('app-view');
   if (!viewContainer) return;
   const rootView = viewContainer;
@@ -80,7 +102,7 @@ async function bootstrap() {
   store.dispatch({
     type: 'hydrate',
     payload: {
-      ...payload,
+      ...withDefaultStatuses(payload),
       readOnly: !lockHandle.acquired,
     },
   });
@@ -157,8 +179,8 @@ async function bootstrap() {
     if (store.getState().readOnly) {
       notify({
         status: 'warning',
-        title: 'Mode lecture seule',
-        text: 'Impossible d’ajouter une image tant qu’un autre onglet détient le verrou.',
+        title: t('shell.readOnly.title'),
+        text: t('shell.readOnly.imageBlocked'),
       });
       return null;
     }
@@ -166,8 +188,8 @@ async function bootstrap() {
     if (!validation.ok) {
       notify({
         status: 'danger',
-        title: 'Image refusée',
-        text: validation.error,
+        title: t('images.rejected'),
+        text: errorText(validation, t, 'errors.image.format'),
       });
       return null;
     }
@@ -178,7 +200,7 @@ async function bootstrap() {
       id: assetId,
       mimeType: validation.mimeType,
       sizeBytes: file.size,
-      filename: (file.name || 'image-locale').slice(0, 255),
+      filename: (file.name || t('images.defaultFilename')).slice(0, 255),
       createdAt: now,
     });
     await saveAssetBlob(db, meta, file);
@@ -599,12 +621,12 @@ async function bootstrap() {
     const fresh = await loadHydrationPayload(db);
     store.dispatch({
       type: 'hydrate',
-      payload: { ...fresh, readOnly: false },
+      payload: { ...withDefaultStatuses(fresh), readOnly: false },
     });
     notify({
       status: 'success',
-      title: 'Édition rétablie',
-      text: 'Cet onglet détient maintenant le verrou d’écriture.',
+      title: t('shell.lock.restoredTitle'),
+      text: t('shell.lock.restoredText'),
     });
   }
 
@@ -614,8 +636,8 @@ async function bootstrap() {
     if (!nextLock.acquired) {
       notify({
         status: 'warning',
-        title: 'Verrou toujours actif',
-        text: 'Un autre onglet utilise encore Locavern en écriture.',
+        title: t('shell.lock.stillTitle'),
+        text: t('shell.lock.stillText'),
       });
       return;
     }
@@ -650,8 +672,8 @@ async function bootstrap() {
         .catch(() => {
           notify({
             status: 'danger',
-            title: 'Erreur de persistance',
-            text: 'Impossible d’enregistrer la modification dans IndexedDB.',
+            title: t('shell.persistError.title'),
+            text: t('shell.persistError.text'),
           });
         })
         .finally(() => {
@@ -761,7 +783,7 @@ async function bootstrap() {
         items.push({
           value: `open:project:${project.id}`,
           label: project.name,
-          meta: 'Projet',
+          meta: t('common.project'),
           icon: 'ph-folder-open',
           searchText: `${project.name} ${project.description}`,
         });
@@ -769,12 +791,12 @@ async function bootstrap() {
 
       for (const task of state.tasks) {
         if (isTaskEffectivelyArchived(task, state.projects)) continue;
-        const projName = selectProjectById(state, task.projectId)?.name ?? 'Projet';
-        const statusLabel = getTaskStatusMeta(task.status, statuses).label;
+        const projName = selectProjectById(state, task.projectId)?.name ?? t('common.project');
+        const statusLabel = getTaskStatusMeta(task.status, statuses, t).label;
         items.push({
           value: `open:task:${task.id}`,
           label: task.title,
-          meta: `Tâche · ${projName} · ${statusLabel}`,
+          meta: t('palette.taskMeta', { project: projName, status: statusLabel }),
           icon: 'ph-check-square',
           searchText: `${extractTaskSearchText(task)} ${projName} ${statusLabel}`,
         });
@@ -786,7 +808,7 @@ async function bootstrap() {
         items.push({
           value: `open:note:${note.id}`,
           label: note.title,
-          meta: projName ? `Note · ${projName}` : 'Note',
+          meta: projName ? t('palette.noteMeta', { project: projName }) : t('common.note'),
           icon: 'ph-notebook',
           searchText: `${extractNoteSearchText(note)} ${projName ?? ''}`,
         });
@@ -798,7 +820,9 @@ async function bootstrap() {
         items.push({
           value: `open:whiteboard:${wb.id}`,
           label: wb.title,
-          meta: projName ? `Tableau blanc · ${projName}` : 'Tableau blanc',
+          meta: projName
+            ? t('palette.whiteboardMeta', { project: projName })
+            : t('common.whiteboard'),
           icon: 'ph-chalkboard-simple',
           searchText: `${extractWhiteboardSearchText(wb)} ${projName ?? ''}`,
         });

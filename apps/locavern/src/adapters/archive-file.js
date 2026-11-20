@@ -8,8 +8,10 @@ import {
   parseEncryptionHeader,
 } from '../core/crypto-archive.js';
 import { ALLOWED_IMAGE_MIMES } from '../core/model.js';
+import { failure } from '../core/messages.js';
 import { MAX_ARCHIVE_BYTES, MAX_ASSET_BYTES } from '../core/schema.js';
 import { saveBlobToExportDirectory } from './export-directory.js';
+import { t } from './i18n.js';
 
 /**
  * Create a ZIP archive Blob containing manifest.json, data.json and assets/*.
@@ -131,7 +133,7 @@ export async function saveArchiveBlob(blob, filename, deps = {}) {
   const downloadFn = deps.fallbackDownload ?? triggerArchiveDownload;
   const types = deps.pickerTypes ?? [
     {
-      description: 'Archive Locavern (ZIP)',
+      description: t('export.zipDescription'),
       accept: { 'application/zip': ['.zip'] },
     },
   ];
@@ -174,18 +176,15 @@ export async function saveArchiveBlob(blob, filename, deps = {}) {
  * @param {{ password?: string }} [options]
  * @returns {Promise<
  *   | { ok: true; manifest: BackupManifest; data: BackupData; blobs: Map<string, Blob>; encrypted: boolean }
- *   | { ok: false; error: string; needsPassword?: boolean; wrongPassword?: boolean }
+ *   | (import('../core/messages.js').Failure & { needsPassword?: boolean; wrongPassword?: boolean })
  * >}
  */
 export async function parseArchiveFile(file, options = {}) {
   if (file.size === 0) {
-    return { ok: false, error: 'Impossible d’importer l’archive. Le fichier est vide.' };
+    return failure('errors.archive.empty');
   }
   if (file.size > MAX_ARCHIVE_BYTES) {
-    return {
-      ok: false,
-      error: 'Impossible d’importer l’archive. Le fichier dépasse la limite de 25 Mio.',
-    };
+    return failure('errors.archive.tooLarge');
   }
 
   /** @type {Record<string, Uint8Array>} */
@@ -194,10 +193,7 @@ export async function parseArchiveFile(file, options = {}) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     entries = unzipSync(bytes);
   } catch {
-    return {
-      ok: false,
-      error: 'Impossible d’ouvrir l’archive. Le fichier ZIP est corrompu ou invalide.',
-    };
+    return failure('errors.archive.corrupt');
   }
 
   let encrypted = false;
@@ -208,10 +204,7 @@ export async function parseArchiveFile(file, options = {}) {
     try {
       rawHeader = JSON.parse(strFromU8(encryptionMetaBytes));
     } catch {
-      return {
-        ok: false,
-        error: 'Métadonnées de chiffrement illisibles dans l’archive.',
-      };
+      return failure('errors.archive.encryptionUnreadable');
     }
     const headerCheck = parseEncryptionHeader(rawHeader);
     if (!headerCheck.ok) {
@@ -219,17 +212,10 @@ export async function parseArchiveFile(file, options = {}) {
     }
     const ciphertextBytes = entries['payload.enc'];
     if (!ciphertextBytes || ciphertextBytes.byteLength < 16) {
-      return {
-        ok: false,
-        error: 'Archive chiffrée incomplète. Le fichier payload.enc est manquant.',
-      };
+      return failure('errors.archive.payloadMissing');
     }
     if (typeof options.password !== 'string' || options.password.length === 0) {
-      return {
-        ok: false,
-        needsPassword: true,
-        error: 'Cette archive est protégée par mot de passe.',
-      };
+      return { ...failure('errors.archive.passwordProtected'), needsPassword: true };
     }
 
     const decrypted = await decryptArchiveBytes(rawHeader, ciphertextBytes, options.password);
@@ -239,23 +225,19 @@ export async function parseArchiveFile(file, options = {}) {
         needsPassword: Boolean(decrypted.wrongPassword),
         ...(decrypted.wrongPassword ? { wrongPassword: true } : {}),
         error: decrypted.error,
+        key: decrypted.key,
+        ...(decrypted.params ? { params: decrypted.params } : {}),
       };
     }
 
     if (decrypted.plaintextZipBytes.byteLength > MAX_ARCHIVE_BYTES) {
-      return {
-        ok: false,
-        error: 'L’archive déchiffrée dépasse la limite autorisée de 25 Mio.',
-      };
+      return failure('errors.archive.decryptedTooLarge');
     }
 
     try {
       entries = unzipSync(decrypted.plaintextZipBytes);
     } catch {
-      return {
-        ok: false,
-        error: 'Archive déchiffrée invalide ou corrompue.',
-      };
+      return failure('errors.archive.decryptedInvalid');
     }
     encrypted = true;
   }
@@ -263,10 +245,7 @@ export async function parseArchiveFile(file, options = {}) {
   const manifestBytes = entries['manifest.json'];
   const dataBytes = entries['data.json'];
   if (!manifestBytes || !dataBytes) {
-    return {
-      ok: false,
-      error: 'Archive incomplète. Les fichiers manifest.json et data.json sont requis.',
-    };
+    return failure('errors.archive.incomplete');
   }
 
   /** @type {unknown} */
@@ -277,10 +256,7 @@ export async function parseArchiveFile(file, options = {}) {
     rawManifest = JSON.parse(strFromU8(manifestBytes));
     rawData = JSON.parse(strFromU8(dataBytes));
   } catch {
-    return {
-      ok: false,
-      error: 'Impossible de lire les données. Le contenu JSON de l’archive est invalide.',
-    };
+    return failure('errors.archive.invalidJson');
   }
 
   /** @type {Map<string, Uint8Array>} */
@@ -322,21 +298,15 @@ export async function parseArchiveFile(file, options = {}) {
 /**
  * Validate a user-selected or pasted image File before storing it locally.
  * @param {File} file
- * @returns {{ ok: true; mimeType: AllowedImageMimeType } | { ok: false; error: string }}
+ * @returns {{ ok: true; mimeType: AllowedImageMimeType } | import('../core/messages.js').Failure}
  */
 export function validateImageFile(file) {
   const mimeType = /** @type {AllowedImageMimeType} */ (file.type);
   if (!ALLOWED_IMAGE_MIMES.has(mimeType)) {
-    return {
-      ok: false,
-      error: 'Format d’image non pris en charge. Utilisez PNG, JPEG, WebP ou GIF.',
-    };
+    return failure('errors.image.format');
   }
   if (file.size === 0 || file.size > MAX_ASSET_BYTES) {
-    return {
-      ok: false,
-      error: 'L’image doit être non vide et ne pas dépasser 5 Mio.',
-    };
+    return failure('errors.image.size');
   }
   return { ok: true, mimeType };
 }

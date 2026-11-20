@@ -7,6 +7,7 @@ import {
   MAX_ASSET_BYTES,
   migrateBackupData,
 } from './schema.js';
+import { failure, frenchText } from './messages.js';
 
 /**
  * Build manifest.json and data.json payloads from the current store state.
@@ -49,22 +50,22 @@ export function buildBackupPayload(state, { now, appVersion }) {
  * Format the elapsed age since the last ZIP backup ISO timestamp.
  * @param {string | null | undefined} lastBackupAt
  * @param {number} [nowMs]
+ * @param {import('./messages.js').TranslateFn} [t] the translator of the interface (French when omitted)
  * @returns {string}
  */
-export function formatBackupAgeLabel(lastBackupAt, nowMs = Date.now()) {
-  if (!lastBackupAt) return 'Aucune sauvegarde ZIP';
+export function formatBackupAgeLabel(lastBackupAt, nowMs = Date.now(), t = frenchText) {
+  if (!lastBackupAt) return t('backup.age.never');
   const parsedMs = Date.parse(lastBackupAt);
-  if (Number.isNaN(parsedMs)) return 'Aucune sauvegarde ZIP';
+  if (Number.isNaN(parsedMs)) return t('backup.age.never');
   const diffMs = Math.max(0, nowMs - parsedMs);
-  if (diffMs < 60_000) return 'À l’instant';
+  if (diffMs < 60_000) return t('backup.age.justNow');
   if (diffMs < 3_600_000) {
-    return `Il y a ${Math.floor(diffMs / 60_000)} min`;
+    return t('backup.age.minutes', { count: Math.floor(diffMs / 60_000) });
   }
   if (diffMs < 86_400_000) {
-    return `Il y a ${Math.floor(diffMs / 3_600_000)} h`;
+    return t('backup.age.hours', { count: Math.floor(diffMs / 3_600_000) });
   }
-  const days = Math.floor(diffMs / 86_400_000);
-  return `Il y a ${days} jour${days > 1 ? 's' : ''}`;
+  return t('backup.age.days', { count: Math.floor(diffMs / 86_400_000) });
 }
 
 /**
@@ -72,31 +73,22 @@ export function formatBackupAgeLabel(lastBackupAt, nowMs = Date.now()) {
  * @param {unknown} rawManifest
  * @param {unknown} rawData
  * @param {ReadonlyMap<string, Uint8Array>} binaryAssets
- * @returns {{ ok: true; data: BackupData } | { ok: false; error: string }}
+ * @returns {{ ok: true; data: BackupData } | import('./messages.js').Failure}
  */
 export function validateArchiveContents(rawManifest, rawData, binaryAssets) {
   if (!rawManifest || typeof rawManifest !== 'object' || Array.isArray(rawManifest)) {
-    return {
-      ok: false,
-      error: 'Impossible d’importer l’archive. Le fichier manifest.json est invalide.',
-    };
+    return failure('errors.backup.manifestInvalid');
   }
   const manifest = /** @type {Record<string, unknown>} */ (rawManifest);
   if (manifest.format !== 'locavern-archive') {
-    return {
-      ok: false,
-      error: 'Archive non reconnue. Ce fichier n’est pas une sauvegarde Locavern.',
-    };
+    return failure('errors.backup.notLocavern');
   }
   if (
     typeof manifest.schemaVersion !== 'number' ||
     manifest.schemaVersion > CURRENT_SCHEMA_VERSION ||
     manifest.schemaVersion < 1
   ) {
-    return {
-      ok: false,
-      error: `Version d’archive non prise en charge (${String(manifest.schemaVersion)}).`,
-    };
+    return failure('errors.backup.archiveVersion', { version: String(manifest.schemaVersion) });
   }
 
   const migrated = migrateBackupData(rawData);
@@ -108,23 +100,14 @@ export function validateArchiveContents(rawManifest, rawData, binaryAssets) {
   for (const meta of migrated.data.assets) {
     const bytes = binaryAssets.get(meta.id);
     if (!bytes) {
-      return {
-        ok: false,
-        error: `Image manquante dans l’archive (${meta.filename}). Restauration annulée.`,
-      };
+      return failure('errors.backup.missingImage', { filename: meta.filename });
     }
     if (bytes.byteLength === 0 || bytes.byteLength > MAX_ASSET_BYTES) {
-      return {
-        ok: false,
-        error: `Taille de fichier invalide pour l’image ${meta.filename}.`,
-      };
+      return failure('errors.backup.imageSize', { filename: meta.filename });
     }
     totalBinaryBytes += bytes.byteLength;
     if (totalBinaryBytes > MAX_ARCHIVE_BYTES) {
-      return {
-        ok: false,
-        error: 'L’archive dépasse la taille totale maximale autorisée (25 Mio).',
-      };
+      return failure('errors.backup.archiveTooLarge');
     }
   }
 

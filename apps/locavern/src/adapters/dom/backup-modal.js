@@ -17,8 +17,31 @@ import {
   replaceAllWithBlobs,
   setLastBackupAt,
 } from '../storage-idb.js';
+import { errorText } from '../../core/messages.js';
 import { closeDialogById, confirmAction, notify } from './app-shell.js';
 import { initTooltips, setTooltip } from './tooltip.js';
+import { i18n, t } from '../i18n.js';
+
+const ONE_DECIMAL = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+const TWO_DECIMALS = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
+/** The counts of an archive or of the data in the "(s)" wording, one function per kind of item. */
+const spelled = {
+  projects: (/** @type {number} */ count) => t('backup.count.sp.projects', { count }),
+  tasks: (/** @type {number} */ count) => t('backup.count.sp.tasks', { count }),
+  notes: (/** @type {number} */ count) => t('backup.count.sp.notes', { count }),
+  whiteboards: (/** @type {number} */ count) => t('backup.count.sp.whiteboards', { count }),
+  assets: (/** @type {number} */ count) => t('backup.count.sp.assets', { count }),
+};
+
+/** The same counts in the plain plural wording. */
+const plain = {
+  projects: (/** @type {number} */ count) => t('backup.count.pl.projects', { count }),
+  tasks: (/** @type {number} */ count) => t('backup.count.pl.tasks', { count }),
+  notes: (/** @type {number} */ count) => t('backup.count.pl.notes', { count }),
+  whiteboards: (/** @type {number} */ count) => t('backup.count.pl.whiteboards', { count }),
+  assets: (/** @type {number} */ count) => t('backup.count.pl.assets', { count }),
+};
 
 /**
  * Format byte sizes into readable Kio / Mio labels.
@@ -26,10 +49,11 @@ import { initTooltips, setTooltip } from './tooltip.js';
  * @returns {string}
  */
 function formatBytes(bytes) {
-  if (bytes === null) return 'Indisponible';
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Kio`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} Mio`;
+  if (bytes === null) return t('backup.unavailable');
+  if (bytes < 1024) return t('backup.bytes.b', { value: i18n.formatNumber(bytes) });
+  if (bytes < 1024 * 1024)
+    return t('backup.bytes.kb', { value: i18n.formatNumber(bytes / 1024, ONE_DECIMAL) });
+  return t('backup.bytes.mb', { value: i18n.formatNumber(bytes / (1024 * 1024), TWO_DECIMALS) });
 }
 
 /**
@@ -67,8 +91,8 @@ function createPasswordField({ id, label, autocomplete, describedBy }) {
   toggleBtn.type = 'button';
   toggleBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon lc-password-toggle';
   toggleBtn.setAttribute('aria-pressed', 'false');
-  toggleBtn.setAttribute('aria-label', `Afficher : ${label}`);
-  setTooltip(toggleBtn, 'Afficher le mot de passe');
+  toggleBtn.setAttribute('aria-label', t('backup.password.show', { label }));
+  setTooltip(toggleBtn, t('backup.password.showTooltip'));
 
   const icon = document.createElement('i');
   icon.className = 'ph ph-eye cv-icon';
@@ -79,8 +103,14 @@ function createPasswordField({ id, label, autocomplete, describedBy }) {
   const setRevealed = (revealed) => {
     input.type = revealed ? 'text' : 'password';
     toggleBtn.setAttribute('aria-pressed', revealed ? 'true' : 'false');
-    toggleBtn.setAttribute('aria-label', revealed ? `Masquer : ${label}` : `Afficher : ${label}`);
-    setTooltip(toggleBtn, revealed ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+    toggleBtn.setAttribute(
+      'aria-label',
+      revealed ? t('backup.password.hide', { label }) : t('backup.password.show', { label }),
+    );
+    setTooltip(
+      toggleBtn,
+      revealed ? t('backup.password.hideTooltip') : t('backup.password.showTooltip'),
+    );
     icon.className = revealed ? 'ph ph-eye-slash cv-icon' : 'ph ph-eye cv-icon';
   };
 
@@ -131,29 +161,29 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     const statsTitle = document.createElement('h3');
     statsTitle.className = 'cv-h4';
     statsTitle.style.margin = '0';
-    statsTitle.textContent = 'État du stockage local';
+    statsTitle.textContent = t('backup.storage.title');
 
     const persistBadge = document.createElement('span');
     persistBadge.className = 'cv-badge cv-badge--info';
     const dot = document.createElement('span');
     dot.className = 'cv-badge__dot';
-    const persistText = document.createTextNode('Stockage standard');
+    const persistText = document.createTextNode(t('backup.storage.standard'));
     persistBadge.append(dot, persistText);
     statsHead.append(statsTitle, persistBadge);
 
     const statsGrid = document.createElement('div');
     statsGrid.className = 'lc-backup-stats';
 
-    /** @type {Array<[string, string]>} */
+    /** @type {Array<[string, string, string]>} */
     const statItems = [
-      ['Projets', String(state.projects.length)],
-      ['Tâches', String(state.tasks.length)],
-      ['Notes', String(state.notes.length)],
-      ['Tableaux blancs', String(state.whiteboards.length)],
-      ['Images locales', String(state.assets.length)],
-      ['Espace utilisé', 'Calcul en cours'],
-      ['Quota estimé', 'Calcul en cours'],
-      ['Dernière sauvegarde ZIP', 'Vérification'],
+      ['projects', t('common.projects'), String(state.projects.length)],
+      ['tasks', t('common.tasks'), String(state.tasks.length)],
+      ['notes', t('common.notes'), String(state.notes.length)],
+      ['whiteboards', t('common.whiteboards'), String(state.whiteboards.length)],
+      ['assets', t('backup.stat.images'), String(state.assets.length)],
+      ['used', t('backup.stat.used'), t('backup.stat.calculating')],
+      ['quota', t('backup.stat.quota'), t('backup.stat.calculating')],
+      ['lastBackup', t('backup.stat.lastBackup'), t('backup.stat.checking')],
     ];
 
     /** @type {HTMLElement | null} */
@@ -163,7 +193,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     /** @type {HTMLElement | null} */
     let lastBackupValueEl = null;
 
-    for (const [label, value] of statItems) {
+    for (const [statId, label, value] of statItems) {
       const box = document.createElement('div');
       box.className = 'lc-stat';
       const l = document.createElement('span');
@@ -172,9 +202,9 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       const v = document.createElement('span');
       v.className = 'lc-stat__value';
       v.textContent = value;
-      if (label === 'Espace utilisé') usageValueEl = v;
-      if (label === 'Quota estimé') quotaValueEl = v;
-      if (label === 'Dernière sauvegarde ZIP') {
+      if (statId === 'used') usageValueEl = v;
+      if (statId === 'quota') quotaValueEl = v;
+      if (statId === 'lastBackup') {
         v.id = 'stat-last-backup-age';
         lastBackupValueEl = v;
       }
@@ -185,13 +215,10 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     /** @param {string | null} isoTimestamp */
     function updateLastBackupUi(isoTimestamp) {
       if (!lastBackupValueEl) return;
-      lastBackupValueEl.textContent = formatBackupAgeLabel(isoTimestamp);
+      lastBackupValueEl.textContent = formatBackupAgeLabel(isoTimestamp, Date.now(), t);
       if (isoTimestamp) {
         try {
-          lastBackupValueEl.title = new Intl.DateTimeFormat('fr-FR', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-          }).format(new Date(isoTimestamp));
+          lastBackupValueEl.title = i18n.formatDateTime(Date.parse(isoTimestamp));
         } catch {
           lastBackupValueEl.title = isoTimestamp;
         }
@@ -213,22 +240,22 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       persistBadge.className = storage.persisted
         ? 'cv-badge cv-badge--success'
         : 'cv-badge cv-badge--info';
-      persistText.nodeValue = storage.persisted ? 'Stockage persistant' : 'Stockage standard';
+      persistText.nodeValue = storage.persisted
+        ? t('backup.storage.persistent')
+        : t('backup.storage.standard');
       if (usageValueEl) usageValueEl.textContent = formatBytes(storage.usageBytes);
       if (quotaValueEl) quotaValueEl.textContent = formatBytes(storage.quotaBytes);
       if (!storage.persisted && storage.supported && !state.readOnly) {
         const reqBtn = document.createElement('button');
         reqBtn.type = 'button';
         reqBtn.className = 'cv-btn cv-btn--sm';
-        reqBtn.textContent = 'Demander la persistance au navigateur';
+        reqBtn.textContent = t('backup.persist.ask');
         reqBtn.addEventListener('click', async () => {
           const res = await inspectStorageStatus({ requestPersist: true });
           notify({
             status: res.persisted ? 'success' : 'info',
-            title: res.persisted ? 'Persistance accordée' : 'Persistance non accordée',
-            text: res.persisted
-              ? 'Le navigateur protégera vos données locales contre l’effacement automatique.'
-              : 'Le navigateur gère encore ce stockage comme standard. Pensez à exporter vos sauvegardes.',
+            title: res.persisted ? t('backup.persist.granted') : t('backup.persist.denied'),
+            text: res.persisted ? t('backup.persist.grantedText') : t('backup.persist.deniedText'),
           });
           renderModalBody();
         });
@@ -242,15 +269,14 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     directorySection.className = 'lc-backup-section';
     const directoryTitle = document.createElement('h3');
     directoryTitle.className = 'cv-h4';
-    directoryTitle.textContent = 'Dossier des exports';
+    directoryTitle.textContent = t('backup.directory.title');
     const directoryStatus = document.createElement('p');
     directoryStatus.className = 'cv-caption';
     directoryStatus.id = 'export-directory-status';
     directoryStatus.setAttribute('role', 'status');
     const directoryHint = document.createElement('p');
     directoryHint.className = 'cv-caption';
-    directoryHint.textContent =
-      'Les archives ZIP, notes Markdown, calendriers et images seront enregistrés dans ce dossier. Un fichier du même nom sera remplacé.';
+    directoryHint.textContent = t('backup.directory.hint');
     const chooseDirectoryBtn = document.createElement('button');
     chooseDirectoryBtn.type = 'button';
     chooseDirectoryBtn.className = 'cv-btn cv-btn--sm';
@@ -259,13 +285,15 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     forgetDirectoryBtn.type = 'button';
     forgetDirectoryBtn.className = 'cv-btn cv-btn--sm';
     forgetDirectoryBtn.id = 'btn-forget-export-directory';
-    forgetDirectoryBtn.textContent = 'Retirer le dossier';
+    forgetDirectoryBtn.textContent = t('backup.directory.forget');
     function updateDirectoryUi() {
       const name = getExportDirectoryName();
       directoryStatus.textContent = name
-        ? `Dossier choisi : ${name}`
-        : 'Aucun dossier choisi : sélecteur de fichier ou téléchargement classique.';
-      chooseDirectoryBtn.textContent = name ? 'Changer de dossier' : 'Choisir un dossier';
+        ? t('backup.directory.chosen', { name })
+        : t('backup.directory.none');
+      chooseDirectoryBtn.textContent = name
+        ? t('backup.directory.change')
+        : t('backup.directory.choose');
       forgetDirectoryBtn.hidden = !name;
     }
     updateDirectoryUi();
@@ -275,13 +303,13 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         const result = await chooseExportDirectory();
         updateDirectoryUi();
         if (!result.remembered)
-          directoryStatus.textContent += ' (Choix valable pour cette session uniquement.)';
+          directoryStatus.textContent += ` ${t('backup.directory.sessionOnly')}`;
       } catch (error) {
         if (!(error instanceof Error && error.name === 'AbortError')) {
           notify({
             status: 'danger',
-            title: 'Dossier indisponible',
-            text: 'Impossible de sélectionner ce dossier. Réessayez.',
+            title: t('backup.directory.unavailable'),
+            text: t('backup.directory.unavailableText'),
           });
         }
       } finally {
@@ -295,8 +323,8 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       } catch {
         notify({
           status: 'danger',
-          title: 'Impossible de retirer le dossier',
-          text: 'Réessayez. Les fichiers sur le disque sont conservés.',
+          title: t('backup.directory.forgetFailed'),
+          text: t('backup.directory.forgetFailedText'),
         });
       }
     });
@@ -304,8 +332,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     if (supportsExportDirectory()) {
       directorySection.append(directoryHint, chooseDirectoryBtn, forgetDirectoryBtn);
     } else {
-      directoryStatus.textContent =
-        'Ce navigateur ne permet pas de choisir un dossier pour les exports. Le téléchargement classique reste disponible.';
+      directoryStatus.textContent = t('backup.directory.unsupported');
     }
 
     // Export section
@@ -314,12 +341,11 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     const exportTitle = document.createElement('h3');
     exportTitle.className = 'cv-h4';
     exportTitle.style.margin = '0';
-    exportTitle.textContent = 'Exporter une archive';
+    exportTitle.textContent = t('backup.export.title');
     const exportDesc = document.createElement('p');
     exportDesc.className = 'cv-caption';
     exportDesc.style.margin = '0';
-    exportDesc.textContent =
-      'Enregistre une archive ZIP contenant vos projets, tâches, notes, tableaux blancs et images locales (sélecteur de fichier natif ou téléchargement).';
+    exportDesc.textContent = t('backup.export.desc');
 
     const encryptCheckLabel = document.createElement('label');
     encryptCheckLabel.className = 'cv-check';
@@ -327,7 +353,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     encryptCheckbox.type = 'checkbox';
     encryptCheckbox.id = 'chk-export-encrypt';
     const encryptCheckText = document.createElement('span');
-    encryptCheckText.textContent = 'Protéger l’archive par un mot de passe (AES-GCM)';
+    encryptCheckText.textContent = t('backup.export.encrypt');
     encryptCheckLabel.append(encryptCheckbox, encryptCheckText);
 
     const encryptFieldsWrap = document.createElement('div');
@@ -337,13 +363,13 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
 
     const exportPasswordField = createPasswordField({
       id: 'input-export-password',
-      label: 'Mot de passe de chiffrement',
+      label: t('backup.export.passwordLabel'),
       autocomplete: 'new-password',
       describedBy: 'export-encrypt-hint',
     });
     const exportConfirmField = createPasswordField({
       id: 'input-export-password-confirm',
-      label: 'Confirmer le mot de passe',
+      label: t('backup.export.confirmLabel'),
       autocomplete: 'new-password',
     });
 
@@ -351,8 +377,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     encryptHint.id = 'export-encrypt-hint';
     encryptHint.className = 'cv-hint';
     encryptHint.style.margin = '0';
-    encryptHint.textContent =
-      'Dérivation PBKDF2-SHA-256 (310 000 itérations) et chiffrement AES-256-GCM. Conservez ce mot de passe : aucune récupération n’est possible sans lui.';
+    encryptHint.textContent = t('backup.export.encryptHint');
 
     const exportEncryptError = document.createElement('span');
     exportEncryptError.id = 'export-encrypt-error';
@@ -404,7 +429,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     const exportIcon = document.createElement('i');
     exportIcon.className = 'ph ph-download-simple cv-icon';
     exportIcon.setAttribute('aria-hidden', 'true');
-    const exportBtnText = document.createTextNode(' Exporter l’archive ZIP');
+    const exportBtnText = document.createTextNode(` ${t('backup.export.button')}`);
     exportBtn.append(exportIcon, exportBtnText);
 
     exportBtn.addEventListener('click', async () => {
@@ -415,7 +440,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
 
       if (useEncryption) {
         if (password.length === 0) {
-          exportErrText.textContent = 'Saisissez un mot de passe pour chiffrer l’archive.';
+          exportErrText.textContent = t('backup.export.passwordRequired');
           exportEncryptError.hidden = false;
           exportPasswordField.input.setAttribute('aria-invalid', 'true');
           exportPasswordField.input.setAttribute(
@@ -426,7 +451,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
           return;
         }
         if (password !== passwordConfirm) {
-          exportErrText.textContent = 'Les deux mots de passe ne correspondent pas.';
+          exportErrText.textContent = t('backup.export.passwordMismatch');
           exportEncryptError.hidden = false;
           exportConfirmField.input.setAttribute('aria-invalid', 'true');
           exportConfirmField.input.setAttribute('aria-describedby', 'export-encrypt-error');
@@ -449,7 +474,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
           ...(useEncryption ? { password } : {}),
         });
         const datePart = now.slice(0, 10);
-        const result = await saveArchiveBlob(zipBlob, `locavern-sauvegarde-${datePart}.zip`);
+        const result = await saveArchiveBlob(zipBlob, `${t('export.slug.backup')}-${datePart}.zip`);
         if (!result.saved) return;
         await setLastBackupAt(db, now);
         updateLastBackupUi(now);
@@ -459,17 +484,21 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         exportConfirmField.resetVisibility();
         notify({
           status: 'success',
-          title: useEncryption ? 'Archive chiffrée exportée' : 'Archive exportée',
-          text: `${current.projects.length} projets, ${current.tasks.length} tâches, ${current.notes.length} notes et ${current.whiteboards.length} tableaux blancs inclus.`,
+          title: useEncryption ? t('backup.export.doneEncrypted') : t('backup.export.done'),
+          text: t('backup.export.included', {
+            items: i18n.formatList([
+              plain.projects(current.projects.length),
+              plain.tasks(current.tasks.length),
+              plain.notes(current.notes.length),
+              plain.whiteboards(current.whiteboards.length),
+            ]),
+          }),
         });
       } catch (error) {
         notify({
           status: 'danger',
-          title: 'Échec de l’export',
-          text:
-            error instanceof Error
-              ? error.message
-              : 'Impossible d’enregistrer l’archive ZIP. Réessayez.',
+          title: t('backup.export.failed'),
+          text: errorText(error, t, 'backup.export.failedText'),
         });
       } finally {
         exportBtn.disabled = false;
@@ -483,19 +512,18 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     const importTitle = document.createElement('h3');
     importTitle.className = 'cv-h4';
     importTitle.style.margin = '0';
-    importTitle.textContent = 'Importer une archive';
+    importTitle.textContent = t('backup.import.title');
     const importDesc = document.createElement('p');
     importDesc.className = 'cv-caption';
     importDesc.style.margin = '0';
-    importDesc.textContent =
-      'Validez un fichier ZIP (clair ou chiffré) puis choisissez de fusionner les éléments, sélectionner des projets ou remplacer les données locales.';
+    importDesc.textContent = t('backup.import.desc');
 
     const fileField = document.createElement('div');
     fileField.className = 'cv-field';
     const fileLabel = document.createElement('label');
     fileLabel.className = 'cv-label';
     fileLabel.htmlFor = 'input-import-archive';
-    fileLabel.textContent = 'Fichier de sauvegarde (.zip)';
+    fileLabel.textContent = t('backup.import.fileLabel');
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.id = 'input-import-archive';
@@ -532,14 +560,22 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       const summary = document.createElement('p');
       summary.className = 'cv-caption';
       summary.style.margin = '0';
-      const prefix = parsed.encrypted ? 'Archive chiffrée déverrouillée' : 'Archive prête';
-      summary.textContent = `${prefix} : ${parsed.data.projects.length} projet(s), ${parsed.data.tasks.length} tâche(s), ${parsed.data.notes.length} note(s), ${parsed.data.whiteboards.length} tableau(x) et ${parsed.data.assets.length} image(s).`;
+      const items = i18n.formatList([
+        spelled.projects(parsed.data.projects.length),
+        spelled.tasks(parsed.data.tasks.length),
+        spelled.notes(parsed.data.notes.length),
+        spelled.whiteboards(parsed.data.whiteboards.length),
+        spelled.assets(parsed.data.assets.length),
+      ]);
+      summary.textContent = parsed.encrypted
+        ? t('backup.import.summaryUnlocked', { items })
+        : t('backup.import.summaryReady', { items });
 
       const modeFieldset = document.createElement('fieldset');
       modeFieldset.className = 'cv-fieldset lc-import-modes';
       const modeLegend = document.createElement('legend');
       modeLegend.className = 'cv-label';
-      modeLegend.textContent = 'Mode d’importation';
+      modeLegend.textContent = t('backup.import.modeLegend');
       modeFieldset.append(modeLegend);
 
       const hasLocalData =
@@ -554,15 +590,15 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       const modeDefs = [
         {
           value: 'merge',
-          label: 'Fusionner tout sans écraser les données locales',
+          label: t('backup.import.modeMerge'),
         },
         {
           value: 'projects',
-          label: 'Importer une sélection de projets sans écraser',
+          label: t('backup.import.modeProjects'),
         },
         {
           value: 'replace',
-          label: 'Remplacer toutes les données locales',
+          label: t('backup.import.modeReplace'),
         },
       ];
 
@@ -590,7 +626,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
 
       const projectSelectionTitle = document.createElement('span');
       projectSelectionTitle.className = 'cv-label';
-      projectSelectionTitle.textContent = 'Projets à importer';
+      projectSelectionTitle.textContent = t('backup.import.projectsTitle');
       projectSelectionWrap.append(projectSelectionTitle);
 
       /** @type {HTMLInputElement[]} */
@@ -599,7 +635,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'cv-caption';
         emptyMsg.style.margin = '0';
-        emptyMsg.textContent = 'Aucun projet dans cette archive.';
+        emptyMsg.textContent = t('backup.import.noProjects');
         projectSelectionWrap.append(emptyMsg);
       } else {
         for (const proj of parsed.data.projects) {
@@ -613,7 +649,14 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
           cb.checked = true;
           cb.setAttribute('data-import-project-id', proj.id);
           const span = document.createElement('span');
-          span.textContent = `${proj.name} (${taskCount} tâche(s), ${noteCount} note(s), ${wbCount} tableau(x))`;
+          span.textContent = t('backup.import.projectLine', {
+            name: proj.name,
+            items: [
+              spelled.tasks(taskCount),
+              spelled.notes(noteCount),
+              spelled.whiteboards(wbCount),
+            ].join(', '),
+          });
           lbl.append(cb, span);
           projectSelectionWrap.append(lbl);
           projectCheckboxes.push(cb);
@@ -632,7 +675,9 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         unassignedCb.id = 'import-include-unassigned';
         unassignedCb.checked = true;
         const span = document.createElement('span');
-        span.textContent = `Inclure les éléments sans projet (${unassignedNotes} note(s), ${unassignedWbs} tableau(x))`;
+        span.textContent = t('backup.import.includeUnassigned', {
+          items: [spelled.notes(unassignedNotes), spelled.whiteboards(unassignedWbs)].join(', '),
+        });
         lbl.append(unassignedCb, span);
         projectSelectionWrap.append(lbl);
       }
@@ -645,7 +690,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       selErrIcon.className = 'ph ph-warning-circle cv-icon';
       selErrIcon.setAttribute('aria-hidden', 'true');
       const selErrText = document.createElement('span');
-      selErrText.textContent = 'Sélectionnez au moins un projet ou les éléments sans projet.';
+      selErrText.textContent = t('backup.import.selectionRequired');
       selectionError.append(selErrIcon, selErrText);
       projectSelectionWrap.append(selectionError);
 
@@ -655,7 +700,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       cancelImportBtn.type = 'button';
       cancelImportBtn.id = 'btn-cancel-import-archive';
       cancelImportBtn.className = 'cv-btn cv-btn--sm';
-      cancelImportBtn.textContent = 'Annuler';
+      cancelImportBtn.textContent = t('common.cancel');
       cancelImportBtn.addEventListener('click', () => {
         importPreviewSlot.replaceChildren();
       });
@@ -671,7 +716,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
             ? 'cv-btn cv-btn--danger cv-btn--sm'
             : 'cv-btn cv-btn--primary cv-btn--sm';
         confirmImportBtn.textContent =
-          selectedMode === 'replace' ? 'Importer et remplacer' : 'Lancer l’import';
+          selectedMode === 'replace' ? t('backup.import.confirmReplace') : t('backup.import.start');
       };
       syncModeUi();
 
@@ -688,9 +733,17 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         if (selectedMode === 'replace') {
           closeDialogById('modal-backup');
           const confirmed = await confirmAction({
-            title: 'Remplacer les données locales ?',
-            message: `Cette archive contient ${parsed.data.projects.length} projets, ${parsed.data.tasks.length} tâches, ${parsed.data.notes.length} notes, ${parsed.data.whiteboards.length} tableaux blancs et ${parsed.data.assets.length} images. Les données actuelles seront remplacées.`,
-            confirmLabel: 'Importer et remplacer',
+            title: t('backup.import.replaceTitle'),
+            message: t('backup.import.replaceConfirm', {
+              items: i18n.formatList([
+                plain.projects(parsed.data.projects.length),
+                plain.tasks(parsed.data.tasks.length),
+                plain.notes(parsed.data.notes.length),
+                plain.whiteboards(parsed.data.whiteboards.length),
+                plain.assets(parsed.data.assets.length),
+              ]),
+            }),
+            confirmLabel: t('backup.import.confirmReplace'),
             danger: true,
           });
           if (!confirmed) return;
@@ -710,8 +763,13 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
           });
           notify({
             status: 'success',
-            title: 'Sauvegarde restaurée',
-            text: `${parsed.data.projects.length} projets et ${parsed.data.tasks.length} tâches importés.`,
+            title: t('backup.import.restored'),
+            text: t('backup.import.restoredText', {
+              items: i18n.formatList([
+                plain.projects(parsed.data.projects.length),
+                plain.tasks(parsed.data.tasks.length),
+              ]),
+            }),
           });
           return;
         }
@@ -748,8 +806,15 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         closeDialogById('modal-backup');
         notify({
           status: 'success',
-          title: 'Archive fusionnée',
-          text: `${merged.projects.length} projet(s), ${merged.tasks.length} tâche(s), ${merged.notes.length} note(s) et ${merged.whiteboards.length} tableau(x) ajoutés sans écrasement.`,
+          title: t('backup.import.merged'),
+          text: t('backup.import.mergedText', {
+            items: i18n.formatList([
+              spelled.projects(merged.projects.length),
+              spelled.tasks(merged.tasks.length),
+              spelled.notes(merged.notes.length),
+              spelled.whiteboards(merged.whiteboards.length),
+            ]),
+          }),
         });
       });
 
@@ -771,11 +836,13 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       const info = document.createElement('p');
       info.className = 'cv-caption';
       info.style.margin = '0';
-      info.textContent = `L’archive « ${encryptedFile.name || 'sauvegarde.zip'} » est chiffrée par mot de passe. Saisissez-le pour vérifier et prévisualiser son contenu.`;
+      info.textContent = t('backup.decrypt.info', {
+        name: encryptedFile.name || t('backup.import.defaultFile'),
+      });
 
       const passwordField = createPasswordField({
         id: 'input-import-password',
-        label: 'Mot de passe de l’archive',
+        label: t('backup.decrypt.passwordLabel'),
         autocomplete: 'off',
       });
 
@@ -797,7 +864,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       cancelBtn.type = 'button';
       cancelBtn.id = 'btn-cancel-decrypt-archive';
       cancelBtn.className = 'cv-btn cv-btn--sm';
-      cancelBtn.textContent = 'Annuler';
+      cancelBtn.textContent = t('common.cancel');
       cancelBtn.addEventListener('click', () => {
         pendingEncryptedFile = null;
         importPreviewSlot.replaceChildren();
@@ -810,7 +877,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       const lockIcon = document.createElement('i');
       lockIcon.className = 'ph ph-lock-open cv-icon';
       lockIcon.setAttribute('aria-hidden', 'true');
-      unlockBtn.append(lockIcon, document.createTextNode(' Déverrouiller l’archive'));
+      unlockBtn.append(lockIcon, document.createTextNode(` ${t('backup.decrypt.unlock')}`));
 
       passwordField.input.addEventListener('input', () => {
         decryptError.hidden = true;
@@ -824,7 +891,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
         if (!pendingEncryptedFile) return;
         const password = passwordField.input.value;
         if (password.length === 0) {
-          decErrText.textContent = 'Saisissez le mot de passe pour déverrouiller cette archive.';
+          decErrText.textContent = t('backup.decrypt.required');
           decryptError.hidden = false;
           passwordField.input.setAttribute('aria-invalid', 'true');
           passwordField.input.setAttribute('aria-describedby', 'import-decrypt-error');
@@ -837,7 +904,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
           const unlocked = await parseArchiveFile(pendingEncryptedFile, { password });
           if (!unlocked.ok) {
             if (unlocked.needsPassword) {
-              decErrText.textContent = unlocked.error;
+              decErrText.textContent = errorText(unlocked, t, 'backup.decrypt.required');
               decryptError.hidden = false;
               passwordField.input.setAttribute('aria-invalid', 'true');
               passwordField.input.setAttribute('aria-describedby', 'import-decrypt-error');
@@ -847,7 +914,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
             }
             pendingEncryptedFile = null;
             importPreviewSlot.replaceChildren();
-            importErrText.textContent = unlocked.error;
+            importErrText.textContent = errorText(unlocked, t, 'errors.backup.invalidJson');
             importError.hidden = false;
             return;
           }
@@ -884,7 +951,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
           renderDecryptPanel(file);
           return;
         }
-        importErrText.textContent = parsed.error;
+        importErrText.textContent = errorText(parsed, t, 'errors.backup.invalidJson');
         importError.hidden = false;
         fileInput.setAttribute('aria-invalid', 'true');
         fileInput.setAttribute('aria-describedby', 'import-archive-error');
@@ -902,20 +969,19 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     const resetTitle = document.createElement('h3');
     resetTitle.className = 'cv-h4';
     resetTitle.style.margin = '0';
-    resetTitle.textContent = 'Réinitialisation locale';
+    resetTitle.textContent = t('backup.reset.title');
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'cv-btn cv-btn--danger';
     resetBtn.id = 'btn-reset-all-data';
     resetBtn.disabled = state.readOnly;
-    resetBtn.textContent = 'Effacer toutes les données locales';
+    resetBtn.textContent = t('backup.reset.button');
     resetBtn.addEventListener('click', async () => {
       closeDialogById('modal-backup');
       const confirmed = await confirmAction({
-        title: 'Effacer toutes les données locales ?',
-        message:
-          'Tous les projets, tâches, notes, tableaux blancs et images stockés sur cet appareil seront définitivement supprimés.',
-        confirmLabel: 'Effacer tout',
+        title: t('backup.reset.confirmTitle'),
+        message: t('backup.reset.confirmText'),
+        confirmLabel: t('backup.reset.confirmLabel'),
         danger: true,
       });
       if (!confirmed) return;
@@ -927,8 +993,8 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       store.dispatch({ type: 'replace_all', payload: emptyPayload });
       notify({
         status: 'info',
-        title: 'Données effacées',
-        text: 'Le stockage local est maintenant vide.',
+        title: t('backup.reset.done'),
+        text: t('backup.reset.doneText'),
       });
     });
     resetSection.append(resetTitle, resetBtn);

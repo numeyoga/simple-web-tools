@@ -1,15 +1,18 @@
+import { createTranslator } from '@simple-web-tools/i18n';
 import { describe, it, expect } from 'vitest';
 import {
   buildWeekCalendarGrid,
   classifyDueDateUrgency,
   computeNextRecurrenceDueDate,
-  formatFullDateFr,
-  formatMonthYearLabel,
-  formatShortDateFr,
   getTodayIsoDate,
   isOffHoursDueTime,
   isOffHoursHour,
 } from '../../src/core/dates.js';
+import { createFormatters } from '../../src/core/format.js';
+import { catalogs } from '../../src/i18n/index.js';
+
+// The labels of the dates are written by the formatters of the language (src/core/format.js).
+const french = createFormatters(createTranslator({ locale: 'fr', catalogs }));
 
 // Generic calendar arithmetic (parsing, shifting, grids, weekends) is tested in packages/dates.
 describe('dates', () => {
@@ -27,13 +30,13 @@ describe('dates', () => {
     const week = buildWeekCalendarGrid('2026-11-15');
     expect(week).toHaveLength(7);
     expect(week[0]?.date).toBe('2026-11-09');
-    expect(week[0]?.weekdayLabel).toBe('Lun');
-    expect(week[6]?.weekdayLabel).toBe('Dim');
+    expect(french.weekdayName(week[0]?.weekdayIndex ?? -1)).toBe('Lun');
+    expect(french.weekdayName(week[6]?.weekdayIndex ?? -1)).toBe('Dim');
     expect(week.map((c) => c.isWeekend)).toEqual([false, false, false, false, false, true, true]);
 
-    expect(formatMonthYearLabel(2026, 11)).toBe('Novembre 2026');
-    expect(formatShortDateFr('2026-11-15', true)).toBe('15 nov. 2026');
-    expect(formatShortDateFr('2026-11-15')).toBe('15 nov.');
+    expect(french.formatMonthYear(2026, 11)).toBe('Novembre 2026');
+    expect(french.formatShortDate('2026-11-15', true)).toBe('15 nov. 2026');
+    expect(french.formatShortDate('2026-11-15')).toBe('15 nov.');
   });
 
   it('classe l’urgence des échéances et formate la date complète', () => {
@@ -43,7 +46,7 @@ describe('dates', () => {
     expect(classifyDueDateUrgency('2026-11-25', '2026-11-15', 'todo')).toBe('later');
     expect(classifyDueDateUrgency('2026-11-10', '2026-11-15', 'done')).toBeNull();
     expect(classifyDueDateUrgency(null, '2026-11-15', 'todo')).toBeNull();
-    expect(formatFullDateFr('2026-11-15')).toBe('Dimanche 15 novembre 2026');
+    expect(french.formatFullDate('2026-11-15')).toBe('Dimanche 15 novembre 2026');
     // Statut terminal personnalisé supprime la classification d’urgence
     expect(classifyDueDateUrgency('2026-11-10', '2026-11-15', 'validated', true)).toBeNull();
   });

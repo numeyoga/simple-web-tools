@@ -19,6 +19,7 @@ import Text from '@tiptap/extension-text';
 import { UndoRedo } from '@tiptap/extensions';
 import { EMPTY_RICH_DOC, sanitizeLinkHref, sanitizeRichTextDoc } from '../core/model.js';
 import { initTooltips, setTooltip } from './dom/tooltip.js';
+import { t } from './i18n.js';
 
 /**
  * Create a custom Tiptap Node for local-only images referenced by IndexedDB assetId.
@@ -63,7 +64,9 @@ function createLocalImageExtension(resolveAssetUrl) {
         const img = document.createElement('img');
         const assetId = typeof node.attrs.assetId === 'string' ? node.attrs.assetId : '';
         img.alt =
-          typeof node.attrs.alt === 'string' && node.attrs.alt ? node.attrs.alt : 'Image locale';
+          typeof node.attrs.alt === 'string' && node.attrs.alt
+            ? node.attrs.alt
+            : t('common.localImage');
         if (assetId) {
           img.dataset.assetId = assetId;
           void resolveAssetUrl(assetId).then((url) => {
@@ -137,7 +140,7 @@ export function mountRichTextEditor({
   const toolbar = document.createElement('div');
   toolbar.className = 'lc-editor__toolbar';
   toolbar.setAttribute('role', 'toolbar');
-  toolbar.setAttribute('aria-label', 'Mise en forme du texte');
+  toolbar.setAttribute('aria-label', t('editor.toolbar'));
 
   const linkBar = document.createElement('div');
   linkBar.className = 'lc-editor__toolbar';
@@ -146,25 +149,25 @@ export function mountRichTextEditor({
   const linkLabel = document.createElement('label');
   linkLabel.className = 'cv-label';
   linkLabel.htmlFor = `${uid}-link-input`;
-  linkLabel.textContent = 'Lien (https://)';
+  linkLabel.textContent = t('editor.linkLabel');
 
   const linkInput = document.createElement('input');
   linkInput.id = `${uid}-link-input`;
   linkInput.type = 'url';
   linkInput.className = 'cv-input';
-  linkInput.placeholder = 'https://exemple.org';
+  linkInput.placeholder = t('editor.linkPlaceholder');
   linkInput.style.flex = '1';
   linkInput.style.minWidth = 'min(100%, 10rem)';
 
   const linkApply = document.createElement('button');
   linkApply.type = 'button';
   linkApply.className = 'cv-btn cv-btn--primary cv-btn--sm';
-  linkApply.textContent = 'Appliquer';
+  linkApply.textContent = t('common.apply');
 
   const linkCancel = document.createElement('button');
   linkCancel.type = 'button';
   linkCancel.className = 'cv-btn cv-btn--sm';
-  linkCancel.textContent = 'Annuler';
+  linkCancel.textContent = t('common.cancel');
 
   linkBar.append(linkLabel, linkInput, linkApply, linkCancel);
 
@@ -310,67 +313,67 @@ export function mountRichTextEditor({
 
   const btnBold = makeToolbarButton({
     icon: 'ph-text-b',
-    label: 'Gras',
+    label: t('editor.bold'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleBold().run(),
   });
   const btnItalic = makeToolbarButton({
     icon: 'ph-text-italic',
-    label: 'Italique',
+    label: t('editor.italic'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleItalic().run(),
   });
   const btnStrike = makeToolbarButton({
     icon: 'ph-text-strikethrough',
-    label: 'Barré',
+    label: t('editor.strike'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleStrike().run(),
   });
   const btnCode = makeToolbarButton({
     icon: 'ph-code',
-    label: 'Code en ligne',
+    label: t('editor.code'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleCode().run(),
   });
   const btnHeading1 = makeToolbarButton({
     icon: 'ph-text-h-one',
-    label: 'Titre 1',
+    label: t('editor.heading1'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
   });
   const btnHeading2 = makeToolbarButton({
     icon: 'ph-text-h-two',
-    label: 'Titre 2',
+    label: t('editor.heading2'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
   });
   const btnHeading3 = makeToolbarButton({
     icon: 'ph-text-h-three',
-    label: 'Titre 3',
+    label: t('editor.heading3'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
   });
   const btnBullet = makeToolbarButton({
     icon: 'ph-list-bullets',
-    label: 'Liste à puces',
+    label: t('editor.bulletList'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleBulletList().run(),
   });
   const btnOrdered = makeToolbarButton({
     icon: 'ph-list-numbers',
-    label: 'Liste numérotée',
+    label: t('editor.orderedList'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleOrderedList().run(),
   });
   const btnTaskList = makeToolbarButton({
     icon: 'ph-check-square',
-    label: 'Liste de contrôle',
+    label: t('tasks.checklist'),
     toggle: true,
     onClick: () => editor.chain().focus().toggleTaskList().run(),
   });
   const btnLink = makeToolbarButton({
     icon: 'ph-link',
-    label: 'Lien',
+    label: t('editor.link'),
     toggle: true,
     onClick: () => {
       const currentHref = editor.getAttributes('link').href;
@@ -383,7 +386,7 @@ export function mountRichTextEditor({
   });
   const btnImage = makeToolbarButton({
     icon: 'ph-image',
-    label: 'Insérer une image locale',
+    label: t('editor.insertImage'),
     onClick: () => fileInput.click(),
   });
 

@@ -1,11 +1,6 @@
 /** @import { AppCommand, AppState, Note, StoreEffect, Task, Whiteboard } from '../../types.d.ts' */
 
-import {
-  diffIsoDays,
-  formatFullDateFr,
-  formatShortDateFr,
-  isOffHoursDueTime,
-} from '../../core/dates.js';
+import { diffIsoDays, isOffHoursDueTime } from '../../core/dates.js';
 import {
   getDefaultTerminalTaskStatusId,
   getTaskRecurrenceLabel,
@@ -14,6 +9,7 @@ import {
 import { selectProjectById, selectTodaySummary } from '../../core/store.js';
 import { notify } from './app-shell.js';
 import { setTooltip } from './tooltip.js';
+import { format, t } from '../i18n.js';
 
 /**
  * Create a Covenant KPI summary tile.
@@ -88,12 +84,12 @@ export function renderTodayView({
   const titleEl = document.createElement('h2');
   titleEl.className = 'cv-heading-2';
   titleEl.style.margin = '0';
-  titleEl.textContent = 'Aujourd’hui';
+  titleEl.textContent = t('common.today');
 
   const subtitle = document.createElement('p');
   subtitle.className = 'cv-caption';
   subtitle.style.margin = '0';
-  subtitle.textContent = formatFullDateFr(summary.todayIso);
+  subtitle.textContent = format.formatFullDate(summary.todayIso);
   titleGroup.append(titleEl, subtitle);
 
   const actionsGroup = document.createElement('div');
@@ -107,7 +103,7 @@ export function renderTodayView({
   const taskIc = document.createElement('i');
   taskIc.className = 'ph ph-plus cv-icon';
   taskIc.setAttribute('aria-hidden', 'true');
-  newTaskBtn.append(taskIc, document.createTextNode('Nouvelle tâche'));
+  newTaskBtn.append(taskIc, document.createTextNode(t('tasks.new')));
   newTaskBtn.addEventListener('click', onNewTask);
 
   const newNoteBtn = document.createElement('button');
@@ -118,7 +114,7 @@ export function renderTodayView({
   const noteIc = document.createElement('i');
   noteIc.className = 'ph ph-note-pencil cv-icon';
   noteIc.setAttribute('aria-hidden', 'true');
-  newNoteBtn.append(noteIc, document.createTextNode('Nouvelle note'));
+  newNoteBtn.append(noteIc, document.createTextNode(t('notes.new')));
   newNoteBtn.addEventListener('click', onNewNote);
 
   const newWbBtn = document.createElement('button');
@@ -129,7 +125,7 @@ export function renderTodayView({
   const wbIc = document.createElement('i');
   wbIc.className = 'ph ph-chalkboard-simple cv-icon';
   wbIc.setAttribute('aria-hidden', 'true');
-  newWbBtn.append(wbIc, document.createTextNode('Nouveau tableau blanc'));
+  newWbBtn.append(wbIc, document.createTextNode(t('whiteboards.new')));
   newWbBtn.addEventListener('click', onNewWhiteboard);
 
   actionsGroup.append(newTaskBtn, newNoteBtn, newWbBtn);
@@ -138,32 +134,32 @@ export function renderTodayView({
   // KPI cards
   const statsRow = document.createElement('div');
   statsRow.className = 'lc-today-stats';
-  statsRow.setAttribute('aria-label', 'Indicateurs du jour');
+  statsRow.setAttribute('aria-label', t('today.statsLabel'));
   statsRow.append(
     createStatCard({
       id: 'today-stat-overdue',
-      label: 'En retard',
+      label: t('common.overdue'),
       count: summary.overdueTasks.length,
       badgeClass: summary.overdueTasks.length > 0 ? 'cv-badge cv-badge--danger' : 'cv-badge',
       icon: 'ph-warning-circle',
     }),
     createStatCard({
       id: 'today-stat-due-today',
-      label: 'Pour aujourd’hui',
+      label: t('today.stat.dueToday'),
       count: summary.dueTodayTasks.length,
       badgeClass: summary.dueTodayTasks.length > 0 ? 'cv-badge cv-badge--warning' : 'cv-badge',
       icon: 'ph-sun',
     }),
     createStatCard({
       id: 'today-stat-upcoming',
-      label: 'Sous 7 jours',
+      label: t('common.within7Days'),
       count: summary.upcomingTasks.length,
       badgeClass: summary.upcomingTasks.length > 0 ? 'cv-badge cv-badge--accent' : 'cv-badge',
       icon: 'ph-calendar-blank',
     }),
     createStatCard({
       id: 'today-stat-high-prio',
-      label: 'Priorités hautes',
+      label: t('today.highPriority'),
       count: summary.highPriorityTasks.length,
       badgeClass: summary.highPriorityTasks.length > 0 ? 'cv-badge cv-badge--danger' : 'cv-badge',
       icon: 'ph-flag',
@@ -251,10 +247,13 @@ export function renderTodayView({
         const moonIc = document.createElement('i');
         moonIc.className = 'ph ph-moon cv-icon';
         moonIc.setAttribute('aria-hidden', 'true');
-        timeBadge.append(moonIc, document.createTextNode(` ${task.dueTime}`));
-        timeBadge.setAttribute('title', 'Créneau 18h–7h');
+        timeBadge.append(
+          moonIc,
+          document.createTextNode(` ${format.formatTimeOfDay(task.dueTime)}`),
+        );
+        timeBadge.setAttribute('title', t('common.offHoursSlot'));
       } else {
-        timeBadge.textContent = task.dueTime;
+        timeBadge.textContent = format.formatTimeOfDay(task.dueTime);
       }
       side.append(timeBadge);
     }
@@ -266,7 +265,10 @@ export function renderTodayView({
       const rIc = document.createElement('i');
       rIc.className = 'ph ph-arrows-clockwise cv-icon';
       rIc.setAttribute('aria-hidden', 'true');
-      recBadge.append(rIc, document.createTextNode(` ${getTaskRecurrenceLabel(task.recurrence)}`));
+      recBadge.append(
+        rIc,
+        document.createTextNode(` ${getTaskRecurrenceLabel(task.recurrence, t)}`),
+      );
       side.append(recBadge);
     }
 
@@ -286,8 +288,8 @@ export function renderTodayView({
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
-      editBtn.setAttribute('aria-label', `Modifier « ${task.title} »`);
-      setTooltip(editBtn, 'Modifier');
+      editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
+      setTooltip(editBtn, t('common.edit'));
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
@@ -300,8 +302,8 @@ export function renderTodayView({
       const doneBtn = document.createElement('button');
       doneBtn.type = 'button';
       doneBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
-      doneBtn.setAttribute('aria-label', `Marquer « ${task.title} » comme terminée`);
-      setTooltip(doneBtn, 'Marquer terminée');
+      doneBtn.setAttribute('aria-label', t('today.markDoneNamed', { title: task.title }));
+      setTooltip(doneBtn, t('today.markDone'));
       const checkIc = document.createElement('i');
       checkIc.className = 'ph ph-check cv-icon';
       checkIc.setAttribute('aria-hidden', 'true');
@@ -318,11 +320,11 @@ export function renderTodayView({
         if (spawned) {
           notify({
             status: 'success',
-            title: 'Prochaine occurrence créée',
+            title: t('tasks.nextOccurrenceTitle'),
             text: spawned.dueDate ? `${spawned.title} (${spawned.dueDate})` : spawned.title,
           });
         } else {
-          notify({ status: 'success', title: 'Tâche terminée', text: task.title });
+          notify({ status: 'success', title: t('tasks.completedTitle'), text: task.title });
         }
       });
       side.append(doneBtn);
@@ -347,20 +349,20 @@ export function renderTodayView({
   // 1. Overdue section
   const overdueSec = createSectionCard({
     id: 'today-overdue-section',
-    title: 'Tâches en retard',
+    title: t('today.overdue.title'),
     icon: 'ph-warning-circle',
     count: summary.overdueTasks.length,
     badgeClass: summary.overdueTasks.length > 0 ? 'cv-badge cv-badge--danger' : 'cv-badge',
   });
   if (summary.overdueTasks.length === 0) {
-    appendEmptyMessage(overdueSec.list, 'Aucune tâche en retard.');
+    appendEmptyMessage(overdueSec.list, t('today.overdue.empty'));
   } else {
     for (const task of summary.overdueTasks) {
       const daysLate = task.dueDate ? Math.abs(diffIsoDays(summary.todayIso, task.dueDate)) : 0;
-      const lateLabel =
-        daysLate === 1
-          ? `1 j de retard (${formatShortDateFr(task.dueDate ?? '')})`
-          : `${daysLate} j de retard (${formatShortDateFr(task.dueDate ?? '')})`;
+      const lateLabel = t('today.lateBy', {
+        count: daysLate,
+        date: format.formatShortDate(task.dueDate ?? ''),
+      });
       overdueSec.list.append(
         createTaskListItem(task, {
           rightBadgeLabel: lateLabel,
@@ -375,19 +377,19 @@ export function renderTodayView({
   const nearTasks = [...summary.dueTodayTasks, ...summary.upcomingTasks];
   const upcomingSec = createSectionCard({
     id: 'today-upcoming-section',
-    title: 'Échéances proches',
+    title: t('today.upcoming.title'),
     icon: 'ph-calendar-blank',
     count: nearTasks.length,
     badgeClass: summary.dueTodayTasks.length > 0 ? 'cv-badge cv-badge--warning' : 'cv-badge',
   });
   if (nearTasks.length === 0) {
-    appendEmptyMessage(upcomingSec.list, 'Aucune échéance prévue dans les 7 prochains jours.');
+    appendEmptyMessage(upcomingSec.list, t('today.upcoming.empty'));
   } else {
     for (const task of nearTasks) {
       const isToday = task.dueDate === summary.todayIso;
       upcomingSec.list.append(
         createTaskListItem(task, {
-          rightBadgeLabel: isToday ? 'Aujourd’hui' : formatShortDateFr(task.dueDate ?? ''),
+          rightBadgeLabel: isToday ? t('common.today') : format.formatShortDate(task.dueDate ?? ''),
           rightBadgeClass: isToday ? 'cv-badge cv-badge--warning' : 'cv-badge cv-badge--accent',
           iconName: isToday ? 'ph-sun' : 'ph-clock',
         }),
@@ -398,17 +400,17 @@ export function renderTodayView({
   // 3. High priority tasks section
   const prioSec = createSectionCard({
     id: 'today-priority-section',
-    title: 'Priorités hautes',
+    title: t('today.highPriority'),
     icon: 'ph-flag',
     count: summary.highPriorityTasks.length,
     badgeClass: summary.highPriorityTasks.length > 0 ? 'cv-badge cv-badge--danger' : 'cv-badge',
   });
   if (summary.highPriorityTasks.length === 0) {
-    appendEmptyMessage(prioSec.list, 'Aucune tâche ouverte de priorité haute.');
+    appendEmptyMessage(prioSec.list, t('today.highPriorityEmpty'));
   } else {
     for (const task of summary.highPriorityTasks) {
-      const statusMeta = getTaskStatusMeta(task.status, configuredStatuses);
-      const dueTxt = task.dueDate ? ` · ${formatShortDateFr(task.dueDate)}` : '';
+      const statusMeta = getTaskStatusMeta(task.status, configuredStatuses, t);
+      const dueTxt = task.dueDate ? ` · ${format.formatShortDate(task.dueDate)}` : '';
       prioSec.list.append(
         createTaskListItem(task, {
           rightBadgeLabel: `${statusMeta.label}${dueTxt}`,
@@ -421,17 +423,17 @@ export function renderTodayView({
   // 4. Recent items section (tasks, notes, whiteboards)
   const recentSec = createSectionCard({
     id: 'today-recent-section',
-    title: 'Éléments récents',
+    title: t('today.recent.title'),
     icon: 'ph-clock-counter-clockwise',
     count: summary.recentItems.length,
   });
   if (summary.recentItems.length === 0) {
-    appendEmptyMessage(recentSec.list, 'Aucune activité récente enregistrée.');
+    appendEmptyMessage(recentSec.list, t('today.recent.empty'));
   } else {
     const kindMeta = {
-      task: { label: 'Tâche', icon: 'ph-check-square' },
-      note: { label: 'Note', icon: 'ph-notebook' },
-      whiteboard: { label: 'Tableau blanc', icon: 'ph-chalkboard-simple' },
+      task: { label: t('common.task'), icon: 'ph-check-square' },
+      note: { label: t('common.note'), icon: 'ph-notebook' },
+      whiteboard: { label: t('common.whiteboard'), icon: 'ph-chalkboard-simple' },
     };
     for (const item of summary.recentItems) {
       const li = document.createElement('li');
@@ -485,8 +487,8 @@ export function renderTodayView({
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
-        editBtn.setAttribute('aria-label', `Modifier « ${item.title} »`);
-        setTooltip(editBtn, 'Modifier');
+        editBtn.setAttribute('aria-label', t('common.editNamed', { title: item.title }));
+        setTooltip(editBtn, t('common.edit'));
         const editIc = document.createElement('i');
         editIc.className = 'ph ph-pencil-simple cv-icon';
         editIc.setAttribute('aria-hidden', 'true');

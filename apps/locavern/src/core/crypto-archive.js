@@ -1,3 +1,5 @@
+import { LocavernError, failure } from './messages.js';
+
 export const ENCRYPTED_ARCHIVE_FORMAT = 'locavern-encrypted-archive';
 export const ENCRYPTED_ARCHIVE_VERSION = 1;
 export const DEFAULT_PBKDF2_ITERATIONS = 310_000;
@@ -58,7 +60,7 @@ export function base64ToBytes(base64) {
 function requireWebCrypto() {
   const webCrypto = globalThis.crypto;
   if (!webCrypto || typeof webCrypto.getRandomValues !== 'function' || !webCrypto.subtle) {
-    throw new Error('L’API Web Crypto est indisponible dans ce navigateur.');
+    throw new LocavernError('errors.encryption.webCryptoUnavailable');
   }
   return webCrypto;
 }
@@ -110,26 +112,19 @@ async function deriveArchiveAesKey(webCrypto, password, salt, iterations, usages
  * @param {unknown} raw
  * @returns {
  *   | { ok: true; header: EncryptedArchiveHeader; saltBytes: Uint8Array<ArrayBuffer>; ivBytes: Uint8Array<ArrayBuffer> }
- *   | { ok: false; error: string }
+ *   | import('./messages.js').Failure
  * }
  */
 export function parseEncryptionHeader(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { ok: false, error: 'Métadonnées de chiffrement invalides.' };
+    return failure('errors.encryption.invalidHeader');
   }
   const obj = /** @type {Record<string, unknown>} */ (raw);
   if (obj.format !== ENCRYPTED_ARCHIVE_FORMAT) {
-    return {
-      ok: false,
-      error:
-        'Format de chiffrement non reconnu. Ce fichier n’est pas une archive chiffrée Locavern.',
-    };
+    return failure('errors.encryption.unknownFormat');
   }
   if (obj.version !== ENCRYPTED_ARCHIVE_VERSION) {
-    return {
-      ok: false,
-      error: `Version de chiffrement non prise en charge (${String(obj.version)}).`,
-    };
+    return failure('errors.encryption.version', { version: String(obj.version) });
   }
   if (
     obj.kdf !== 'PBKDF2' ||
@@ -137,10 +132,7 @@ export function parseEncryptionHeader(raw) {
     obj.cipher !== 'AES-GCM' ||
     obj.keyLength !== 256
   ) {
-    return {
-      ok: false,
-      error: 'Paramètres cryptographiques non pris en charge dans l’archive.',
-    };
+    return failure('errors.encryption.parameters');
   }
   const iterations = obj.iterations;
   if (
@@ -149,13 +141,10 @@ export function parseEncryptionHeader(raw) {
     iterations < MIN_PBKDF2_ITERATIONS ||
     iterations > MAX_PBKDF2_ITERATIONS
   ) {
-    return {
-      ok: false,
-      error: 'Nombre d’itérations PBKDF2 invalide dans l’archive chiffrée.',
-    };
+    return failure('errors.encryption.archiveIterations');
   }
   if (typeof obj.salt !== 'string' || typeof obj.iv !== 'string') {
-    return { ok: false, error: 'Sel ou vecteur d’initialisation manquant dans l’archive.' };
+    return failure('errors.encryption.missingSalt');
   }
   const saltBytes = base64ToBytes(obj.salt);
   const ivBytes = base64ToBytes(obj.iv);
@@ -165,7 +154,7 @@ export function parseEncryptionHeader(raw) {
     !ivBytes ||
     ivBytes.byteLength !== IV_BYTES
   ) {
-    return { ok: false, error: 'Sel ou vecteur d’initialisation corrompu dans l’archive.' };
+    return failure('errors.encryption.corruptSalt');
   }
 
   return {
@@ -195,7 +184,7 @@ export function parseEncryptionHeader(raw) {
  */
 export async function encryptArchiveBytes(plainZipBytes, password, options = {}) {
   if (typeof password !== 'string' || password.length === 0) {
-    throw new Error('Le mot de passe de chiffrement ne peut pas être vide.');
+    throw new LocavernError('errors.encryption.emptyPassword');
   }
   const iterations = options.iterations ?? DEFAULT_PBKDF2_ITERATIONS;
   if (
@@ -203,7 +192,7 @@ export async function encryptArchiveBytes(plainZipBytes, password, options = {})
     iterations < MIN_PBKDF2_ITERATIONS ||
     iterations > MAX_PBKDF2_ITERATIONS
   ) {
-    throw new Error('Nombre d’itérations PBKDF2 hors limites autorisées.');
+    throw new LocavernError('errors.encryption.iterationsOutOfRange');
   }
 
   const webCrypto = requireWebCrypto();
@@ -248,7 +237,7 @@ export async function encryptArchiveBytes(plainZipBytes, password, options = {})
  * @param {string} password
  * @returns {Promise<
  *   | { ok: true; plaintextZipBytes: Uint8Array<ArrayBuffer> }
- *   | { ok: false; wrongPassword?: boolean; error: string }
+ *   | (import('./messages.js').Failure & { wrongPassword?: boolean })
  * >}
  */
 export async function decryptArchiveBytes(rawHeader, ciphertextBytes, password) {
@@ -257,17 +246,10 @@ export async function decryptArchiveBytes(rawHeader, ciphertextBytes, password) 
     return parsedHeader;
   }
   if (!(ciphertextBytes instanceof Uint8Array) || ciphertextBytes.byteLength < 16) {
-    return {
-      ok: false,
-      error: 'Données chiffrées manquantes ou corrompues dans l’archive.',
-    };
+    return failure('errors.encryption.missingData');
   }
   if (typeof password !== 'string' || password.length === 0) {
-    return {
-      ok: false,
-      wrongPassword: true,
-      error: 'Saisissez le mot de passe pour déverrouiller cette archive.',
-    };
+    return { ...failure('errors.encryption.enterPassword'), wrongPassword: true };
   }
 
   const webCrypto = requireWebCrypto();
@@ -292,10 +274,6 @@ export async function decryptArchiveBytes(rawHeader, ciphertextBytes, password) 
     );
     return { ok: true, plaintextZipBytes: new Uint8Array(plainBuf) };
   } catch {
-    return {
-      ok: false,
-      wrongPassword: true,
-      error: 'Mot de passe incorrect ou archive endommagée.',
-    };
+    return { ...failure('errors.encryption.wrongPassword'), wrongPassword: true };
   }
 }

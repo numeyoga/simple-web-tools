@@ -3,20 +3,36 @@
 import { parseIsoDate, parseTimeHhMm, shiftIsoDate } from './dates.js';
 import {
   DEFAULT_TASK_STATUSES,
+  createDefaultTaskStatuses,
   getTaskStatusMeta,
   isInitialTaskStatus,
   isTerminalTaskStatus,
 } from './model.js';
+import { frenchText } from './messages.js';
 import { extractRichTextPlainText } from './search.js';
 
 const utf8Encoder = new TextEncoder();
 
-/** @type {Readonly<Record<TaskPriority, { label: string; icsPriority: number }>>} */
+/**
+ * The RFC 5545 PRIORITY of each priority: a protocol value, the same in every language.
+ * @type {Readonly<Record<TaskPriority, { icsPriority: number }>>}
+ */
 const PRIORITY_INFO = {
-  high: { label: 'Haute', icsPriority: 1 },
-  medium: { label: 'Moyenne', icsPriority: 5 },
-  low: { label: 'Basse', icsPriority: 9 },
+  high: { icsPriority: 1 },
+  medium: { icsPriority: 5 },
+  low: { icsPriority: 9 },
 };
+
+/**
+ * The name of a priority in the description of an event.
+ * @param {TaskPriority} priority
+ * @param {import('./messages.js').TranslateFn} t
+ */
+function priorityName(priority, t) {
+  if (priority === 'high') return t('priority.high');
+  if (priority === 'low') return t('priority.low');
+  return t('priority.medium');
+}
 
 /**
  * Escape RFC 5545 TEXT values (\, ;, ,, and line breaks).
@@ -117,18 +133,21 @@ function toSafeUidPart(id) {
 /**
  * Build a readable plain-text description block for a task event.
  * @param {Task} task
- * @param {readonly TaskStatusConfig[]} [statuses]
- * @param {string | null} [projectName]
+ * @param {readonly TaskStatusConfig[] | undefined} statuses
+ * @param {string | null} projectName
+ * @param {import('./messages.js').TranslateFn} t
  * @returns {string}
  */
-function buildTaskDescription(task, statuses, projectName) {
-  const statusMeta = getTaskStatusMeta(task.status, statuses);
-  const prioMeta = PRIORITY_INFO[task.priority] ?? PRIORITY_INFO.medium;
+function buildTaskDescription(task, statuses, projectName, t) {
+  const statusMeta = getTaskStatusMeta(task.status, statuses, t);
   /** @type {string[]} */
   const sections = [];
 
-  const metaParts = [`Statut : ${statusMeta.label}`, `Priorité : ${prioMeta.label}`];
-  if (projectName) metaParts.unshift(`Projet : ${projectName}`);
+  const metaParts = [
+    t('export.ics.status', { value: statusMeta.label }),
+    t('export.ics.priority', { value: priorityName(task.priority, t) }),
+  ];
+  if (projectName) metaParts.unshift(t('export.ics.project', { value: projectName }));
   sections.push(metaParts.join(' · '));
 
   const bodyText = extractRichTextPlainText(task.descriptionDoc);
@@ -138,7 +157,7 @@ function buildTaskDescription(task, statuses, projectName) {
 
   if (task.checklist.length > 0) {
     const items = task.checklist.map((item) => `${item.done ? '[x]' : '[ ]'} ${item.text}`);
-    sections.push(`Sous-tâches :\n${items.join('\n')}`);
+    sections.push(`${t('export.ics.subtasks')}\n${items.join('\n')}`);
   }
 
   return sections.join('\n\n');
@@ -146,7 +165,9 @@ function buildTaskDescription(task, statuses, projectName) {
 
 /**
  * Build an RFC 5545 iCalendar (.ics) string for all dated non-archived tasks in the input list.
- * Tasks without a valid `dueDate` are excluded.
+ * Tasks without a valid `dueDate` are excluded. Only the calendar name and the description of
+ * each event are text for the user, written in the language of `t`: the protocol fields are the
+ * same in every language.
  *
  * @param {readonly Task[]} tasks
  * @param {readonly Project[]} projects
@@ -154,13 +175,16 @@ function buildTaskDescription(task, statuses, projectName) {
  *   calName?: string;
  *   statuses?: readonly TaskStatusConfig[];
  *   now?: string;
- * }} [opts]
+ *   t?: import('./messages.js').TranslateFn;
+ *   locale?: string;
+ * }} [opts] `t` is the translator of the interface (French when omitted), `locale` orders the titles
  * @returns {{ icsContent: string; exportedCount: number }}
  */
 export function buildTasksIcsCalendar(tasks, projects, opts = {}) {
-  const calName = opts.calName ?? 'Locavern — Échéances';
+  const t = opts.t ?? frenchText;
+  const calName = opts.calName ?? t('export.ics.calendarName');
   const nowIso = opts.now ?? new Date().toISOString();
-  const statuses = opts.statuses ?? DEFAULT_TASK_STATUSES;
+  const statuses = opts.statuses ?? createDefaultTaskStatuses(t);
   const projectsById = new Map(projects.map((p) => [p.id, p]));
 
   /** @type {Task[]} */
@@ -179,7 +203,7 @@ export function buildTasksIcsCalendar(tasks, projects, opts = {}) {
     if (cmpDate !== 0) return cmpDate;
     const cmpTime = (a.dueTime ?? '').localeCompare(b.dueTime ?? '');
     if (cmpTime !== 0) return cmpTime;
-    return a.title.localeCompare(b.title, 'fr');
+    return a.title.localeCompare(b.title, opts.locale ?? 'fr');
   });
 
   /** @type {string[]} */
@@ -200,7 +224,7 @@ export function buildTasksIcsCalendar(tasks, projects, opts = {}) {
     const projectName = project?.name ?? null;
     const prioInfo = PRIORITY_INFO[task.priority] ?? PRIORITY_INFO.medium;
     const dtStamp = formatIcsUtcStamp(task.updatedAt || nowIso, nowIso);
-    const description = buildTaskDescription(task, statuses, projectName);
+    const description = buildTaskDescription(task, statuses, projectName, t);
 
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:locavern-task-${toSafeUidPart(task.id)}@locavern.local`);

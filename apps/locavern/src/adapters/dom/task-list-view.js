@@ -10,12 +10,13 @@ import {
 import { selectAllTags, selectProjectById, selectProjects, selectTasks } from '../../core/store.js';
 import { confirmAction, notify } from './app-shell.js';
 import { createTaskWorkspaceHeader } from './task-workspace-header.js';
+import { format, t } from '../i18n.js';
 
 /** @type {Record<TaskPriority, { label: string; badgeClass: string }>} */
 const PRIORITY_META = {
-  low: { label: 'Basse', badgeClass: 'cv-badge' },
-  medium: { label: 'Moyenne', badgeClass: 'cv-badge cv-badge--warning' },
-  high: { label: 'Haute', badgeClass: 'cv-badge cv-badge--danger' },
+  low: { label: t('priority.low'), badgeClass: 'cv-badge' },
+  medium: { label: t('priority.medium'), badgeClass: 'cv-badge cv-badge--warning' },
+  high: { label: t('priority.high'), badgeClass: 'cv-badge cv-badge--danger' },
 };
 
 /**
@@ -92,18 +93,16 @@ export function renderTaskListView({
     const title = document.createElement('p');
     title.className = 'cv-empty__title';
     title.textContent =
-      state.projects.length === 0
-        ? 'Créez un premier projet pour commencer'
-        : 'Aucun projet actif pour le moment';
+      state.projects.length === 0 ? t('common.createFirstProject') : t('common.noActiveProject');
 
     const desc = document.createElement('p');
-    desc.textContent = 'Chaque tâche est rattachée à un projet actif local sur cet appareil.';
+    desc.textContent = t('tasks.emptyText');
 
     const cta = document.createElement('button');
     cta.type = 'button';
     cta.className = 'cv-btn cv-btn--primary';
     cta.disabled = state.readOnly;
-    cta.textContent = 'Créer un projet';
+    cta.textContent = t('projects.createCta');
     cta.addEventListener('click', onOpenNewProject);
 
     empty.append(iconBox, title, desc, cta);
@@ -120,7 +119,7 @@ export function renderTaskListView({
   const searchLabel = document.createElement('label');
   searchLabel.className = 'cv-label';
   searchLabel.htmlFor = 'list-search-input';
-  searchLabel.textContent = 'Rechercher';
+  searchLabel.textContent = t('common.search');
   const searchGroup = document.createElement('div');
   searchGroup.className = 'cv-input-group';
   const searchIcon = document.createElement('i');
@@ -130,7 +129,7 @@ export function renderTaskListView({
   searchInput.id = 'list-search-input';
   searchInput.type = 'search';
   searchInput.className = 'cv-input';
-  searchInput.placeholder = 'Titre, description, checklist';
+  searchInput.placeholder = t('common.searchPlaceholder');
   searchInput.value = filters.query;
   searchGroup.append(searchIcon, searchInput);
   searchField.append(searchLabel, searchGroup);
@@ -140,7 +139,7 @@ export function renderTaskListView({
   const statusLabel = document.createElement('label');
   statusLabel.className = 'cv-label';
   statusLabel.htmlFor = 'list-status-filter';
-  statusLabel.textContent = 'Statut';
+  statusLabel.textContent = t('common.status');
   const statusWrap = document.createElement('div');
   statusWrap.className = 'cv-select';
   const statusSelect = document.createElement('select');
@@ -148,10 +147,10 @@ export function renderTaskListView({
   statusSelect.className = 'cv-input';
   /** @type {Array<[string, string]>} */
   const statusOptions = [
-    ['all', 'Tous les statuts'],
+    ['all', t('tasks.allStatuses')],
     ...state.preferences.taskStatuses.map((s) => /** @type {[string, string]} */ ([s.id, s.label])),
-    ['__none__', 'Sans statut'],
-    ['__unknown__', 'Statut inconnu'],
+    ['__none__', t('statuses.none')],
+    ['__unknown__', t('statuses.unknownShort')],
   ];
   for (const [val, lbl] of statusOptions) {
     const opt = document.createElement('option');
@@ -172,7 +171,7 @@ export function renderTaskListView({
   const priorityLabel = document.createElement('label');
   priorityLabel.className = 'cv-label';
   priorityLabel.htmlFor = 'list-priority-filter';
-  priorityLabel.textContent = 'Priorité';
+  priorityLabel.textContent = t('common.priority');
   const priorityWrap = document.createElement('div');
   priorityWrap.className = 'cv-select';
   const prioritySelect = document.createElement('select');
@@ -180,10 +179,10 @@ export function renderTaskListView({
   prioritySelect.className = 'cv-input';
   /** @type {Array<[string, string]>} */
   const priorityOptions = [
-    ['all', 'Toutes les priorités'],
-    ['high', 'Haute'],
-    ['medium', 'Moyenne'],
-    ['low', 'Basse'],
+    ['all', t('common.allPriorities')],
+    ['high', t('priority.high')],
+    ['medium', t('priority.medium')],
+    ['low', t('priority.low')],
   ];
   for (const [val, lbl] of priorityOptions) {
     const opt = document.createElement('option');
@@ -200,7 +199,7 @@ export function renderTaskListView({
   const sortLabel = document.createElement('label');
   sortLabel.className = 'cv-label';
   sortLabel.htmlFor = 'list-sort-select';
-  sortLabel.textContent = 'Tri';
+  sortLabel.textContent = t('tasks.sort');
   const sortWrap = document.createElement('div');
   sortWrap.className = 'cv-select';
   const sortSelect = document.createElement('select');
@@ -208,9 +207,9 @@ export function renderTaskListView({
   sortSelect.className = 'cv-input';
   /** @type {Array<[string, string]>} */
   const sortOptions = [
-    ['position', 'Ordre Kanban'],
-    ['dueDate', 'Échéance'],
-    ['priority', 'Priorité'],
+    ['position', t('tasks.sortKanban')],
+    ['dueDate', t('common.dueDate')],
+    ['priority', t('common.priority')],
   ];
   for (const [val, lbl] of sortOptions) {
     const opt = document.createElement('option');
@@ -227,7 +226,7 @@ export function renderTaskListView({
   const tagLabel = document.createElement('label');
   tagLabel.className = 'cv-label';
   tagLabel.htmlFor = 'list-tag-filter';
-  tagLabel.textContent = 'Étiquette';
+  tagLabel.textContent = t('common.tag');
   const tagWrap = document.createElement('div');
   tagWrap.className = 'cv-select';
   const tagSelect = document.createElement('select');
@@ -236,7 +235,7 @@ export function renderTaskListView({
   const allTagsList = selectAllTags(state);
   const allTagOpt = document.createElement('option');
   allTagOpt.value = 'all';
-  allTagOpt.textContent = 'Toutes les étiquettes';
+  allTagOpt.textContent = t('common.allTags');
   tagSelect.append(allTagOpt);
   for (const tag of allTagsList) {
     const opt = document.createElement('option');
@@ -265,7 +264,7 @@ export function renderTaskListView({
   const quickLabel = document.createElement('label');
   quickLabel.className = 'lc-sr-only';
   quickLabel.htmlFor = 'list-quick-add-input';
-  quickLabel.textContent = 'Ajout rapide d’une tâche';
+  quickLabel.textContent = t('tasks.quickAddLabel');
 
   const quickInput = document.createElement('input');
   quickInput.id = 'list-quick-add-input';
@@ -273,7 +272,7 @@ export function renderTaskListView({
   quickInput.className = 'cv-input lc-quick-add__input';
   quickInput.maxLength = 200;
   quickInput.disabled = state.readOnly;
-  quickInput.placeholder = 'Ajout rapide d’une tâche…';
+  quickInput.placeholder = t('tasks.quickAddPlaceholder');
 
   /** @type {HTMLSelectElement | null} */
   let quickProjectSelect = null;
@@ -282,7 +281,7 @@ export function renderTaskListView({
     quickProjectSelect.id = 'list-quick-add-project';
     quickProjectSelect.className = 'cv-input lc-quick-add__project';
     quickProjectSelect.disabled = state.readOnly;
-    quickProjectSelect.setAttribute('aria-label', 'Projet cible pour l’ajout rapide');
+    quickProjectSelect.setAttribute('aria-label', t('tasks.quickAddProject'));
     for (const proj of activeProjects) {
       const opt = document.createElement('option');
       opt.value = proj.id;
@@ -297,7 +296,7 @@ export function renderTaskListView({
   quickSubmitBtn.id = 'list-quick-add-submit';
   quickSubmitBtn.className = 'cv-btn cv-btn--primary cv-btn--sm';
   quickSubmitBtn.disabled = state.readOnly;
-  quickSubmitBtn.textContent = 'Ajouter rapidement';
+  quickSubmitBtn.textContent = t('tasks.quickAddSubmit');
 
   let quickComposing = false;
   quickInput.addEventListener('compositionstart', () => {
@@ -339,7 +338,7 @@ export function renderTaskListView({
       dueDate: null,
       now: new Date().toISOString(),
     });
-    notify({ status: 'success', title: 'Tâche ajoutée', text: cleanTitle });
+    notify({ status: 'success', title: t('tasks.added'), text: cleanTitle });
     requestAnimationFrame(() => {
       document.getElementById('list-quick-add-input')?.focus();
     });
@@ -376,15 +375,14 @@ export function renderTaskListView({
       iconBox.append(ic);
       const title = document.createElement('p');
       title.className = 'cv-empty__title';
-      title.textContent = 'Aucune tâche trouvée';
+      title.textContent = t('tasks.noneFoundTitle');
       const desc = document.createElement('p');
-      desc.textContent =
-        'Ajoutez une nouvelle tâche ou ajustez les filtres actifs pour afficher vos éléments.';
+      desc.textContent = t('tasks.noneFoundText');
       const cta = document.createElement('button');
       cta.type = 'button';
       cta.className = 'cv-btn cv-btn--primary';
       cta.disabled = currentState.readOnly;
-      cta.textContent = 'Nouvelle tâche';
+      cta.textContent = t('tasks.new');
       cta.addEventListener('click', () => onOpenTaskDrawer(undefined, { mode: 'edit' }));
       empty.append(iconBox, title, desc, cta);
       tableSlot.replaceChildren(empty);
@@ -406,20 +404,20 @@ export function renderTaskListView({
     const caption = document.createElement('caption');
     caption.id = 'task-table-caption';
     caption.textContent = selectedProject
-      ? `Tâches — ${selectedProject.name} (${tasks.length})`
-      : `Toutes les tâches (${tasks.length})`;
+      ? t('tasks.tableTitleProject', { project: selectedProject.name, count: tasks.length })
+      : t('tasks.tableTitleAll', { count: tasks.length });
     table.append(caption);
 
     const thead = document.createElement('thead');
     const headRow = document.createElement('tr');
     /** @type {Array<[string, boolean]>} */
     const cols = [
-      ['Tâche', false],
-      ['Projet', false],
-      ['Statut', false],
-      ['Priorité', false],
-      ['Échéance', true],
-      ['Actions', false],
+      [t('common.task'), false],
+      [t('common.project'), false],
+      [t('common.status'), false],
+      [t('common.priority'), false],
+      [t('common.dueDate'), true],
+      [t('common.actions'), false],
     ];
     for (const [label, isNum] of cols) {
       const th = document.createElement('th');
@@ -434,13 +432,17 @@ export function renderTaskListView({
     /** @type {Record<'overdue' | 'today' | 'this_week', { label: string; badgeClass: string; iconName: string }>} */
     const URGENCY_META = {
       overdue: {
-        label: 'En retard',
+        label: t('common.overdue'),
         badgeClass: 'cv-badge cv-badge--danger',
         iconName: 'ph-warning-circle',
       },
-      today: { label: 'Aujourd’hui', badgeClass: 'cv-badge cv-badge--warning', iconName: 'ph-sun' },
+      today: {
+        label: t('common.today'),
+        badgeClass: 'cv-badge cv-badge--warning',
+        iconName: 'ph-sun',
+      },
       this_week: {
-        label: 'Cette semaine',
+        label: t('common.thisWeek'),
         badgeClass: 'cv-badge cv-badge--accent',
         iconName: 'ph-calendar-blank',
       },
@@ -449,7 +451,7 @@ export function renderTaskListView({
     const tbody = document.createElement('tbody');
     for (const task of tasks) {
       const tr = document.createElement('tr');
-      const statusMeta = getTaskStatusMeta(task.status, configuredStatuses);
+      const statusMeta = getTaskStatusMeta(task.status, configuredStatuses, t);
       const statusRole = getTaskStatusRole(task.status, configuredStatuses);
       if (!statusMeta.known) {
         tr.classList.add('lc-task-row--unmapped');
@@ -471,7 +473,7 @@ export function renderTaskListView({
         tagList.className = 'lc-tags-inline';
         if (task.recurrence) {
           const recBadge = makeBadge(
-            getTaskRecurrenceLabel(task.recurrence),
+            getTaskRecurrenceLabel(task.recurrence, t),
             'cv-badge cv-badge--info',
             { iconName: 'ph-arrows-clockwise' },
           );
@@ -488,7 +490,8 @@ export function renderTaskListView({
       }
 
       const tdProject = document.createElement('td');
-      tdProject.textContent = selectProjectById(currentState, task.projectId)?.name ?? 'Projet';
+      tdProject.textContent =
+        selectProjectById(currentState, task.projectId)?.name ?? t('common.project');
 
       const tdStatus = document.createElement('td');
       const statusCellWrap = document.createElement('span');
@@ -503,13 +506,13 @@ export function renderTaskListView({
         const roleTag = document.createElement('span');
         roleTag.className = 'cv-badge cv-badge--accent';
         roleTag.dataset.statusRole = 'initial';
-        roleTag.textContent = 'Initial';
+        roleTag.textContent = t('common.initial');
         statusCellWrap.append(roleTag);
       } else if (statusRole === 'terminal') {
         const roleTag = document.createElement('span');
         roleTag.className = 'cv-badge cv-badge--success';
         roleTag.dataset.statusRole = 'terminal';
-        roleTag.textContent = 'Terminal';
+        roleTag.textContent = t('common.terminal');
         statusCellWrap.append(roleTag);
       }
       tdStatus.append(statusCellWrap);
@@ -528,7 +531,7 @@ export function renderTaskListView({
       tdDue.className = 'cv-num';
       const dueText = task.dueDate
         ? task.dueTime
-          ? `${task.dueDate} · ${task.dueTime}`
+          ? `${task.dueDate} · ${format.formatTimeOfDay(task.dueTime)}`
           : task.dueDate
         : '';
       if (
@@ -547,9 +550,13 @@ export function renderTaskListView({
         dateSpan.textContent = dueText || '—';
         wrapDue.append(dateSpan);
         if (isOffHoursDueTime(task.dueTime)) {
-          const nightBadge = makeBadge('18h–7h', 'cv-badge cv-badge--info lc-offhours-pill', {
-            iconName: 'ph-moon',
-          });
+          const nightBadge = makeBadge(
+            t('common.offHoursRange'),
+            'cv-badge cv-badge--info lc-offhours-pill',
+            {
+              iconName: 'ph-moon',
+            },
+          );
           nightBadge.dataset.offhours = 'true';
           wrapDue.append(nightBadge);
         }
@@ -574,7 +581,7 @@ export function renderTaskListView({
       quickStatus.className = 'cv-input';
       quickStatus.style.width = 'auto';
       quickStatus.style.minHeight = 'var(--cv-row-sm)';
-      quickStatus.setAttribute('aria-label', `Changer le statut de « ${task.title} »`);
+      quickStatus.setAttribute('aria-label', t('tasks.changeStatusNamed', { title: task.title }));
       quickStatus.disabled = currentState.readOnly;
 
       if (statusMeta.kind === 'unknown' && task.status) {
@@ -587,7 +594,7 @@ export function renderTaskListView({
 
       const noneOpt = document.createElement('option');
       noneOpt.value = '';
-      noneOpt.textContent = 'Sans statut';
+      noneOpt.textContent = t('statuses.none');
       quickStatus.append(noneOpt);
 
       for (const statusCfg of configuredStatuses) {
@@ -610,7 +617,7 @@ export function renderTaskListView({
         if (spawned) {
           notify({
             status: 'success',
-            title: 'Prochaine occurrence créée',
+            title: t('tasks.nextOccurrenceTitle'),
             text: spawned.dueDate ? `${spawned.title} (${spawned.dueDate})` : spawned.title,
           });
         }
@@ -619,24 +626,24 @@ export function renderTaskListView({
       const consultBtn = document.createElement('button');
       consultBtn.type = 'button';
       consultBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
-      consultBtn.textContent = 'Consulter';
-      consultBtn.setAttribute('aria-label', `Consulter « ${task.title} »`);
+      consultBtn.textContent = t('common.consult');
+      consultBtn.setAttribute('aria-label', t('common.consultQuoted', { title: task.title }));
       consultBtn.addEventListener('click', () => onOpenTaskDrawer(task, { mode: 'view' }));
 
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
       editBtn.disabled = currentState.readOnly;
-      editBtn.textContent = 'Modifier';
-      editBtn.setAttribute('aria-label', `Modifier « ${task.title} »`);
+      editBtn.textContent = t('common.edit');
+      editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
       editBtn.addEventListener('click', () => onOpenTaskDrawer(task, { mode: 'edit' }));
 
       const archiveBtn = document.createElement('button');
       archiveBtn.type = 'button';
       archiveBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
       archiveBtn.disabled = currentState.readOnly;
-      archiveBtn.textContent = 'Archiver';
-      archiveBtn.setAttribute('aria-label', `Archiver « ${task.title} »`);
+      archiveBtn.textContent = t('common.archive');
+      archiveBtn.setAttribute('aria-label', t('common.archiveQuoted', { title: task.title }));
       archiveBtn.addEventListener('click', () => {
         store.dispatch({
           type: 'toggle_archive_task',
@@ -644,20 +651,20 @@ export function renderTaskListView({
           archived: true,
           now: new Date().toISOString(),
         });
-        notify({ status: 'info', title: 'Tâche archivée', text: task.title });
+        notify({ status: 'info', title: t('tasks.archived'), text: task.title });
       });
 
       const delBtn = document.createElement('button');
       delBtn.type = 'button';
       delBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
       delBtn.disabled = currentState.readOnly;
-      delBtn.textContent = 'Supprimer';
-      delBtn.setAttribute('aria-label', `Supprimer « ${task.title} »`);
+      delBtn.textContent = t('common.delete');
+      delBtn.setAttribute('aria-label', t('common.deleteQuoted', { title: task.title }));
       delBtn.addEventListener('click', async () => {
         const confirmed = await confirmAction({
-          title: `Supprimer « ${task.title} » ?`,
-          message: 'Cette tâche sera déplacée dans la corbeille locale.',
-          confirmLabel: 'Supprimer',
+          title: t('common.deleteTitle', { title: task.title }),
+          message: t('tasks.deleteConfirm'),
+          confirmLabel: t('common.delete'),
           danger: true,
         });
         if (!confirmed) return;
@@ -667,7 +674,7 @@ export function renderTaskListView({
           trashId: crypto.randomUUID(),
           now: new Date().toISOString(),
         });
-        notify({ status: 'info', title: 'Tâche placée dans la corbeille', text: task.title });
+        notify({ status: 'info', title: t('tasks.trashed'), text: task.title });
       });
 
       actions.append(quickStatus, consultBtn, editBtn, archiveBtn, delBtn);

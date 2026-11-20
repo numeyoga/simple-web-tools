@@ -1,23 +1,24 @@
 /** @import { AppCommand, AppState, LocalRef, Note, Project, StoreEffect, Task, Whiteboard } from '../../types.d.ts' */
 
-import { formatShortDateFr, isOffHoursDueTime } from '../../core/dates.js';
+import { isOffHoursDueTime } from '../../core/dates.js';
 import { getTaskRecurrenceLabel, getTaskStatusMeta, getTaskStatusRole } from '../../core/model.js';
 import { extractRichTextPlainText, extractWhiteboardSearchText } from '../../core/search.js';
 import { selectArchivedEntries, selectEntityLinkEntries } from '../../core/store.js';
 import { confirmAction, notify } from './app-shell.js';
+import { format, t } from '../i18n.js';
 
 /** @type {Readonly<Record<'project' | 'task' | 'note' | 'whiteboard', { label: string; icon: string }>>} */
 const KIND_META = {
-  project: { label: 'Projet', icon: 'ph-folder-open' },
-  task: { label: 'Tâche', icon: 'ph-check-square' },
-  note: { label: 'Note', icon: 'ph-notebook' },
-  whiteboard: { label: 'Tableau blanc', icon: 'ph-chalkboard-simple' },
+  project: { label: t('common.project'), icon: 'ph-folder-open' },
+  task: { label: t('common.task'), icon: 'ph-check-square' },
+  note: { label: t('common.note'), icon: 'ph-notebook' },
+  whiteboard: { label: t('common.whiteboard'), icon: 'ph-chalkboard-simple' },
 };
 
 const PRIORITY_LABELS = {
-  high: 'Haute',
-  medium: 'Moyenne',
-  low: 'Basse',
+  high: t('priority.high'),
+  medium: t('priority.medium'),
+  low: t('priority.low'),
 };
 
 /**
@@ -53,11 +54,11 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const titleEl = document.createElement('h2');
   titleEl.className = 'cv-h2';
   titleEl.style.margin = '0';
-  titleEl.textContent = 'Archives';
+  titleEl.textContent = t('common.archives');
   const subtitleEl = document.createElement('p');
   subtitleEl.className = 'cv-caption';
   subtitleEl.style.margin = '0';
-  subtitleEl.textContent = `${allArchivedEntries.length} élément${allArchivedEntries.length > 1 ? 's' : ''} archivé${allArchivedEntries.length > 1 ? 's' : ''}`;
+  subtitleEl.textContent = t('archives.count', { count: allArchivedEntries.length });
   titleGroup.append(titleEl, subtitleEl);
   header.append(titleGroup);
 
@@ -70,7 +71,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const searchLabel = document.createElement('label');
   searchLabel.className = 'cv-label';
   searchLabel.htmlFor = 'archives-search-input';
-  searchLabel.textContent = 'Recherche';
+  searchLabel.textContent = t('archives.searchLabel');
   const searchGroup = document.createElement('div');
   searchGroup.className = 'cv-input-group';
   const searchIcon = document.createElement('i');
@@ -80,7 +81,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   searchInput.id = 'archives-search-input';
   searchInput.type = 'search';
   searchInput.className = 'cv-input';
-  searchInput.placeholder = 'Titre, texte ou contenu…';
+  searchInput.placeholder = t('archives.searchPlaceholder');
   searchInput.value = filters.query;
   searchGroup.append(searchIcon, searchInput);
   searchField.append(searchLabel, searchGroup);
@@ -91,18 +92,18 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const kindLabel = document.createElement('label');
   kindLabel.className = 'cv-label';
   kindLabel.htmlFor = 'archives-kind-filter';
-  kindLabel.textContent = 'Type';
+  kindLabel.textContent = t('archives.type');
   const kindWrap = document.createElement('div');
   kindWrap.className = 'cv-select';
   const kindSelect = document.createElement('select');
   kindSelect.id = 'archives-kind-filter';
   kindSelect.className = 'cv-input';
   for (const [val, lbl] of /** @type {const} */ ([
-    ['all', 'Tous les types'],
-    ['project', 'Projets'],
-    ['task', 'Tâches'],
-    ['note', 'Notes'],
-    ['whiteboard', 'Tableaux blancs'],
+    ['all', t('archives.allTypes')],
+    ['project', t('common.projects')],
+    ['task', t('common.tasks')],
+    ['note', t('common.notes')],
+    ['whiteboard', t('common.whiteboards')],
   ])) {
     const opt = document.createElement('option');
     opt.value = val;
@@ -119,7 +120,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const projLabel = document.createElement('label');
   projLabel.className = 'cv-label';
   projLabel.htmlFor = 'archives-project-filter';
-  projLabel.textContent = 'Projet';
+  projLabel.textContent = t('common.project');
   const projWrap = document.createElement('div');
   projWrap.className = 'cv-select';
   const projSelect = document.createElement('select');
@@ -127,10 +128,10 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   projSelect.className = 'cv-input';
   const projAllOpt = document.createElement('option');
   projAllOpt.value = 'all';
-  projAllOpt.textContent = 'Tous les projets';
+  projAllOpt.textContent = t('common.allProjects');
   const projNoneOpt = document.createElement('option');
   projNoneOpt.value = '__none__';
-  projNoneOpt.textContent = 'Sans projet';
+  projNoneOpt.textContent = t('common.noProject');
   projSelect.append(projAllOpt, projNoneOpt);
 
   /** @type {Set<string>} */
@@ -142,7 +143,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
     if (p.archived || archivedProjIds.has(p.id)) {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = p.archived ? `${p.name} (archivé)` : p.name;
+      opt.textContent = p.archived ? t('common.archivedName', { name: p.name }) : p.name;
       projSelect.append(opt);
     }
   }
@@ -163,7 +164,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const tagLabel = document.createElement('label');
   tagLabel.className = 'cv-label';
   tagLabel.htmlFor = 'archives-tag-filter';
-  tagLabel.textContent = 'Étiquette';
+  tagLabel.textContent = t('common.tag');
   const tagWrap = document.createElement('div');
   tagWrap.className = 'cv-select';
   const tagSelect = document.createElement('select');
@@ -171,7 +172,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   tagSelect.className = 'cv-input';
   const allTagsOpt = document.createElement('option');
   allTagsOpt.value = 'all';
-  allTagsOpt.textContent = 'Toutes les étiquettes';
+  allTagsOpt.textContent = t('common.allTags');
   tagSelect.append(allTagsOpt);
   /** @type {Set<string>} */
   const archivedTags = new Set();
@@ -201,16 +202,16 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const sortLabel = document.createElement('label');
   sortLabel.className = 'cv-label';
   sortLabel.htmlFor = 'archives-sort-select';
-  sortLabel.textContent = 'Tri';
+  sortLabel.textContent = t('tasks.sort');
   const sortWrap = document.createElement('div');
   sortWrap.className = 'cv-select';
   const sortSelect = document.createElement('select');
   sortSelect.id = 'archives-sort-select';
   sortSelect.className = 'cv-input';
   for (const [val, lbl] of /** @type {const} */ ([
-    ['archivedAt', 'Archivé récemment'],
-    ['updatedAt', 'Modifié récemment'],
-    ['title', 'Titre (A–Z)'],
+    ['archivedAt', t('archives.sortArchived')],
+    ['updatedAt', t('archives.sortUpdated')],
+    ['title', t('archives.sortTitle')],
   ])) {
     const opt = document.createElement('option');
     opt.value = val;
@@ -225,7 +226,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   resetBtn.type = 'button';
   resetBtn.id = 'btn-archives-reset-filters';
   resetBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
-  resetBtn.textContent = 'Réinitialiser';
+  resetBtn.textContent = t('archives.reset');
 
   toolbar.append(searchField, kindField, projField, tagField, sortField, resetBtn);
 
@@ -267,21 +268,18 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
 
       const title = document.createElement('p');
       title.className = 'cv-empty__title';
-      title.textContent =
-        totalCount === 0 ? 'Aucun élément archivé' : 'Aucun élément ne correspond aux filtres';
+      title.textContent = totalCount === 0 ? t('archives.emptyNone') : t('archives.emptyNoMatch');
 
       const desc = document.createElement('p');
       desc.textContent =
-        totalCount === 0
-          ? 'Archivez un projet, une tâche, une note ou un tableau blanc pour le retirer de ses écrans habituels tout en le conservant ici.'
-          : 'Modifiez vos critères de recherche ou réinitialisez les filtres pour parcourir les archives.';
+        totalCount === 0 ? t('archives.emptyNoneText') : t('archives.emptyNoMatchText');
 
       empty.append(iconBox, title, desc);
       if (totalCount > 0) {
         const cta = document.createElement('button');
         cta.type = 'button';
         cta.className = 'cv-btn';
-        cta.textContent = 'Réinitialiser les filtres';
+        cta.textContent = t('archives.resetFilters');
         cta.addEventListener('click', resetAllFilters);
         empty.append(cta);
       }
@@ -301,7 +299,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
     const listEl = document.createElement('div');
     listEl.className = 'lc-notes-list lc-archives-list';
     listEl.setAttribute('role', 'navigation');
-    listEl.setAttribute('aria-label', 'Liste des éléments archivés');
+    listEl.setAttribute('aria-label', t('archives.listLabel'));
 
     for (const entry of entries) {
       const k = entryKey(entry.kind, entry.id);
@@ -327,7 +325,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
       if (entry.archiveReason === 'project') {
         const viaBadge = document.createElement('span');
         viaBadge.className = 'cv-badge cv-badge--warning';
-        viaBadge.textContent = 'Via projet';
+        viaBadge.textContent = t('archives.viaProject');
         headRow.append(viaBadge);
       }
 
@@ -337,11 +335,11 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
 
       const mSpan = document.createElement('span');
       mSpan.className = 'lc-note-item__meta';
-      const archDate = formatShortDateFr(entry.archivedAt.slice(0, 10), true);
+      const archDate = format.formatShortDate(entry.archivedAt.slice(0, 10), true);
       mSpan.textContent =
         entry.projectName && entry.kind !== 'project'
-          ? `${entry.projectName} · Archivé le ${archDate}`
-          : `Archivé le ${archDate}`;
+          ? `${entry.projectName} · ${t('common.archivedOn', { date: archDate })}`
+          : t('common.archivedOn', { date: archDate });
 
       itemBtn.append(headRow, tSpan, mSpan);
       itemBtn.addEventListener('click', () => {
@@ -354,7 +352,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
     const detailCard = document.createElement('section');
     detailCard.id = 'archive-detail-panel';
     detailCard.className = 'cv-card lc-archive-detail';
-    detailCard.setAttribute('aria-label', 'Détails de l’élément archivé');
+    detailCard.setAttribute('aria-label', t('archives.detailsLabel'));
 
     if (activeEntry) {
       const km = KIND_META[activeEntry.kind];
@@ -381,8 +379,10 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
       originNote.style.margin = '0';
       originNote.textContent =
         activeEntry.archiveReason === 'project' && activeEntry.projectName
-          ? `Archivé via le projet « ${activeEntry.projectName} » : désarchiver cet élément réactivera également ce projet.`
-          : `Archivé directement le ${formatShortDateFr(activeEntry.archivedAt.slice(0, 10), true)}.`;
+          ? t('archives.viaProjectText', { project: activeEntry.projectName })
+          : t('archives.directText', {
+              date: format.formatShortDate(activeEntry.archivedAt.slice(0, 10), true),
+            });
 
       const metaList = document.createElement('dl');
       metaList.className = 'lc-archive-meta';
@@ -404,12 +404,18 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
       };
 
       if (activeEntry.projectName && activeEntry.kind !== 'project') {
-        addMetaRow('Projet', activeEntry.projectName);
+        addMetaRow(t('common.project'), activeEntry.projectName);
       } else if (activeEntry.kind !== 'project') {
-        addMetaRow('Projet', 'Sans projet');
+        addMetaRow(t('common.project'), t('common.noProject'));
       }
-      addMetaRow('Archivé le', formatShortDateFr(activeEntry.archivedAt.slice(0, 10), true));
-      addMetaRow('Mis à jour le', formatShortDateFr(activeEntry.updatedAt.slice(0, 10), true));
+      addMetaRow(
+        t('common.archivedOnLabel'),
+        format.formatShortDate(activeEntry.archivedAt.slice(0, 10), true),
+      );
+      addMetaRow(
+        t('common.updatedOnLabel'),
+        format.formatShortDate(activeEntry.updatedAt.slice(0, 10), true),
+      );
 
       if (activeEntry.kind === 'project') {
         const proj = /** @type {Project} */ (activeEntry.item);
@@ -417,14 +423,18 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
         const childNotes = state.notes.filter((n) => n.projectId === proj.id).length;
         const childWbs = state.whiteboards.filter((w) => w.projectId === proj.id).length;
         addMetaRow(
-          'Contenu associé',
-          `${childTasks} tâche(s) · ${childNotes} note(s) · ${childWbs} tableau(x) blanc(s)`,
+          t('archives.related'),
+          [
+            t('archives.childTasks', { count: childTasks }),
+            t('archives.childNotes', { count: childNotes }),
+            t('archives.childWhiteboards', { count: childWbs }),
+          ].join(' · '),
         );
       }
 
       if (activeEntry.kind === 'task') {
         const task = /** @type {Task} */ (activeEntry.item);
-        const statusMeta = getTaskStatusMeta(task.status, state.preferences.taskStatuses);
+        const statusMeta = getTaskStatusMeta(task.status, state.preferences.taskStatuses, t);
         const role = getTaskStatusRole(task.status, state.preferences.taskStatuses);
         const statusVal = document.createElement('span');
         statusVal.className = 'lc-archive-inline-badges';
@@ -436,18 +446,23 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
           const rBadge = document.createElement('span');
           rBadge.className =
             role === 'terminal' ? 'cv-badge cv-badge--success' : 'cv-badge cv-badge--accent';
-          rBadge.textContent = role === 'terminal' ? 'Terminal' : 'Initial';
+          rBadge.textContent = role === 'terminal' ? t('common.terminal') : t('common.initial');
           statusVal.append(rBadge);
         }
-        addMetaRow('Statut', statusVal);
-        addMetaRow('Priorité', PRIORITY_LABELS[task.priority]);
+        addMetaRow(t('common.status'), statusVal);
+        addMetaRow(t('common.priority'), PRIORITY_LABELS[task.priority]);
 
         if (task.dueDate) {
           const dueVal = document.createElement('span');
           dueVal.className = 'lc-archive-inline-badges';
           dueVal.append(
             document.createTextNode(
-              `${formatShortDateFr(task.dueDate, true)}${task.dueTime ? ` à ${task.dueTime}` : ''}`,
+              task.dueTime
+                ? t('tasks.dueDateTime', {
+                    date: format.formatShortDate(task.dueDate, true),
+                    time: format.formatTimeOfDay(task.dueTime),
+                  })
+                : format.formatShortDate(task.dueDate, true),
             ),
           );
           if (isOffHoursDueTime(task.dueTime)) {
@@ -456,21 +471,24 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
             const mIc = document.createElement('i');
             mIc.className = 'ph ph-moon cv-icon';
             mIc.setAttribute('aria-hidden', 'true');
-            moonBadge.append(mIc, document.createTextNode(' Créneau 18h–7h'));
+            moonBadge.append(mIc, document.createTextNode(` ${t('common.offHoursSlot')}`));
             dueVal.append(moonBadge);
           }
-          addMetaRow('Échéance', dueVal);
+          addMetaRow(t('common.dueDate'), dueVal);
         } else {
-          addMetaRow('Échéance', 'Aucune');
+          addMetaRow(t('common.dueDate'), t('common.none'));
         }
 
         if (task.recurrence) {
-          addMetaRow('Récurrence', getTaskRecurrenceLabel(task.recurrence));
+          addMetaRow(t('tasks.recurrence'), getTaskRecurrenceLabel(task.recurrence, t));
         }
 
         if (task.checklist.length > 0) {
           const doneCount = task.checklist.filter((c) => c.done).length;
-          addMetaRow('Liste de contrôle', `${doneCount} / ${task.checklist.length} terminée(s)`);
+          addMetaRow(
+            t('tasks.checklist'),
+            t('archives.checklistDone', { done: doneCount, total: task.checklist.length }),
+          );
         }
       }
 
@@ -483,7 +501,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
           chip.textContent = `#${tag}`;
           tagsWrap.append(chip);
         }
-        addMetaRow('Étiquettes', tagsWrap);
+        addMetaRow(t('common.tags'), tagsWrap);
       }
 
       // Preview box
@@ -491,19 +509,19 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
       previewBox.className = 'lc-archive-preview';
       if (activeEntry.kind === 'project') {
         const proj = /** @type {Project} */ (activeEntry.item);
-        previewBox.textContent = proj.description || 'Aucune description.';
+        previewBox.textContent = proj.description || t('common.noDescription');
       } else if (activeEntry.kind === 'task') {
         const task = /** @type {Task} */ (activeEntry.item);
         const plain = extractRichTextPlainText(task.descriptionDoc);
-        previewBox.textContent = plain || 'Aucune description rédigée.';
+        previewBox.textContent = plain || t('archives.noDescriptionWritten');
       } else if (activeEntry.kind === 'note') {
         const note = /** @type {Note} */ (activeEntry.item);
         const plain = extractRichTextPlainText(note.contentDoc);
-        previewBox.textContent = plain || 'Note sans contenu texte.';
+        previewBox.textContent = plain || t('archives.noteNoText');
       } else {
         const wb = /** @type {Whiteboard} */ (activeEntry.item);
         const wbText = extractWhiteboardSearchText(wb);
-        previewBox.textContent = `${wb.elements.length} élément(s) sur le canevas${wbText ? ` · ${wbText}` : ''}`;
+        previewBox.textContent = `${t('archives.wbPreview', { count: wb.elements.length })}${wbText ? ` · ${wbText}` : ''}`;
       }
 
       // Links summary for tasks/notes/whiteboards
@@ -520,7 +538,10 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
           linksBlock.className = 'lc-archive-links';
           const lTitle = document.createElement('span');
           lTitle.className = 'cv-caption';
-          lTitle.textContent = `Liens : ${resolvedLinks.outgoing.length} sortant(s) · ${resolvedLinks.incoming.length} entrant(s)`;
+          lTitle.textContent = t('archives.links', {
+            outgoing: resolvedLinks.outgoing.length,
+            incoming: resolvedLinks.incoming.length,
+          });
           const pills = document.createElement('div');
           pills.className = 'lc-links-list';
           for (const ref of [...resolvedLinks.outgoing, ...resolvedLinks.incoming]) {
@@ -551,8 +572,11 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
       const restoreIc = document.createElement('i');
       restoreIc.className = 'ph ph-arrow-counter-clockwise cv-icon';
       restoreIc.setAttribute('aria-hidden', 'true');
-      restoreBtn.append(restoreIc, document.createTextNode(' Désarchiver'));
-      restoreBtn.setAttribute('aria-label', `Désarchiver « ${activeEntry.title} »`);
+      restoreBtn.append(restoreIc, document.createTextNode(` ${t('common.unarchive')}`));
+      restoreBtn.setAttribute(
+        'aria-label',
+        t('archives.unarchiveNamed', { title: activeEntry.title }),
+      );
       restoreBtn.addEventListener('click', () => {
         const now = new Date().toISOString();
         if (activeEntry.kind === 'project') {
@@ -586,10 +610,13 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
         }
         notify({
           status: 'success',
-          title: 'Élément désarchivé',
+          title: t('archives.unarchived'),
           text:
             activeEntry.archiveReason === 'project' && activeEntry.projectName
-              ? `${activeEntry.title} (et projet « ${activeEntry.projectName} »)`
+              ? t('archives.unarchivedWithProject', {
+                  title: activeEntry.title,
+                  project: activeEntry.projectName,
+                })
               : activeEntry.title,
         });
       });
@@ -599,13 +626,16 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
       deleteBtn.id = 'btn-archive-delete';
       deleteBtn.className = 'cv-btn cv-btn--danger';
       deleteBtn.disabled = readOnly;
-      deleteBtn.textContent = 'Mettre à la corbeille';
-      deleteBtn.setAttribute('aria-label', `Mettre « ${activeEntry.title} » à la corbeille`);
+      deleteBtn.textContent = t('archives.toTrash');
+      deleteBtn.setAttribute(
+        'aria-label',
+        t('archives.toTrashNamed', { title: activeEntry.title }),
+      );
       deleteBtn.addEventListener('click', async () => {
         const confirmed = await confirmAction({
-          title: `Mettre « ${activeEntry.title} » à la corbeille ?`,
-          message: 'Cet élément quittera les archives pour la corbeille locale.',
-          confirmLabel: 'Mettre à la corbeille',
+          title: t('archives.toTrashTitle', { title: activeEntry.title }),
+          message: t('archives.toTrashConfirm'),
+          confirmLabel: t('archives.toTrash'),
           danger: true,
         });
         if (!confirmed) return;
@@ -622,7 +652,7 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
         }
         notify({
           status: 'info',
-          title: 'Élément placé dans la corbeille',
+          title: t('archives.trashed'),
           text: activeEntry.title,
         });
       });

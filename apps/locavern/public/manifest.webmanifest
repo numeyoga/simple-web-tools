@@ -1,13 +1,13 @@
 {
   "name": "Locavern",
   "short_name": "Locavern",
-  "description": "Productivité personnelle local-first : projets, tâches, Kanban et notes enrichies.",
+  "description": "Local-first personal productivity: projects, tasks, Kanban, rich-text notes and an SVG whiteboard.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fafafa",
   "theme_color": "#c2410c",
-  "lang": "fr",
+  "lang": "en",
   "icons": [
     {
       "src": "./favicon.svg",

@@ -1,6 +1,5 @@
 /** @import { AppCommand, AppState, LocalRef, Note, RichTextDoc, StoreEffect } from '../../types.d.ts' */
 
-import { formatShortDateFr } from '../../core/dates.js';
 import { noteToMarkdown } from '../../core/markdown.js';
 import { EMPTY_RICH_DOC, collectDocAssetIds } from '../../core/model.js';
 import { extractRichTextPlainText } from '../../core/search.js';
@@ -24,6 +23,8 @@ import {
 import { createLinkEditor } from './link-editor.js';
 import { createTagEditor } from './tag-editor.js';
 import { createTemplatePicker } from './template-picker.js';
+import { builtinTemplates, format, t } from '../i18n.js';
+import { errorText } from '../../core/messages.js';
 
 /** @type {(() => void) | null} */
 let activeNoteDialogCleanup = null;
@@ -88,7 +89,7 @@ export function openNoteDialog(opts) {
   const effectiveMode = !isEdit ? 'edit' : readOnly ? 'view' : (mode ?? 'view');
 
   if (effectiveMode === 'view' && note) {
-    titleEl.textContent = 'Consulter la note';
+    titleEl.textContent = t('notes.consultTitle');
 
     const panel = document.createElement('div');
     panel.id = 'note-consult-view';
@@ -105,7 +106,7 @@ export function openNoteDialog(opts) {
     if (note.archived) {
       const archBadge = document.createElement('span');
       archBadge.className = 'cv-badge';
-      archBadge.textContent = 'Archivée';
+      archBadge.textContent = t('common.archivedFeminine');
       headRow.append(archBadge);
     }
 
@@ -125,14 +126,18 @@ export function openNoteDialog(opts) {
       metaList.append(row);
     };
     addMetaRow(
-      'Projet',
-      proj ? (proj.archived ? `${proj.name} (archivé)` : proj.name) : 'Sans projet',
+      t('common.project'),
+      proj
+        ? proj.archived
+          ? t('common.archivedName', { name: proj.name })
+          : proj.name
+        : t('common.noProject'),
     );
-    addMetaRow('Mise à jour', formatShortDateFr(note.updatedAt.slice(0, 10), true));
+    addMetaRow(t('common.updatedAt'), format.formatShortDate(note.updatedAt.slice(0, 10), true));
 
     const tagEditor = createTagEditor({
       idPrefix: 'note-dialog-tags',
-      labelText: 'Étiquettes',
+      labelText: t('common.tags'),
       initialTags: note.tags ?? [],
       readOnly,
       viewOnly: true,
@@ -157,7 +162,7 @@ export function openNoteDialog(opts) {
     const contentLabel = document.createElement('span');
     contentLabel.className = 'cv-label';
     contentLabel.id = 'note-dialog-content-label';
-    contentLabel.textContent = 'Contenu';
+    contentLabel.textContent = t('notes.content');
     contentField.append(contentLabel);
 
     const hasContent =
@@ -174,7 +179,7 @@ export function openNoteDialog(opts) {
         container: editorHost,
         initialDoc: note.contentDoc,
         editable: false,
-        ariaLabel: 'Contenu de la note',
+        ariaLabel: t('notes.contentAria'),
         resolveAssetUrl,
         onUploadImage: async () => null,
         onChange() {},
@@ -183,7 +188,7 @@ export function openNoteDialog(opts) {
       const emptyBody = document.createElement('p');
       emptyBody.className = 'cv-caption';
       emptyBody.style.margin = '0';
-      emptyBody.textContent = 'Aucun contenu.';
+      emptyBody.textContent = t('notes.noContent');
       contentField.append(emptyBody);
     }
 
@@ -197,32 +202,32 @@ export function openNoteDialog(opts) {
     const exportIc = document.createElement('i');
     exportIc.className = 'ph ph-download-simple cv-icon';
     exportIc.setAttribute('aria-hidden', 'true');
-    exportMdBtn.append(exportIc, document.createTextNode(' Exporter (.md)'));
+    exportMdBtn.append(exportIc, document.createTextNode(` ${t('notes.exportMd')}`));
     exportMdBtn.addEventListener('click', async () => {
       const fresh = store.getState().notes.find((n) => n.id === note.id) ?? note;
       const projName = fresh.projectId
         ? (selectProjectById(store.getState(), fresh.projectId)?.name ?? null)
         : null;
-      const md = noteToMarkdown(fresh, { projectName: projName });
+      const md = noteToMarkdown(fresh, { projectName: projName, t });
       const filename = `${toMarkdownSlug(fresh.title)}.md`;
       const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
       try {
         const saved = await saveArchiveBlob(blob, filename, {
           pickerTypes: [
             {
-              description: 'Document Markdown (.md)',
+              description: t('export.markdownDescription'),
               accept: { 'text/markdown': ['.md'] },
             },
           ],
         });
         if (saved.saved) {
-          notify({ status: 'success', title: 'Note exportée en Markdown', text: filename });
+          notify({ status: 'success', title: t('notes.exported'), text: filename });
         }
       } catch {
         notify({
           status: 'danger',
-          title: 'Échec de l’export Markdown',
-          text: 'Impossible d’enregistrer le fichier localement.',
+          title: t('notes.exportFailed'),
+          text: t('notes.exportFailedText'),
         });
       }
     });
@@ -231,7 +236,7 @@ export function openNoteDialog(opts) {
     closeBtn.type = 'button';
     closeBtn.className = 'cv-btn';
     closeBtn.setAttribute('data-cv-close', '');
-    closeBtn.textContent = 'Fermer';
+    closeBtn.textContent = t('common.close');
 
     /** @type {HTMLElement[]} */
     const footerBtns = [exportMdBtn, closeBtn];
@@ -243,7 +248,7 @@ export function openNoteDialog(opts) {
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
-      switchEditBtn.append(editIc, document.createTextNode(' Modifier'));
+      switchEditBtn.append(editIc, document.createTextNode(` ${t('common.edit')}`));
       switchEditBtn.addEventListener('click', () => {
         const fresh = store.getState().notes.find((n) => n.id === note.id) ?? note;
         openNoteDialog({ ...opts, note: fresh, mode: 'edit' });
@@ -278,7 +283,7 @@ export function openNoteDialog(opts) {
     return;
   }
 
-  titleEl.textContent = isEdit ? 'Modifier la note' : 'Nouvelle note';
+  titleEl.textContent = isEdit ? t('notes.editTitle') : t('notes.new');
 
   const form = document.createElement('form');
   form.id = 'form-note-dialog';
@@ -292,7 +297,7 @@ export function openNoteDialog(opts) {
   const titleLabel = document.createElement('label');
   titleLabel.className = 'cv-label';
   titleLabel.htmlFor = 'note-dialog-title-input';
-  titleLabel.textContent = 'Titre de la note';
+  titleLabel.textContent = t('notes.titleLabel');
   const req = document.createElement('span');
   req.className = 'cv-required';
   req.setAttribute('aria-hidden', 'true');
@@ -316,7 +321,7 @@ export function openNoteDialog(opts) {
   titleErrIcon.className = 'ph ph-warning-circle cv-icon';
   titleErrIcon.setAttribute('aria-hidden', 'true');
   const titleErrText = document.createElement('span');
-  titleErrText.textContent = 'Saisissez un titre de note.';
+  titleErrText.textContent = t('notes.titleRequired');
   titleError.append(titleErrIcon, titleErrText);
   titleField.append(titleLabel, titleInput, titleError);
 
@@ -331,7 +336,7 @@ export function openNoteDialog(opts) {
   const projectLabel = document.createElement('label');
   projectLabel.className = 'cv-label';
   projectLabel.htmlFor = 'note-dialog-project-select';
-  projectLabel.textContent = 'Projet associé';
+  projectLabel.textContent = t('common.linkedProject');
   const projectSelectWrap = document.createElement('div');
   projectSelectWrap.className = 'cv-select';
   const projectSelect = document.createElement('select');
@@ -340,12 +345,12 @@ export function openNoteDialog(opts) {
   projectSelect.disabled = readOnly;
   const noProjOpt = document.createElement('option');
   noProjOpt.value = '';
-  noProjOpt.textContent = 'Sans projet';
+  noProjOpt.textContent = t('common.noProject');
   projectSelect.append(noProjOpt);
   for (const p of projectChoices) {
     const opt = document.createElement('option');
     opt.value = p.id;
-    opt.textContent = p.archived ? `${p.name} (archivé)` : p.name;
+    opt.textContent = p.archived ? t('common.archivedName', { name: p.name }) : p.name;
     projectSelect.append(opt);
   }
   const preferredProj =
@@ -360,7 +365,7 @@ export function openNoteDialog(opts) {
 
   const tagEditor = createTagEditor({
     idPrefix: 'note-dialog-tags',
-    labelText: 'Étiquettes',
+    labelText: t('common.tags'),
     initialTags: note?.tags ?? [],
     suggestions: selectAllTags(state),
     readOnly,
@@ -384,7 +389,7 @@ export function openNoteDialog(opts) {
   const contentLabel = document.createElement('span');
   contentLabel.className = 'cv-label';
   contentLabel.id = 'note-dialog-content-label';
-  contentLabel.textContent = 'Contenu';
+  contentLabel.textContent = t('notes.content');
   const editorHost = document.createElement('div');
   contentField.append(contentLabel, editorHost);
 
@@ -403,21 +408,21 @@ export function openNoteDialog(opts) {
     container: editorHost,
     initialDoc,
     editable: !readOnly,
-    ariaLabel: 'Contenu de la note',
+    ariaLabel: t('notes.contentAria'),
     resolveAssetUrl,
     onUploadImage: handleUploadImage,
     onBlockedRemoteImage: () => {
       notify({
         status: 'warning',
-        title: 'Image distante bloquée',
-        text: 'Seules les images locales enregistrées sur cet appareil sont autorisées.',
+        title: t('editor.remoteImageBlocked'),
+        text: t('editor.remoteImageBlockedText'),
       });
     },
     onRejectedLink: () => {
       notify({
         status: 'warning',
-        title: 'Lien refusé',
-        text: 'Seuls les liens https:// et mailto: sont acceptés.',
+        title: t('editor.linkRejected'),
+        text: t('editor.linkRejectedText'),
       });
     },
     onChange() {},
@@ -425,13 +430,13 @@ export function openNoteDialog(opts) {
 
   const noteDialogTemplatePicker = createTemplatePicker({
     idPrefix: 'note-dialog-tpl',
-    labelText: 'Modèles de trame',
-    templates: selectTemplates(state, 'note'),
+    labelText: t('notes.templatesLabel'),
+    templates: selectTemplates(state, 'note', builtinTemplates),
     readOnly,
     showSave: true,
     onApply(tpl) {
       editorHandle.setDoc(instantiateNoteTemplate(tpl));
-      notify({ status: 'success', title: 'Trame appliquée', text: tpl.name });
+      notify({ status: 'success', title: t('notes.templateApplied'), text: tpl.name });
     },
     onSaveNew(name) {
       const id = crypto.randomUUID();
@@ -443,14 +448,19 @@ export function openNoteDialog(opts) {
         contentDoc: editorHandle.getDoc(),
         now: new Date().toISOString(),
       });
-      noteDialogTemplatePicker.setTemplates(selectTemplates(store.getState(), 'note'), id);
-      notify({ status: 'success', title: 'Modèle de note enregistré', text: name });
+      noteDialogTemplatePicker.setTemplates(
+        selectTemplates(store.getState(), 'note', builtinTemplates),
+        id,
+      );
+      notify({ status: 'success', title: t('notes.templateSaved'), text: name });
       return id;
     },
     onDeleteCustom(tpl) {
       store.dispatch({ type: 'delete_template', id: tpl.id });
-      noteDialogTemplatePicker.setTemplates(selectTemplates(store.getState(), 'note'));
-      notify({ status: 'info', title: 'Modèle supprimé', text: tpl.name });
+      noteDialogTemplatePicker.setTemplates(
+        selectTemplates(store.getState(), 'note', builtinTemplates),
+      );
+      notify({ status: 'info', title: t('templates.deleted'), text: tpl.name });
     },
   });
 
@@ -468,14 +478,14 @@ export function openNoteDialog(opts) {
   cancelBtn.type = 'button';
   cancelBtn.className = 'cv-btn';
   cancelBtn.setAttribute('data-cv-close', '');
-  cancelBtn.textContent = 'Annuler';
+  cancelBtn.textContent = t('common.cancel');
 
   const saveBtn = document.createElement('button');
   saveBtn.type = 'submit';
   saveBtn.setAttribute('form', 'form-note-dialog');
   saveBtn.className = 'cv-btn cv-btn--primary';
   saveBtn.disabled = readOnly;
-  saveBtn.textContent = isEdit ? 'Enregistrer' : 'Créer la note';
+  saveBtn.textContent = isEdit ? t('common.save') : t('notes.create');
 
   /** @type {HTMLElement[]} */
   const footerButtons = [];
@@ -483,13 +493,13 @@ export function openNoteDialog(opts) {
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'cv-btn cv-btn--danger';
-    deleteBtn.textContent = 'Supprimer';
+    deleteBtn.textContent = t('common.delete');
     deleteBtn.addEventListener('click', async () => {
       closeDialogById('dialog-note');
       const confirmed = await confirmAction({
-        title: `Supprimer « ${note.title} » ?`,
-        message: 'Cette note sera déplacée dans la corbeille locale.',
-        confirmLabel: 'Supprimer la note',
+        title: t('common.deleteTitle', { title: note.title }),
+        message: t('notes.deleteConfirm'),
+        confirmLabel: t('notes.deleteLabel'),
         danger: true,
       });
       if (confirmed) {
@@ -499,7 +509,7 @@ export function openNoteDialog(opts) {
           trashId: crypto.randomUUID(),
           now: new Date().toISOString(),
         });
-        notify({ status: 'info', title: 'Note placée dans la corbeille', text: note.title });
+        notify({ status: 'info', title: t('notes.trashed'), text: note.title });
       }
     });
 
@@ -508,7 +518,7 @@ export function openNoteDialog(opts) {
     archiveBtn.id = 'btn-dialog-archive-note';
     archiveBtn.className = 'cv-btn';
     archiveBtn.style.marginRight = 'auto';
-    archiveBtn.textContent = note.archived ? 'Désarchiver' : 'Archiver';
+    archiveBtn.textContent = note.archived ? t('common.unarchive') : t('common.archive');
     archiveBtn.addEventListener('click', () => {
       const nextArchived = !note.archived;
       store.dispatch({
@@ -521,8 +531,8 @@ export function openNoteDialog(opts) {
       cleanup();
       notify({
         status: 'info',
-        title: nextArchived ? 'Note archivée' : 'Note désarchivée',
-        text: nextArchived ? `${note.title} déplacée vers les archives.` : note.title,
+        title: nextArchived ? t('notes.archivedTitle') : t('notes.unarchivedTitle'),
+        text: nextArchived ? t('notes.archivedText', { title: note.title }) : note.title,
       });
     });
 
@@ -530,7 +540,7 @@ export function openNoteDialog(opts) {
     consultBtn.type = 'button';
     consultBtn.id = 'btn-switch-note-dialog-view';
     consultBtn.className = 'cv-btn';
-    consultBtn.textContent = 'Consulter';
+    consultBtn.textContent = t('common.consult');
     consultBtn.addEventListener('click', () => {
       const fresh = store.getState().notes.find((n) => n.id === note.id) ?? note;
       openNoteDialog({ ...opts, note: fresh, mode: 'view' });
@@ -579,7 +589,7 @@ export function openNoteDialog(opts) {
           },
           now,
         });
-        notify({ status: 'success', title: 'Note enregistrée', text: cleanTitle });
+        notify({ status: 'success', title: t('notes.saved'), text: cleanTitle });
       } else {
         const id = crypto.randomUUID();
         store.dispatch({
@@ -593,14 +603,14 @@ export function openNoteDialog(opts) {
           assetIds,
           now,
         });
-        notify({ status: 'success', title: 'Note créée', text: cleanTitle });
+        notify({ status: 'success', title: t('notes.created'), text: cleanTitle });
         onAfterCreate?.(id);
       }
     } catch (err) {
       notify({
         status: 'danger',
-        title: 'Enregistrement impossible',
-        text: err instanceof Error ? err.message : 'Erreur de validation.',
+        title: t('common.saveFailed'),
+        text: errorText(err, t, 'errors.validation'),
       });
       return;
     }

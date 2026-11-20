@@ -1,13 +1,10 @@
 /** @import { AppCommand, AppState, StoreEffect, Task, TaskPriority } from '../../types.d.ts' */
 
 import {
-  WEEKDAY_SHORT_FR,
   addMonthsClamped,
   buildMonthCalendarGrid,
   buildWeekCalendarGrid,
   formatIsoDate,
-  formatMonthYearLabel,
-  formatShortDateFr,
   getTodayIsoDate,
   isOffHoursDueTime,
   isOffHoursHour,
@@ -22,13 +19,17 @@ import { selectProjectById, selectProjects, selectTasks } from '../../core/store
 import { saveArchiveBlob } from '../archive-file.js';
 import { notify } from './app-shell.js';
 import { initTooltips, setTooltip } from './tooltip.js';
+import { format, i18n, t } from '../i18n.js';
 
 /** @type {Readonly<Record<TaskPriority, { label: string; badgeClass: string }>>} */
 const PRIORITY_META = {
-  high: { label: 'Haute', badgeClass: 'cv-badge cv-badge--danger' },
-  medium: { label: 'Moyenne', badgeClass: 'cv-badge cv-badge--warning' },
-  low: { label: 'Basse', badgeClass: 'cv-badge cv-badge--info' },
+  high: { label: t('priority.high'), badgeClass: 'cv-badge cv-badge--danger' },
+  medium: { label: t('priority.medium'), badgeClass: 'cv-badge cv-badge--warning' },
+  low: { label: t('priority.low'), badgeClass: 'cv-badge cv-badge--info' },
 };
+
+/** The short names of the weekdays, Monday first, in the language of the page. */
+const WEEKDAYS = Array.from({ length: 7 }, (_, index) => format.weekdayName(index));
 
 /** @type {string | null} */
 let draggedTaskId = null;
@@ -78,20 +79,18 @@ export function renderCalendarView({
     title.className = 'cv-empty__title';
     title.textContent =
       state.projects.length === 0
-        ? 'Créez un premier projet pour planifier vos échéances'
-        : 'Tous vos projets sont archivés';
+        ? t('calendar.emptyFirstProject')
+        : t('projects.allArchivedTitle');
     const desc = document.createElement('p');
     desc.textContent =
-      state.projects.length === 0
-        ? 'Les tâches datées apparaîtront ici en vue mensuelle ou hebdomadaire avec report par glisser-déposer et clavier.'
-        : 'Désarchivez un projet depuis les archives ou créez un nouveau projet actif pour afficher son agenda.';
+      state.projects.length === 0 ? t('calendar.emptyText') : t('calendar.emptyArchivedText');
     const actionsRow = document.createElement('div');
     actionsRow.className = 'lc-view-header__group';
     if (state.projects.length > 0) {
       const archBtn = document.createElement('button');
       archBtn.type = 'button';
       archBtn.className = 'cv-btn';
-      archBtn.textContent = 'Ouvrir les archives';
+      archBtn.textContent = t('projects.openArchives');
       archBtn.addEventListener('click', () => {
         store.dispatch({ type: 'set_view', view: 'archives' });
       });
@@ -101,7 +100,7 @@ export function renderCalendarView({
     cta.type = 'button';
     cta.className = 'cv-btn cv-btn--primary';
     cta.disabled = readOnly;
-    cta.textContent = 'Créer un projet';
+    cta.textContent = t('projects.createCta');
     cta.addEventListener('click', onOpenNewProject);
     actionsRow.append(cta);
     empty.append(iconBox, title, desc, actionsRow);
@@ -131,11 +130,11 @@ export function renderCalendarView({
   const projSelect = document.createElement('select');
   projSelect.id = 'calendar-project-filter';
   projSelect.className = 'cv-input';
-  projSelect.setAttribute('aria-label', 'Filtrer le calendrier par projet');
+  projSelect.setAttribute('aria-label', t('calendar.filterByProject'));
 
   const allOpt = document.createElement('option');
   allOpt.value = '__all__';
-  allOpt.textContent = 'Tous les projets';
+  allOpt.textContent = t('common.allProjects');
   projSelect.append(allOpt);
   for (const proj of activeProjects) {
     const opt = document.createElement('option');
@@ -159,9 +158,9 @@ export function renderCalendarView({
 
   const modeGroup = document.createElement('fieldset');
   modeGroup.className = 'cv-segmented';
-  modeGroup.setAttribute('aria-label', 'Période du calendrier');
+  modeGroup.setAttribute('aria-label', t('calendar.period'));
   const modeLegend = document.createElement('legend');
-  modeLegend.textContent = 'Période du calendrier';
+  modeLegend.textContent = t('calendar.period');
 
   const monthRadioLabel = document.createElement('label');
   const monthRadio = document.createElement('input');
@@ -170,7 +169,7 @@ export function renderCalendarView({
   monthRadio.value = 'month';
   monthRadio.checked = calendarState.mode === 'month';
   const monthSpan = document.createElement('span');
-  monthSpan.textContent = 'Mois';
+  monthSpan.textContent = t('calendar.month');
   monthRadioLabel.append(monthRadio, monthSpan);
 
   const weekRadioLabel = document.createElement('label');
@@ -180,7 +179,7 @@ export function renderCalendarView({
   weekRadio.value = 'week';
   weekRadio.checked = calendarState.mode === 'week';
   const weekSpan = document.createElement('span');
-  weekSpan.textContent = 'Semaine';
+  weekSpan.textContent = t('calendar.week');
   weekRadioLabel.append(weekRadio, weekSpan);
 
   modeGroup.append(modeLegend, monthRadioLabel, weekRadioLabel);
@@ -213,18 +212,18 @@ export function renderCalendarView({
   prevBtn.className = 'cv-btn cv-btn--sm';
   prevBtn.setAttribute(
     'aria-label',
-    calendarState.mode === 'month' ? 'Mois précédent' : 'Semaine précédente',
+    calendarState.mode === 'month' ? t('calendar.prevMonth') : t('calendar.prevWeek'),
   );
   const prevIc = document.createElement('i');
   prevIc.className = 'ph ph-caret-left cv-icon';
   prevIc.setAttribute('aria-hidden', 'true');
-  prevBtn.append(prevIc, document.createTextNode(' Précédent'));
+  prevBtn.append(prevIc, document.createTextNode(` ${t('calendar.prev')}`));
 
   const todayBtn = document.createElement('button');
   todayBtn.type = 'button';
   todayBtn.id = 'btn-cal-today';
   todayBtn.className = 'cv-btn cv-btn--sm';
-  todayBtn.textContent = 'Aujourd’hui';
+  todayBtn.textContent = t('common.today');
 
   const nextBtn = document.createElement('button');
   nextBtn.type = 'button';
@@ -232,22 +231,22 @@ export function renderCalendarView({
   nextBtn.className = 'cv-btn cv-btn--sm';
   nextBtn.setAttribute(
     'aria-label',
-    calendarState.mode === 'month' ? 'Mois suivant' : 'Semaine suivante',
+    calendarState.mode === 'month' ? t('calendar.nextMonth') : t('calendar.nextWeek'),
   );
   const nextIc = document.createElement('i');
   nextIc.className = 'ph ph-caret-right cv-icon';
   nextIc.setAttribute('aria-hidden', 'true');
-  nextBtn.append(document.createTextNode('Suivant '), nextIc);
+  nextBtn.append(document.createTextNode(`${t('calendar.next')} `), nextIc);
 
   const exportIcsBtn = document.createElement('button');
   exportIcsBtn.type = 'button';
   exportIcsBtn.id = 'btn-cal-export-ics';
   exportIcsBtn.className = 'cv-btn cv-btn--sm';
-  exportIcsBtn.setAttribute('aria-label', 'Exporter les tâches datées au format iCalendar (.ics)');
+  exportIcsBtn.setAttribute('aria-label', t('calendar.exportIcsLabel'));
   const exportIc = document.createElement('i');
   exportIc.className = 'ph ph-download-simple cv-icon';
   exportIc.setAttribute('aria-hidden', 'true');
-  exportIcsBtn.append(exportIc, document.createTextNode(' Exporter (.ics)'));
+  exportIcsBtn.append(exportIc, document.createTextNode(` ${t('calendar.exportIcs')}`));
 
   const newTaskBtn = document.createElement('button');
   newTaskBtn.type = 'button';
@@ -257,7 +256,7 @@ export function renderCalendarView({
   const plusIc = document.createElement('i');
   plusIc.className = 'ph ph-plus cv-icon';
   plusIc.setAttribute('aria-hidden', 'true');
-  newTaskBtn.append(plusIc, document.createTextNode(' Nouvelle tâche'));
+  newTaskBtn.append(plusIc, document.createTextNode(` ${t('tasks.new')}`));
   newTaskBtn.addEventListener('click', () => onNewTask(calendarState.anchorDate, null));
 
   rightGroup.append(prevBtn, todayBtn, nextBtn, exportIcsBtn, newTaskBtn);
@@ -307,23 +306,24 @@ export function renderCalendarView({
   const weekCells = buildWeekCalendarGrid(calendarState.anchorDate);
   const monthCells = buildMonthCalendarGrid(anchorParts.year, anchorParts.month);
   if (calendarState.mode === 'month') {
-    periodHeading.textContent = formatMonthYearLabel(anchorParts.year, anchorParts.month);
+    periodHeading.textContent = format.formatMonthYear(anchorParts.year, anchorParts.month);
   } else {
     const first = weekCells[0];
     const last = weekCells[weekCells.length - 1];
     periodHeading.textContent =
       first && last
-        ? `Semaine du ${formatShortDateFr(first.date)} au ${formatShortDateFr(last.date, true)}`
-        : 'Semaine';
+        ? t('calendar.weekRange', {
+            from: format.formatShortDate(first.date),
+            to: format.formatShortDate(last.date, true),
+          })
+        : t('calendar.week');
   }
 
   const helpText = document.createElement('p');
   helpText.className = 'cv-caption';
   helpText.style.margin = '0';
   helpText.textContent =
-    calendarState.mode === 'week'
-      ? 'Glissez une tâche sur un créneau horaire ou un jour, ou utilisez Alt/Maj + Flèches ou −1 j / +1 j.'
-      : 'Glissez une tâche sur un jour, ou utilisez Alt/Maj + Flèches ou les boutons −1 j / +1 j pour reporter l’échéance.';
+    calendarState.mode === 'week' ? t('calendar.helpWeek') : t('calendar.helpMonth');
 
   const liveRegion = document.createElement('div');
   liveRegion.id = 'calendar-live-status';
@@ -335,14 +335,14 @@ export function renderCalendarView({
   // Legend differentiating Weekends (Sam/Dim) from Off-hours (18h-7h)
   const legendBar = document.createElement('div');
   legendBar.className = 'lc-cal-legend';
-  legendBar.setAttribute('aria-label', 'Légende de l’agenda');
+  legendBar.setAttribute('aria-label', t('calendar.legend'));
 
   const weekendLegend = document.createElement('span');
   weekendLegend.className = 'lc-cal-legend__item lc-cal-legend__item--weekend';
   const weekendSwatch = document.createElement('span');
   weekendSwatch.className = 'lc-cal-legend__swatch lc-cal-legend__swatch--weekend';
   weekendSwatch.setAttribute('aria-hidden', 'true');
-  weekendLegend.append(weekendSwatch, document.createTextNode('Samedi & dimanche (week-end)'));
+  weekendLegend.append(weekendSwatch, document.createTextNode(t('calendar.legendWeekend')));
 
   const offHoursLegend = document.createElement('span');
   offHoursLegend.className = 'lc-cal-legend__item lc-cal-legend__item--offhours';
@@ -355,7 +355,7 @@ export function renderCalendarView({
   offHoursLegend.append(
     offHoursSwatch,
     legendMoon,
-    document.createTextNode('Créneau 18h–7h (soir et nuit)'),
+    document.createTextNode(t('calendar.legendOffHours')),
   );
 
   legendBar.append(weekendLegend, offHoursLegend);
@@ -386,17 +386,21 @@ export function renderCalendarView({
     const selectedProj = effectiveProjectFilter
       ? selectProjectById(state, effectiveProjectFilter)
       : null;
-    const calName = selectedProj ? `Locavern — ${selectedProj.name}` : 'Locavern — Échéances';
+    const calName = selectedProj
+      ? t('export.ics.calendarNameProject', { project: selectedProj.name })
+      : t('export.ics.calendarName');
     const { icsContent, exportedCount } = buildTasksIcsCalendar(allTasks, state.projects, {
       calName,
       statuses: state.preferences.taskStatuses,
+      t,
+      locale: i18n.locale,
     });
     if (exportedCount === 0) {
-      liveRegion.textContent = 'Aucune tâche datée à exporter.';
+      liveRegion.textContent = t('calendar.noDatedLive');
       notify({
         status: 'info',
-        title: 'Aucune tâche datée',
-        text: 'Ajoutez une date d’échéance à au moins une tâche pour exporter un fichier .ics.',
+        title: t('calendar.noDatedTitle'),
+        text: t('calendar.noDatedText'),
       });
       return;
     }
@@ -405,31 +409,31 @@ export function renderCalendarView({
       ? selectedProj.name
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-|-$/g, '') || 'projet'
-      : 'echeances';
+          .replace(/^-|-$/g, '') || t('export.slug.project')
+      : t('export.slug.dueDates');
     const filename = `locavern-${filenameSlug}-${todayIso}.ics`;
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     try {
       const saved = await saveArchiveBlob(blob, filename, {
         pickerTypes: [
           {
-            description: 'Calendrier iCalendar (.ics)',
+            description: t('export.icsDescription'),
             accept: { 'text/calendar': ['.ics'] },
           },
         ],
       });
       if (!saved.saved) return;
-      liveRegion.textContent = `${exportedCount} tâche(s) datée(s) exportée(s) dans ${filename}.`;
+      liveRegion.textContent = t('calendar.exportedLive', { count: exportedCount, filename });
       notify({
         status: 'success',
-        title: 'Export iCalendar terminé',
-        text: `${exportedCount} tâche(s) datée(s) exportée(s).`,
+        title: t('calendar.exportDone'),
+        text: t('calendar.exportedText', { count: exportedCount }),
       });
     } catch {
       notify({
         status: 'danger',
-        title: 'Échec de l’export .ics',
-        text: 'Impossible d’enregistrer le fichier calendrier localement.',
+        title: t('calendar.exportFailed'),
+        text: t('calendar.exportFailedText'),
       });
     }
   });
@@ -467,8 +471,14 @@ export function renderCalendarView({
       patch,
       now: new Date().toISOString(),
     });
-    const timeNote = nextDueTime ? ` à ${nextDueTime}` : '';
-    liveRegion.textContent = `Échéance de « ${task.title} » déplacée au ${formatShortDateFr(targetDate, true)}${timeNote}.`;
+    const movedDate = format.formatShortDate(targetDate, true);
+    liveRegion.textContent = nextDueTime
+      ? t('calendar.movedToAt', {
+          title: task.title,
+          date: movedDate,
+          time: format.formatTimeOfDay(nextDueTime),
+        })
+      : t('calendar.movedTo', { title: task.title, date: movedDate });
   }
 
   /**
@@ -517,11 +527,11 @@ export function renderCalendarView({
     openBtn.className = 'lc-cal-task__btn';
     openBtn.setAttribute('data-cal-task-open', task.id);
 
-    const statusMeta = getTaskStatusMeta(task.status, configuredStatuses);
+    const statusMeta = getTaskStatusMeta(task.status, configuredStatuses, t);
     const prioMeta = PRIORITY_META[task.priority];
     openBtn.setAttribute(
       'aria-label',
-      `Consulter ${task.title} · Priorité ${prioMeta.label} · ${statusMeta.label}${task.dueDate ? ` · ${task.dueDate}` : ''}${task.dueTime ? ` à ${task.dueTime}` : ''}${offHours ? ' (créneau 18h–7h)' : ''}`,
+      `${t('calendar.cardLabel', { title: task.title, priority: prioMeta.label, status: statusMeta.label })}${task.dueDate ? ` · ${task.dueDate}` : ''}${task.dueTime ? ` ${t('calendar.cardAt', { time: format.formatTimeOfDay(task.dueTime) })}` : ''}${offHours ? ` (${t('calendar.cardOffHours')})` : ''}`,
     );
 
     if (task.dueTime) {
@@ -529,7 +539,7 @@ export function renderCalendarView({
       timeRow.className = 'lc-cal-task__time-row';
       const timeBadge = document.createElement('span');
       timeBadge.className = 'lc-cal-task__time cv-num';
-      timeBadge.textContent = task.dueTime;
+      timeBadge.textContent = format.formatTimeOfDay(task.dueTime);
       timeRow.append(timeBadge);
 
       if (offHours) {
@@ -538,7 +548,7 @@ export function renderCalendarView({
         const mIc = document.createElement('i');
         mIc.className = 'ph ph-moon cv-icon';
         mIc.setAttribute('aria-hidden', 'true');
-        offPill.append(mIc, document.createTextNode(' 18h–7h'));
+        offPill.append(mIc, document.createTextNode(` ${t('common.offHoursRange')}`));
         timeRow.append(offPill);
       }
       openBtn.append(timeRow);
@@ -581,8 +591,8 @@ export function renderCalendarView({
       const editBtn = document.createElement('button');
       editBtn.type = 'button';
       editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-cal-edit-btn';
-      editBtn.setAttribute('aria-label', `Modifier « ${task.title} »`);
-      setTooltip(editBtn, 'Modifier');
+      editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
+      setTooltip(editBtn, t('common.edit'));
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
@@ -595,9 +605,9 @@ export function renderCalendarView({
         const minusBtn = document.createElement('button');
         minusBtn.type = 'button';
         minusBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm lc-cal-shift-btn';
-        minusBtn.setAttribute('aria-label', `Avancer « ${task.title} » d’un jour`);
-        minusBtn.textContent = '−1 j';
-        setTooltip(minusBtn, 'Avancer d’un jour');
+        minusBtn.setAttribute('aria-label', t('calendar.backOneDayNamed', { title: task.title }));
+        minusBtn.textContent = t('calendar.minusDay');
+        setTooltip(minusBtn, t('calendar.backOneDay'));
         minusBtn.addEventListener('click', () =>
           moveTaskToSchedule(task.id, shiftIsoDate(dueDate, -1)),
         );
@@ -605,9 +615,9 @@ export function renderCalendarView({
         const plusBtn = document.createElement('button');
         plusBtn.type = 'button';
         plusBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm lc-cal-shift-btn';
-        plusBtn.setAttribute('aria-label', `Reporter « ${task.title} » d’un jour`);
-        plusBtn.textContent = '+1 j';
-        setTooltip(plusBtn, 'Reporter d’un jour');
+        plusBtn.setAttribute('aria-label', t('calendar.forwardOneDayNamed', { title: task.title }));
+        plusBtn.textContent = t('calendar.plusDay');
+        setTooltip(plusBtn, t('calendar.forwardOneDay'));
         plusBtn.addEventListener('click', () =>
           moveTaskToSchedule(task.id, shiftIsoDate(dueDate, 1)),
         );
@@ -659,7 +669,7 @@ export function renderCalendarView({
   const weekdayRow = document.createElement('div');
   weekdayRow.className = 'lc-cal-weekdays';
   weekdayRow.setAttribute('aria-hidden', 'true');
-  WEEKDAY_SHORT_FR.forEach((label, idx) => {
+  WEEKDAYS.forEach((label, idx) => {
     const wd = document.createElement('div');
     wd.className = 'lc-cal-weekday';
     if (isWeekendWeekdayIndex(idx)) {
@@ -690,8 +700,8 @@ export function renderCalendarView({
       cell.dataset.calWeekend = 'true';
     }
     const dayAriaLabel = isWeekend
-      ? `${formatShortDateFr(cellInfo.date, true)} (Week-end)`
-      : formatShortDateFr(cellInfo.date, true);
+      ? t('calendar.weekendAria', { date: format.formatShortDate(cellInfo.date, true) })
+      : format.formatShortDate(cellInfo.date, true);
     cell.setAttribute('aria-label', dayAriaLabel);
 
     if (
@@ -714,22 +724,22 @@ export function renderCalendarView({
     dayNum.className = 'lc-cal-cell__day';
     dayNum.textContent =
       calendarState.mode === 'week'
-        ? `${WEEKDAY_SHORT_FR[cellInfo.weekdayIndex]} ${formatShortDateFr(cellInfo.date)}`
-        : `${WEEKDAY_SHORT_FR[cellInfo.weekdayIndex]} ${cellInfo.day}`;
+        ? `${WEEKDAYS[cellInfo.weekdayIndex]} ${format.formatShortDate(cellInfo.date)}`
+        : `${WEEKDAYS[cellInfo.weekdayIndex]} ${cellInfo.day}`;
 
     cellHead.append(dayNum);
 
     if (isWeekend) {
       const weekendTag = document.createElement('span');
       weekendTag.className = 'cv-badge lc-cal-weekend-tag';
-      weekendTag.textContent = 'Week-end';
+      weekendTag.textContent = t('calendar.weekend');
       cellHead.append(weekendTag);
     }
 
     if (cellInfo.date === todayIso) {
       const todayBadge = document.createElement('span');
       todayBadge.className = 'cv-badge cv-badge--info';
-      todayBadge.textContent = 'Auj.';
+      todayBadge.textContent = t('calendar.todayShort');
       cellHead.append(todayBadge);
     }
 
@@ -737,7 +747,9 @@ export function renderCalendarView({
       const addDayBtn = document.createElement('button');
       addDayBtn.type = 'button';
       addDayBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-cal-cell__add';
-      const addDayLabel = `Ajouter une tâche le ${formatShortDateFr(cellInfo.date, true)}`;
+      const addDayLabel = t('calendar.addOnDate', {
+        date: format.formatShortDate(cellInfo.date, true),
+      });
       addDayBtn.setAttribute('aria-label', addDayLabel);
       setTooltip(addDayBtn, addDayLabel);
       const addIc = document.createElement('i');
@@ -785,7 +797,7 @@ export function renderCalendarView({
 
       const alldayHead = document.createElement('div');
       alldayHead.className = 'lc-cal-allday__head';
-      alldayHead.textContent = 'Sans heure';
+      alldayHead.textContent = t('calendar.noTime');
       const alldayList = document.createElement('div');
       alldayList.className = 'lc-cal-cell__tasks';
       for (const t of alldayTasks) {
@@ -822,7 +834,7 @@ export function renderCalendarView({
 
         const hourLabel = document.createElement('span');
         hourLabel.className = 'lc-cal-slot__hour cv-num';
-        hourLabel.textContent = slotTime;
+        hourLabel.textContent = format.formatTimeOfDay(slotTime);
         slotHead.append(hourLabel);
 
         if (offHours && (hour === 0 || hour === 18)) {
@@ -831,7 +843,7 @@ export function renderCalendarView({
           const moonIc = document.createElement('i');
           moonIc.className = 'ph ph-moon cv-icon';
           moonIc.setAttribute('aria-hidden', 'true');
-          bandTag.append(moonIc, document.createTextNode(' 18h–7h'));
+          bandTag.append(moonIc, document.createTextNode(` ${t('common.offHoursRange')}`));
           slotHead.append(bandTag);
         }
 
@@ -839,11 +851,18 @@ export function renderCalendarView({
           const addSlotBtn = document.createElement('button');
           addSlotBtn.type = 'button';
           addSlotBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-cal-slot__add';
+          const slotParams = {
+            date: format.formatShortDate(cellInfo.date, true),
+            time: format.formatTimeOfDay(slotTime),
+          };
           const slotLabel = offHours
-            ? `Ajouter une tâche le ${formatShortDateFr(cellInfo.date, true)} à ${slotTime} (créneau 18h–7h)`
-            : `Ajouter une tâche le ${formatShortDateFr(cellInfo.date, true)} à ${slotTime}`;
+            ? t('calendar.addOnDateAtOffHours', slotParams)
+            : t('calendar.addOnDateAt', slotParams);
           addSlotBtn.setAttribute('aria-label', slotLabel);
-          setTooltip(addSlotBtn, `Planifier à ${slotTime}`);
+          setTooltip(
+            addSlotBtn,
+            t('calendar.scheduleAt', { time: format.formatTimeOfDay(slotTime) }),
+          );
           const addIc = document.createElement('i');
           addIc.className = 'ph ph-plus cv-icon';
           addIc.setAttribute('aria-hidden', 'true');
@@ -874,14 +893,14 @@ export function renderCalendarView({
   // Undated backlog panel below so users can schedule undated tasks
   const undatedSection = document.createElement('section');
   undatedSection.className = 'cv-card lc-cal-undated';
-  undatedSection.setAttribute('aria-label', 'Tâches sans échéance');
+  undatedSection.setAttribute('aria-label', t('calendar.undatedLabel'));
 
   const undatedHead = document.createElement('div');
   undatedHead.className = 'lc-view-header';
   const undatedTitle = document.createElement('h3');
   undatedTitle.className = 'cv-h4';
   undatedTitle.style.margin = '0';
-  undatedTitle.textContent = `Sans échéance (${undatedTasks.length})`;
+  undatedTitle.textContent = t('calendar.undatedTitle', { count: undatedTasks.length });
   undatedHead.append(undatedTitle);
 
   const undatedList = document.createElement('div');
@@ -890,7 +909,7 @@ export function renderCalendarView({
     const emptyUndated = document.createElement('p');
     emptyUndated.className = 'cv-caption';
     emptyUndated.style.margin = '0';
-    emptyUndated.textContent = 'Toutes les tâches affichées ont une date d’échéance.';
+    emptyUndated.textContent = t('calendar.undatedEmpty');
     undatedList.append(emptyUndated);
   } else {
     for (const task of undatedTasks) {
@@ -917,8 +936,8 @@ export function renderCalendarView({
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
-        editBtn.setAttribute('aria-label', `Modifier « ${task.title} »`);
-        setTooltip(editBtn, 'Modifier');
+        editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
+        setTooltip(editBtn, t('common.edit'));
         const editIc = document.createElement('i');
         editIc.className = 'ph ph-pencil-simple cv-icon';
         editIc.setAttribute('aria-hidden', 'true');
@@ -928,8 +947,11 @@ export function renderCalendarView({
         const planTodayBtn = document.createElement('button');
         planTodayBtn.type = 'button';
         planTodayBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
-        planTodayBtn.setAttribute('aria-label', `Planifier « ${task.title} » aujourd’hui`);
-        planTodayBtn.textContent = 'Planifier aujourd’hui';
+        planTodayBtn.setAttribute(
+          'aria-label',
+          t('calendar.planTodayNamed', { title: task.title }),
+        );
+        planTodayBtn.textContent = t('calendar.planToday');
         planTodayBtn.addEventListener('click', () => moveTaskToSchedule(task.id, todayIso));
         chip.append(editBtn, planTodayBtn);
       }

@@ -44,6 +44,7 @@ import {
   getTodayIsoDate,
   shiftIsoDate,
 } from './dates.js';
+import { LocavernError } from './messages.js';
 import { createLocalTemplate, getTemplatesForKind } from './templates.js';
 
 export { DEFAULT_TASK_STATUSES };
@@ -161,7 +162,7 @@ function assertAllowedNewLinks(candidateLinks, existingLinks, state, sourceIsTer
   if (addedLinks.length === 0) return;
 
   if (sourceIsTerminalTask) {
-    throw new Error('Une tâche au statut terminal ne peut plus créer de nouveaux liens.');
+    throw new LocavernError('errors.store.terminalTaskLinks');
   }
 
   for (const ref of addedLinks) {
@@ -169,21 +170,21 @@ function assertAllowedNewLinks(candidateLinks, existingLinks, state, sourceIsTer
       const target = state.tasks.find((t) => t.id === ref.id);
       if (target) {
         if (isTerminalTaskStatus(target.status, state.preferences.taskStatuses)) {
-          throw new Error('Impossible de lier une tâche ayant un statut terminal.');
+          throw new LocavernError('errors.store.linkTerminalTask');
         }
         if (isTaskEffectivelyArchived(target, state.projects)) {
-          throw new Error('Impossible de lier un élément archivé.');
+          throw new LocavernError('errors.store.linkArchived');
         }
       }
     } else if (ref.kind === 'note') {
       const target = state.notes.find((n) => n.id === ref.id);
       if (target && isNoteEffectivelyArchived(target, state.projects)) {
-        throw new Error('Impossible de lier un élément archivé.');
+        throw new LocavernError('errors.store.linkArchived');
       }
     } else if (ref.kind === 'whiteboard') {
       const target = state.whiteboards.find((w) => w.id === ref.id);
       if (target && isWhiteboardEffectivelyArchived(target, state.projects)) {
-        throw new Error('Impossible de lier un élément archivé.');
+        throw new LocavernError('errors.store.linkArchived');
       }
     }
   }
@@ -659,7 +660,7 @@ export function reduce(state, command) {
       const existing = state.projects.find((p) => p.id === command.id);
       if (!existing) return { nextState: state, effects: [] };
       const cleanName = command.name.trim();
-      if (!cleanName) throw new Error('Le nom du projet ne peut pas être vide.');
+      if (!cleanName) throw new LocavernError('errors.model.projectNameEmpty');
       const updated = Object.freeze({
         ...existing,
         name: cleanName.slice(0, 120),
@@ -814,7 +815,7 @@ export function reduce(state, command) {
     case 'create_task': {
       const projectExists = state.projects.some((p) => p.id === command.projectId);
       if (!projectExists) {
-        throw new Error('Le projet sélectionné est introuvable.');
+        throw new LocavernError('errors.store.projectNotFound');
       }
       const allowedStatuses = state.preferences.taskStatuses.map((s) => s.id);
       const defaultStatus = getDefaultInitialTaskStatusId(state.preferences.taskStatuses);
@@ -866,10 +867,10 @@ export function reduce(state, command) {
 
       const nextTitle =
         command.patch.title !== undefined ? command.patch.title.trim() : existing.title;
-      if (!nextTitle) throw new Error('Le titre de la tâche ne peut pas être vide.');
+      if (!nextTitle) throw new LocavernError('errors.model.taskTitleEmpty');
       const nextProjectId = command.patch.projectId ?? existing.projectId;
       if (!state.projects.some((p) => p.id === nextProjectId)) {
-        throw new Error('Le projet sélectionné est introuvable.');
+        throw new LocavernError('errors.store.projectNotFound');
       }
       const allowedIds = state.preferences.taskStatuses.map((s) => s.id);
       let nextStatus = existing.status;
@@ -877,12 +878,12 @@ export function reduce(state, command) {
         nextStatus =
           typeof command.patch.status === 'string' ? command.patch.status.trim() || null : null;
         if (nextStatus !== null && !allowedIds.includes(nextStatus)) {
-          throw new Error(`Statut invalide : ${nextStatus}.`);
+          throw new LocavernError('errors.store.statusInvalid', { status: nextStatus });
         }
       }
       const nextPriority = command.patch.priority ?? existing.priority;
       if (!TASK_PRIORITIES.includes(nextPriority)) {
-        throw new Error(`Priorité invalide : ${nextPriority}.`);
+        throw new LocavernError('errors.store.priorityInvalid', { priority: nextPriority });
       }
       const nextDoc =
         command.patch.descriptionDoc !== undefined
@@ -1039,7 +1040,9 @@ export function reduce(state, command) {
       if (!task) return { nextState: state, effects: [] };
       const allowedIds = state.preferences.taskStatuses.map((s) => s.id);
       if (!allowedIds.includes(command.targetStatus)) {
-        throw new Error(`Statut cible invalide : ${command.targetStatus}.`);
+        throw new LocavernError('errors.store.targetStatusInvalid', {
+          status: command.targetStatus,
+        });
       }
 
       const projectId = task.projectId;
@@ -1133,7 +1136,7 @@ export function reduce(state, command) {
 
     case 'create_note': {
       if (command.projectId !== null && !state.projects.some((p) => p.id === command.projectId)) {
-        throw new Error('Le projet associé à la note est introuvable.');
+        throw new LocavernError('errors.store.noteProjectNotFound');
       }
       const note = createNote({
         id: command.id,
@@ -1165,11 +1168,11 @@ export function reduce(state, command) {
       if (!existing) return { nextState: state, effects: [] };
       const nextTitle =
         command.patch.title !== undefined ? command.patch.title.trim() : existing.title;
-      if (!nextTitle) throw new Error('Le titre de la note ne peut pas être vide.');
+      if (!nextTitle) throw new LocavernError('errors.model.noteTitleEmpty');
       const nextProjectId =
         command.patch.projectId !== undefined ? command.patch.projectId : existing.projectId;
       if (nextProjectId !== null && !state.projects.some((p) => p.id === nextProjectId)) {
-        throw new Error('Le projet associé à la note est introuvable.');
+        throw new LocavernError('errors.store.noteProjectNotFound');
       }
       const nextDoc =
         command.patch.contentDoc !== undefined
@@ -1314,7 +1317,7 @@ export function reduce(state, command) {
 
     case 'create_whiteboard': {
       if (command.projectId !== null && !state.projects.some((p) => p.id === command.projectId)) {
-        throw new Error('Le projet associé au tableau blanc est introuvable.');
+        throw new LocavernError('errors.store.whiteboardProjectNotFound');
       }
       const whiteboard = createWhiteboard({
         id: command.id,
@@ -1346,11 +1349,11 @@ export function reduce(state, command) {
       if (!existing) return { nextState: state, effects: [] };
       const nextTitle =
         command.patch.title !== undefined ? command.patch.title.trim() : existing.title;
-      if (!nextTitle) throw new Error('Le titre du tableau blanc ne peut pas être vide.');
+      if (!nextTitle) throw new LocavernError('errors.model.whiteboardTitleEmpty');
       const nextProjectId =
         command.patch.projectId !== undefined ? command.patch.projectId : existing.projectId;
       if (nextProjectId !== null && !state.projects.some((p) => p.id === nextProjectId)) {
-        throw new Error('Le projet associé au tableau blanc est introuvable.');
+        throw new LocavernError('errors.store.whiteboardProjectNotFound');
       }
       const nextViewport =
         command.patch.viewport !== undefined
@@ -1771,9 +1774,7 @@ export function reduce(state, command) {
           ? item.task.projectId
           : (state.projects.find((p) => !p.archived)?.id ?? state.projects[0]?.id ?? null);
         if (!targetProjectId) {
-          throw new Error(
-            'Impossible de restaurer cette tâche : créez ou restaurez d’abord un projet actif.',
-          );
+          throw new LocavernError('errors.store.restoreNeedsProject');
         }
         const takenTaskIds = new Set(state.tasks.map((t) => t.id));
         const restoredTaskId = resolveRestoredId(item.task.id, takenTaskIds);
@@ -2674,10 +2675,11 @@ export function selectArchivedEntries(state, filters = {}) {
  * Select built-in + custom local templates, optionally filtered by kind.
  * @param {AppState} state
  * @param {TemplateKind} [kind]
+ * @param {readonly LocalTemplate[]} [builtinTemplates] the built-in templates in the language of the interface (French when omitted)
  * @returns {LocalTemplate[]}
  */
-export function selectTemplates(state, kind) {
-  if (kind) return getTemplatesForKind(state.templates, kind);
+export function selectTemplates(state, kind, builtinTemplates) {
+  if (kind) return getTemplatesForKind(state.templates, kind, builtinTemplates);
   return [...state.templates];
 }
 
