@@ -1,4 +1,7 @@
-// sidebar widget: presence + active timer.
+// Presence and running timers, in two forms (decision F of docs/interface-comparison.md):
+//  - the full cards, in the page header of the Timeline view (`createAttendanceWidget`);
+//  - a compact summary in the top bar, on every view (`createTopbarStatus`): the presence state,
+//    the number of timers and the main action.
 // Full re-render when the state changes. A tick only rewrites the figures that move (durations),
 // so the buttons are not replaced every second: they keep the keyboard focus and their tooltip.
 
@@ -27,11 +30,59 @@ function totalPauses(events) {
 }
 
 /**
+ * What each presence state shows and does: its badge, the main action and, for the compact
+ * summary, a shorter label.
+ * @type {Record<
+ *   import('../../types.js').AttendanceState['status'],
+ *   {
+ *     label: string, shortLabel: string, variant: import('./types.js').BadgeOptions['variant'],
+ *     cta: string | null, ctaVariant: 'primary' | 'secondary',
+ *     action: import('../../types.js').AttendanceType | null,
+ *   }
+ * >}
+ */
+const PRESENCE_META = {
+  not_arrived: {
+    label: 'Pas encore arrivé',
+    shortLabel: 'Absent',
+    variant: 'neutral',
+    action: 'arrival',
+    cta: 'Pointer arrivée',
+    ctaVariant: 'primary',
+  },
+  present: {
+    label: 'Présent',
+    shortLabel: 'Présent',
+    variant: 'success',
+    action: 'break_start',
+    cta: 'Pause',
+    ctaVariant: 'secondary',
+  },
+  on_break: {
+    label: 'En pause',
+    shortLabel: 'En pause',
+    variant: 'warning',
+    action: 'break_end',
+    cta: 'Reprendre',
+    ctaVariant: 'primary',
+  },
+  left: {
+    label: 'Journée terminée',
+    shortLabel: 'Parti',
+    variant: 'neutral',
+    action: null,
+    cta: null,
+    ctaVariant: 'secondary',
+  },
+};
+
+/**
+ * The full cards: presence, then one card per running or paused timer.
  * @param {import('./types.js').Store} store
  * @param {{ onOpenQuickAdd: () => void }} opts
  */
 export function createAttendanceWidget(store, opts) {
-  const host = el('div', { class: 'ch-stack ch-gap-4' });
+  const host = el('div', { class: 'ch-live' });
 
   /** @type {(() => void)[]} */
   let liveUpdaters = [];
@@ -65,47 +116,7 @@ export function createAttendanceWidget(store, opts) {
     const currentBreakDuration = () =>
       lastBreakStartEvent && status === 'on_break' ? Date.now() - lastBreakStartEvent.at : 0;
 
-    /**
-     * @type {Record<
-     *   import('../../types.js').AttendanceState['status'],
-     *   {
-     *     label: string, variant: import('./types.js').BadgeOptions['variant'],
-     *     cta: string | null, ctaVariant: 'primary' | 'secondary',
-     *     action: import('../../types.js').AttendanceType | null,
-     *   }
-     * >}
-     */
-    const metas = {
-      not_arrived: {
-        label: 'Pas encore arrivé',
-        variant: 'neutral',
-        action: 'arrival',
-        cta: 'Pointer arrivée',
-        ctaVariant: 'primary',
-      },
-      present: {
-        label: 'Présent',
-        variant: 'success',
-        action: 'break_start',
-        cta: 'Pause',
-        ctaVariant: 'secondary',
-      },
-      on_break: {
-        label: 'En pause',
-        variant: 'warning',
-        action: 'break_end',
-        cta: 'Reprendre',
-        ctaVariant: 'primary',
-      },
-      left: {
-        label: 'Journée terminée',
-        variant: 'neutral',
-        action: null,
-        cta: null,
-        ctaVariant: 'secondary',
-      },
-    };
-    const meta = metas[status];
+    const meta = PRESENCE_META[status];
 
     // ----- presence block -----
     const presenceBlock = el(
@@ -257,23 +268,28 @@ export function createAttendanceWidget(store, opts) {
           { class: 'ch-meta' },
           'Lance un ou plusieurs chronos en parallèle, depuis un projet, une todo ou en un clic.',
         ),
-        UI.Button({
-          variant: 'primary',
-          size: 'sm',
-          icon: 'play',
-          children: 'Démarrer un chrono',
-          mutates: true,
-          onclick: opts.onOpenQuickAdd,
-          disabled: status === 'left',
-        }),
+        el(
+          'div',
+          null,
+          UI.Button({
+            variant: 'primary',
+            size: 'sm',
+            icon: 'play',
+            children: 'Démarrer un chrono',
+            mutates: true,
+            onclick: opts.onOpenQuickAdd,
+            disabled: status === 'left',
+          }),
+        ),
       );
+      activeBlock.classList.add('ch-stack', 'ch-gap-3');
     } else {
       const header = el(
         'div',
-        { class: 'ch-row ch-center ch-wrap ch-gap-3' },
+        { class: 'ch-row ch-center ch-wrap ch-gap-3 ch-grow' },
         el(
-          'span',
-          { class: 'cv-overline' },
+          'h2',
+          { class: 'cv-overline ch-title-reset' },
           actives.length > 1 ? `${actives.length} chronos en parallèle` : 'Chrono actif',
         ),
         actives.length > 1 && runningCount > 0
@@ -283,9 +299,7 @@ export function createAttendanceWidget(store, opts) {
 
       const groupBar =
         actives.length > 1
-          ? el(
-              'div',
-              { class: 'ch-row ch-gap-3' },
+          ? [
               runningCount > 0
                 ? UI.Button({
                     variant: 'secondary',
@@ -294,7 +308,6 @@ export function createAttendanceWidget(store, opts) {
                     children: 'Tout mettre en pause',
                     mutates: true,
                     onclick: () => store.actions.pauseAll(),
-                    className: 'ch-grow',
                   })
                 : UI.Button({
                     variant: 'secondary',
@@ -303,7 +316,6 @@ export function createAttendanceWidget(store, opts) {
                     children: 'Tout reprendre',
                     mutates: true,
                     onclick: () => store.actions.resumeAll(),
-                    className: 'ch-grow',
                   }),
               UI.IconButton({
                 icon: 'stop',
@@ -313,24 +325,28 @@ export function createAttendanceWidget(store, opts) {
                 mutates: true,
                 onclick: () => store.actions.stopAll(),
               }),
-            )
-          : null;
+            ]
+          : [];
 
       activeBlock = el(
         'section',
         { class: 'ch-stack ch-gap-3', 'aria-label': 'Chronos' },
-        header,
-        ...actives.map(chronoCard),
-        groupBar,
-        UI.Button({
-          variant: 'secondary',
-          size: 'sm',
-          icon: 'plus',
-          children: 'Démarrer un autre chrono',
-          mutates: true,
-          onclick: opts.onOpenQuickAdd,
-          disabled: status === 'left',
-        }),
+        el(
+          'div',
+          { class: 'ch-row ch-center ch-wrap ch-gap-3' },
+          header,
+          ...groupBar,
+          UI.Button({
+            variant: 'secondary',
+            size: 'sm',
+            icon: 'plus',
+            children: 'Démarrer un autre chrono',
+            mutates: true,
+            onclick: opts.onOpenQuickAdd,
+            disabled: status === 'left',
+          }),
+        ),
+        el('div', { class: 'ch-timers' }, ...actives.map(chronoCard)),
       );
     }
 
@@ -348,6 +364,84 @@ export function createAttendanceWidget(store, opts) {
     destroy() {
       offState();
       offTick();
+    },
+  };
+}
+
+/**
+ * The compact summary of the top bar: the presence state, the number of timers and the main
+ * action (start, pause everything or resume everything). It has no figure that moves, so only a
+ * change of state draws it again.
+ * @param {import('./types.js').Store} store
+ * @param {{ onOpenQuickAdd: () => void }} opts
+ */
+export function createTopbarStatus(store, opts) {
+  const host = el('div', {
+    class: 'ch-topstatus',
+    role: 'group',
+    'aria-label': 'Présence et chronos',
+  });
+
+  function render() {
+    const status = store.attendanceState().status;
+    const meta = PRESENCE_META[status];
+    const actives = store.activeSessions();
+    const running = actives.filter((x) => x.status === 'running').length;
+
+    /** @type {HTMLElement | null} */
+    let count = null;
+    if (actives.length > 0) {
+      const shown = running > 0 ? running : actives.length;
+      const word = running > 0 ? 'en cours' : 'en pause';
+      count = el(
+        'span',
+        { class: 'cv-tag cv-tag--mono' },
+        icon('timer'),
+        String(shown),
+        el('span', { class: 'ch-topstatus__text' }, ` ${shown > 1 ? 'chronos' : 'chrono'} ${word}`),
+      );
+    }
+
+    const action =
+      running > 0
+        ? UI.IconButton({
+            icon: 'pause',
+            label: 'Tout mettre en pause',
+            variant: 'secondary',
+            size: 'sm',
+            mutates: true,
+            onclick: () => store.actions.pauseAll(),
+          })
+        : actives.length > 0
+          ? UI.IconButton({
+              icon: 'play',
+              label: 'Tout reprendre',
+              variant: 'primary',
+              size: 'sm',
+              mutates: true,
+              onclick: () => store.actions.resumeAll(),
+            })
+          : UI.IconButton({
+              icon: 'play',
+              label: 'Nouveau chrono',
+              variant: 'primary',
+              size: 'sm',
+              mutates: true,
+              disabled: status === 'left',
+              onclick: opts.onOpenQuickAdd,
+            });
+
+    const badge = UI.Badge({ variant: meta.variant, children: meta.shortLabel });
+    host.replaceChildren(...(count ? [badge, count, action] : [badge, action]));
+  }
+
+  render();
+  const offState = store.onState(render);
+
+  return {
+    el: host,
+    destroy() {
+      offState();
     },
   };
 }

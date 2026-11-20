@@ -1,4 +1,5 @@
 // projects view: cards with totals, creation modal.
+import { getShowProjectTotals, setShowProjectTotals } from '../preferences.js';
 import * as UI from './ui.js';
 
 const { el, formatDuration, liveDuration } = UI;
@@ -33,10 +34,9 @@ export function createProjectsView(store, opts) {
 
   // Preference: show or hide the cumulated times and the session count on the
   // cards. Hidden by default (not useful in every case, and visually costly).
-  // Persisted in localStorage. When hidden, each card offers an on-demand
-  // computation, project by project.
-  const PREF_TOTALS = 'chrono.prefs.projetsTotaux';
-  let showTotals = localStorage.getItem(PREF_TOTALS) === '1';
+  // Persisted in localStorage (`chrono-show-project-totals`, adapters/preferences.js). When hidden,
+  // each card offers an on-demand computation, project by project.
+  let showTotals = getShowProjectTotals();
   const computed = new Set(); // projects whose total was computed on demand
 
   const host = el('div', { class: 'ch-view' });
@@ -232,14 +232,14 @@ export function createProjectsView(store, opts) {
     openProjectModal(null);
   }
 
-  const metaNode = el('div', { class: 'ch-meta ch-mt-1' });
+  const metaNode = el('p', { class: 'ch-figure ch-page-title' });
   const gridSlot = el('div', null);
   host.append(
     // Header: built once, so the controls keep the focus when the grid changes
     el(
       'div',
       { class: 'ch-row ch-center ch-wrap ch-gap-4' },
-      el('div', null, el('h1', { class: 'cv-h1 ch-page-title' }, 'Projets'), metaNode),
+      metaNode,
       el(
         'div',
         { class: 'ch-row ch-center ch-wrap ch-gap-4 ch-end' },
@@ -249,7 +249,7 @@ export function createProjectsView(store, opts) {
           checked: showTotals,
           onchange: (checked) => {
             showTotals = checked;
-            localStorage.setItem(PREF_TOTALS, showTotals ? '1' : '0');
+            setShowProjectTotals(showTotals);
             computed.clear();
             render();
           },

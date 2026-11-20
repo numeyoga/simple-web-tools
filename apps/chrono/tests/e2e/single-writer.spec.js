@@ -34,7 +34,11 @@ test('a read-only tab keeps counting: the duration of a running timer moves on',
   const writer = await context.newPage();
   await openApp(writer);
   await createProject(writer, 'Alpha');
-  await writer.getByRole('navigation').getByRole('button', { name: 'Démarrer un chrono' }).click();
+  await writer
+    .getByRole('main')
+    .getByRole('region', { name: 'Chronos' })
+    .getByRole('button', { name: 'Démarrer un chrono' })
+    .click();
   await writer
     .getByRole('dialog', { name: 'Ajouter un chrono' })
     .getByRole('button', { name: 'Démarrer', exact: true })
@@ -42,7 +46,8 @@ test('a read-only tab keeps counting: the duration of a running timer moves on',
   const reader = await context.newPage();
   await openApp(reader);
   const duration = reader
-    .getByRole('navigation')
+    .getByRole('main')
+    .getByRole('region', { name: 'Chronos' })
     .getByText(/^\d\d:\d\d:\d\d$/)
     .first();
   await expect(duration).toBeVisible();

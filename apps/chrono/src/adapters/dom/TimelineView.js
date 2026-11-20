@@ -1,5 +1,6 @@
 // "Timeline" view: date banner, stats, hourly chart, sessions, distribution.
 import { dayBounds } from '../../core/dates.js';
+import { createAttendanceWidget } from './AttendanceWidget.js';
 import * as UI from './ui.js';
 
 const { el, icon, formatDuration, formatTime, liveDuration, localToTimestamp, timestampToLocal } =
@@ -49,7 +50,13 @@ const withFocusKey = (node, key) => {
 export function createTimelineView(store, opts) {
   let dateOffset = 0;
 
-  const host = el('div', { class: 'ch-view' });
+  // The page header is in three slots: the day and its figures and the rest of the page are
+  // drawn again every second, the live cards (presence and timers, decision F) keep their own
+  // node so that their buttons keep the keyboard focus.
+  const live = createAttendanceWidget(store, { onOpenQuickAdd: opts.onOpenQuickAdd });
+  const headSlot = el('div', null);
+  const restSlot = el('div', { class: 'ch-view' });
+  const host = el('div', { class: 'ch-view' }, headSlot, live.el, restSlot);
 
   /**
    * @param {string} label
@@ -1045,7 +1052,7 @@ export function createTimelineView(store, opts) {
       month: 'long',
     });
 
-    host.replaceChildren(
+    headSlot.replaceChildren(
       // Date banner + stats
       el(
         'div',
@@ -1067,7 +1074,7 @@ export function createTimelineView(store, opts) {
           el(
             'div',
             null,
-            el('h1', { class: 'cv-h1 ch-page-title ch-capitalize' }, dayLabel),
+            el('h2', { class: 'cv-h2 ch-page-title ch-capitalize' }, dayLabel),
             el('div', { class: 'ch-meta ch-capitalize ch-mt-1' }, dayLabelDate),
           ),
           withFocusKey(
@@ -1114,7 +1121,8 @@ export function createTimelineView(store, opts) {
           ),
         ),
       ),
-
+    );
+    restSlot.replaceChildren(
       // Timeline chart
       el(
         'section',
@@ -1207,6 +1215,7 @@ export function createTimelineView(store, opts) {
     destroy() {
       offState();
       offTick();
+      live.destroy();
     },
   };
 }

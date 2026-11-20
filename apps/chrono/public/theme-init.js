@@ -1,8 +1,8 @@
 // Runs before the first paint (a classic script in <head>, never inline: the CSP forbids it).
 // `chrono-theme` is `light` or `dark`; absent, the theme follows `prefers-color-scheme`.
 // `chrono-text-size` is `standard`, `comfortable` or `large`; absent, the size is automatic.
-// Every storage name starts with the app name (decision 0005). The interface that changes them
-// comes with the preferences of the app shell.
+// Every storage name starts with the app name (decision 0005). The preferences dialog changes
+// them (src/adapters/preferences.js, which builds the same names).
 (() => {
   const THEME_STORAGE_KEY = 'chrono-theme';
   /** @type {string | null} */
