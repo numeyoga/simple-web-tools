@@ -1036,6 +1036,11 @@ export default {
     movedTo: 'Due date of “{title}” moved to {date}.',
     movedToAt: 'Due date of “{title}” moved to {date} at {time}.',
     cardLabel: 'View {title} · Priority {priority} · {status}',
+    priorityTooltip: {
+      high: 'High priority',
+      medium: 'Medium priority',
+      low: 'Low priority',
+    },
     cardAt: 'at {time}',
     cardOffHours: 'off-hours slot',
     backOneDayNamed: 'Move “{title}” one day earlier',

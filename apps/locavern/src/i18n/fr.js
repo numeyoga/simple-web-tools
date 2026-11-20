@@ -1040,6 +1040,11 @@ export default {
     movedTo: 'Échéance de « {title} » déplacée au {date}.',
     movedToAt: 'Échéance de « {title} » déplacée au {date} à {time}.',
     cardLabel: 'Consulter {title} · Priorité {priority} · {status}',
+    priorityTooltip: {
+      high: 'Priorité haute',
+      medium: 'Priorité moyenne',
+      low: 'Priorité basse',
+    },
     cardAt: 'à {time}',
     cardOffHours: 'créneau 18h–7h',
     backOneDayNamed: 'Avancer « {title} » d’un jour',
