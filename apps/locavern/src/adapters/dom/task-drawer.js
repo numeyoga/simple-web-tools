@@ -23,7 +23,7 @@ import {
 } from '../../core/store.js';
 import { instantiateChecklistTemplate } from '../../core/templates.js';
 import { createTemplatePicker } from './template-picker.js';
-import { mountRichTextEditor } from '../rich-text-tiptap.js';
+import { mountRichTextEditor } from '../rich-text-lazy.js';
 import { createLinkEditor } from './link-editor.js';
 import { createTagEditor } from './tag-editor.js';
 import { initTooltips, setTooltip } from './tooltip.js';

@@ -12,7 +12,7 @@ import {
 } from '../../core/store.js';
 import { instantiateNoteTemplate } from '../../core/templates.js';
 import { saveArchiveBlob } from '../archive-file.js';
-import { mountRichTextEditor } from '../rich-text-tiptap.js';
+import { mountRichTextEditor } from '../rich-text-lazy.js';
 import {
   applyDialogPresentation,
   closeDialogById,

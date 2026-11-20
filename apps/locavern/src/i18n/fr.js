@@ -171,6 +171,7 @@ export default {
     pngDescription: 'Image PNG',
   },
   common: {
+    retry: 'Réessayer',
     localImage: 'Image locale',
     cancel: 'Annuler',
     close: 'Fermer',
@@ -730,6 +731,10 @@ export default {
     applyTemplateText: 'Le contenu actuel de cette note sera remplacé par le modèle sélectionné.',
   },
   whiteboards: {
+    loading: 'Chargement des tableaux blancs',
+    loadFailed: 'Impossible de charger les tableaux blancs.',
+    loadFailedText:
+      'Le fichier n’est pas arrivé : cet écran ne peut pas encore s’ouvrir. Vérifiez votre connexion, puis réessayez.',
     new: 'Nouveau tableau blanc',
     consultTitle: 'Consulter le tableau blanc',
     onCanvas: {
@@ -912,6 +917,10 @@ export default {
     moveDown: 'Descendre dans la colonne',
   },
   editor: {
+    loading: 'Chargement de l’éditeur',
+    loadFailed: 'Impossible de charger l’éditeur.',
+    loadFailedText:
+      'Le fichier n’est pas arrivé : vous ne pouvez pas encore modifier ce texte. Vérifiez votre connexion, puis réessayez.',
     remoteImageBlocked: 'Image distante bloquée',
     remoteImageBlockedText:
       'Seules les images locales enregistrées sur cet appareil sont autorisées.',

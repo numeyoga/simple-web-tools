@@ -53,15 +53,7 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 ## Known issues inherited from the imported apps
 
-- Locavern's `src/styles/app.css` still uses primitive Covenant tokens that have no semantic role
-  (the skill's rule forbids them in component CSS). They need a decision: add roles to the skill,
-  or build app-level tokens from semantic ones.
-  - Whiteboard artwork (12 references): `--lc-wb-*` tokens (lines about 682-715) and the stroke
-    and fill rules (about 1004-1028) use `accent-500`, `accent-800`, `success-700`, `warning-600`
-    and `danger-700`.
-  - Status borders and stripes (10 references): `warning-600`, `info-600`, `danger-500`,
-    `warning-500`, `info-500` (lines about 1243-1510 and 2166). `--cv-<status>-border` is the
-    nearest role; check that it reaches 3:1 where the stripe carries meaning.
-
-- Locavern's main bundle exceeds Vite's chunk size warning; the notes editor is a candidate
-  for a lazy import.
+- Locavern's calendar cards show the task priority only as the colour of a left stripe (the
+  accessible name has the word). The stripe now reaches 3:1, but the skill asks for a word or an
+  icon next to a status colour: it needs a design decision (an icon in the card, or the label in
+  the detailed week view).

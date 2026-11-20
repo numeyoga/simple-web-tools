@@ -479,6 +479,25 @@ dialog::backdrop {
 }
 
 /* Rich text editor (Tiptap headless + Covenant controls) */
+.lc-lazy-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-3);
+  min-height: 8rem;
+  padding: var(--cv-space-4);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+
+.lc-lazy-loading__short {
+  width: 70%;
+}
+
+.lc-lazy-error .cv-btn {
+  margin-inline-start: var(--cv-space-2);
+}
+
 .lc-editor {
   display: flex;
   flex-direction: column;

@@ -174,6 +174,7 @@ export default {
     pngDescription: 'PNG image',
   },
   common: {
+    retry: 'Retry',
     localImage: 'Local image',
     cancel: 'Cancel',
     close: 'Close',
@@ -731,6 +732,10 @@ export default {
       'The current content of this note will be replaced by the selected template.',
   },
   whiteboards: {
+    loading: 'Loading whiteboards',
+    loadFailed: 'Couldn’t load whiteboards.',
+    loadFailedText:
+      'The file did not arrive, so this screen can’t open yet. Check your connection, then retry.',
     new: 'New whiteboard',
     consultTitle: 'View whiteboard',
     onCanvas: {
@@ -910,6 +915,10 @@ export default {
     moveDown: 'Move down in the column',
   },
   editor: {
+    loading: 'Loading the editor',
+    loadFailed: 'Couldn’t load the editor.',
+    loadFailedText:
+      'The file did not arrive, so you can’t edit this text yet. Check your connection, then retry.',
     remoteImageBlocked: 'Remote image blocked',
     remoteImageBlockedText: 'Only local images saved on this device are allowed.',
     linkRejected: 'Link rejected',
