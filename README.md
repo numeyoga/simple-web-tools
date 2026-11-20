@@ -3,16 +3,16 @@
 Small, focused web apps that run entirely in your browser.
 
 - **No backend, no account, no tracking.** Your data stays on your device, in IndexedDB.
-- **Offline-ready:** apps install as PWAs and keep working without a network (Chrono is not there yet, see the roadmap).
+- **Offline-ready:** apps install as PWAs and keep working without a network.
 - **Yours to keep:** every app can export its data to a file and import it back.
 - **No runtime framework.** Plain HTML, CSS and modern JavaScript, built with Vite.
 
 ## Apps
 
-| App                        | What it does                                                                     | Status                     |
-| -------------------------- | -------------------------------------------------------------------------------- | -------------------------- |
-| [Locavern](apps/locavern/) | Personal productivity: projects, tasks, Kanban, calendar, notes, SVG whiteboard. | Reference architecture     |
-| [Chrono](apps/chrono/)     | Time tracking: projects, sessions, presence clock, weekly report, to-dos.        | Being ported (see roadmap) |
+| App                        | What it does                                                                     | Status                      |
+| -------------------------- | -------------------------------------------------------------------------------- | --------------------------- |
+| [Locavern](apps/locavern/) | Personal productivity: projects, tasks, Kanban, calendar, notes, SVG whiteboard. | Reference architecture      |
+| [Chrono](apps/chrono/)     | Time tracking: projects, sessions, presence clock, weekly report, to-dos.        | Ported (English and French) |
 
 The apps are published together on GitHub Pages, one sub-path per app.
 
