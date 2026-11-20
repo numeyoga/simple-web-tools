@@ -2,8 +2,37 @@ import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 
 /**
+ * Close the toasts left by previous actions: a toast stays 6 s at the bottom right
+ * and can cover a trigger depending on the layout.
+ * @param {import('@playwright/test').Page} page
+ */
+async function dismissToasts(page) {
+  const dismiss = page.locator('.cv-toast [data-cv-dismiss]');
+  while ((await dismiss.count()) > 0) {
+    await dismiss.first().click();
+  }
+  await expect(page.locator('.cv-toast')).toHaveCount(0);
+}
+
+/**
+ * Move the pointer off every trigger, drop keyboard focus (a dialog opened by a click
+ * focuses its first control, which opens that control's tooltip) and wait until the
+ * previous tooltip is closed, so the next assertion can only be satisfied by the
+ * tooltip of the next trigger.
+ * @param {import('@playwright/test').Page} page
+ */
+async function resetPointerState(page) {
+  await page.mouse.move(1, 1);
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+}
+
+/**
  * Helper to hover a button, wait for the hover delay, and assert the top-layer
- * tooltip displays the expected text near the button without clipping.
+ * tooltip of THAT button (linked through `interestfor`) displays the expected
+ * text near the button without clipping.
  * @param {import('@playwright/test').Page} page
  * @param {import('@playwright/test').Locator} trigger
  * @param {string | RegExp} expectedText
@@ -17,10 +46,25 @@ async function expectTooltipOnHover(page, trigger, expectedText) {
   expect(box).not.toBeNull();
   if (!box) return;
 
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await resetPointerState(page);
 
-  const tip = page.locator('.lc-tooltip:popover-open');
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  // The pointer must reach the trigger itself, not an overlay (toast, previous tooltip)
+  const reachesTrigger = await trigger.evaluate(
+    (el, { x, y }) => el.contains(document.elementFromPoint(x, y)),
+    { x: cx, y: cy },
+  );
+  expect(reachesTrigger, 'the trigger is covered at its center').toBe(true);
+
+  const tipId = await trigger.getAttribute('interestfor');
+  expect(tipId).toBeTruthy();
+  const tip = page.locator(`#${tipId}`);
+
+  await page.mouse.move(cx, cy);
   await expect(tip).toBeVisible({ timeout: 2000 });
+  await expect(tip).toHaveAttribute('class', /lc-tooltip/);
+  await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(1);
   await expect(tip).toContainText(expectedText);
 
   const tipBox = await tip.boundingBox();
@@ -175,10 +219,10 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
   test('audit complet des boutons : topbar, modales, Tiptap, tableau blanc, calendrier et aujourd’hui', async ({
     page,
   }) => {
-    const offsetToday = (() => {
-      const dt = new Date();
-      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-    })();
+    // Fixed day: the calendar layout (and so which controls sit under the bottom-right
+    // toast area) depends on today's date. 2026-11-20 is the day that exposed the defect.
+    const offsetToday = '2026-11-20';
+    await page.clock.install({ time: new Date(`${offsetToday}T12:00:00`) });
 
     await page.goto('/');
 
@@ -273,6 +317,7 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     await page.locator('[data-nav-view="calendar"]').click();
     await expect(page.locator('#topbar-title')).toHaveText('Calendrier');
     await expect(page.locator('button[title]')).toHaveCount(0);
+    await dismissToasts(page);
     await expectTooltipOnHover(
       page,
       page.locator('[aria-label^="Avancer «"]').first(),
