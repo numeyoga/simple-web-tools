@@ -21,11 +21,28 @@ import { notify } from './app-shell.js';
 import { initTooltips, setTooltip } from './tooltip.js';
 import { format, i18n, t } from '../i18n.js';
 
-/** @type {Readonly<Record<TaskPriority, { label: string; badgeClass: string }>>} */
+/**
+ * The words are for the card's accessible name; the icon is the visual cue next to the title
+ * (arrow up, equals, arrow down: three shapes that read as an ordered scale without colour),
+ * with the tooltip text for pointer users.
+ * @type {Readonly<Record<TaskPriority, { label: string; icon: string; tooltip: string }>>}
+ */
 const PRIORITY_META = {
-  high: { label: t('priority.high'), badgeClass: 'cv-badge cv-badge--danger' },
-  medium: { label: t('priority.medium'), badgeClass: 'cv-badge cv-badge--warning' },
-  low: { label: t('priority.low'), badgeClass: 'cv-badge cv-badge--info' },
+  high: {
+    label: t('priority.high'),
+    icon: 'ph-bold ph-arrow-up',
+    tooltip: t('calendar.priorityTooltip.high'),
+  },
+  medium: {
+    label: t('priority.medium'),
+    icon: 'ph-bold ph-equals',
+    tooltip: t('calendar.priorityTooltip.medium'),
+  },
+  low: {
+    label: t('priority.low'),
+    icon: 'ph-bold ph-arrow-down',
+    tooltip: t('calendar.priorityTooltip.low'),
+  },
 };
 
 /** The short names of the weekdays, Monday first, in the language of the page. */
@@ -554,10 +571,23 @@ export function renderCalendarView({
       openBtn.append(timeRow);
     }
 
+    const titleRow = document.createElement('span');
+    titleRow.className = 'lc-cal-task__title-row';
+    // Decorative: the card's accessible name already has the priority word. Not focusable, so
+    // the card stays the only tab stop; the tooltip is for pointer users.
+    const prioMark = document.createElement('span');
+    prioMark.className = `lc-cal-task__prio lc-cal-task__prio--${task.priority}`;
+    prioMark.dataset.calPriority = task.priority;
+    prioMark.setAttribute('aria-hidden', 'true');
+    const prioIcon = document.createElement('i');
+    prioIcon.className = `${prioMeta.icon} cv-icon`;
+    prioMark.append(prioIcon);
+    setTooltip(prioMark, prioMeta.tooltip);
     const titleEl = document.createElement('span');
     titleEl.className = 'lc-cal-task__title';
     titleEl.textContent = task.title;
-    openBtn.append(titleEl);
+    titleRow.append(prioMark, titleEl);
+    openBtn.append(titleRow);
 
     if (detailed) {
       const metaEl = document.createElement('span');

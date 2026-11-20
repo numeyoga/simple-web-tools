@@ -41,6 +41,9 @@ The legend under the header explains how to read the calendar:
 
 Available actions:
 
+- **Read a card's priority**: besides the colour of its left stripe, each task card shows an icon
+  before its title: an up arrow for **High**, an equals sign for **Medium**, a down arrow for
+  **Low**. Hover the icon to see the priority in words.
 - **Change scale and navigate**: switch between **Month** and **Week**, move with **Previous** and
   **Next**, or go back to the current date with **Today**.
 - **Filter by project**: select **All projects** or an active project in the drop-down at the top

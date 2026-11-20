@@ -53,7 +53,4 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
 
 ## Known issues inherited from the imported apps
 
-- Locavern's calendar cards show the task priority only as the colour of a left stripe (the
-  accessible name has the word). The stripe now reaches 3:1, but the skill asks for a word or an
-  icon next to a status colour: it needs a design decision (an icon in the card, or the label in
-  the detailed week view).
+None at the moment.
