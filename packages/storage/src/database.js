@@ -6,13 +6,17 @@ import { openDB } from 'idb';
  */
 
 /**
- * One schema step. It runs synchronously inside the upgrade transaction: it must not await
- * anything other than requests of that transaction.
+ * One schema step, run inside the upgrade transaction. It may return a promise (an
+ * `async` function): the next steps then run after it settles. The only things a step may
+ * await are requests of the upgrade transaction (`tx.objectStore(...).getAll()`, `put`...):
+ * the transaction commits as soon as no request is pending, so awaiting a timer, `fetch` or
+ * any other promise would end the upgrade early. If the promise rejects, the upgrade
+ * transaction is aborted and the open rejects: nothing is half-applied.
  * @callback Migration
  * @param {Database} db
  * @param {UpgradeTransaction} tx
  * @param {number} oldVersion version found on disk (0 for a new database)
- * @returns {void}
+ * @returns {unknown} a promise when the step is asynchronous; any other value is ignored
  */
 
 /**
@@ -25,6 +29,18 @@ import { openDB } from 'idb';
  * @property {() => void} [onVersionChange] called after this connection was closed because
  *   another tab upgrades the database; the app should stop using the connection and reload
  */
+
+/**
+ * @param {unknown} value
+ * @returns {value is PromiseLike<unknown>}
+ */
+function isThenable(value) {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (/** @type {{ then?: unknown }} */ (value).then) === 'function'
+  );
+}
 
 /**
  * Open a database and run the migrations it still needs.
@@ -52,9 +68,42 @@ export function openDatabase({ name, migrations, onBlocked, onVersionChange }) {
       // A failing step aborts the upgrade transaction and rejects the open promise; without
       // this, `tx.done` would reject as well and be reported as an unhandled rejection.
       tx.done.catch(() => {});
-      for (let index = oldVersion; index < migrations.length; index += 1) {
-        /** @type {Migration} */ (migrations[index])(db, tx, oldVersion);
-      }
+      const abort = () => {
+        try {
+          tx.abort();
+        } catch {
+          /* the transaction is already finishing or aborted */
+        }
+      };
+      /**
+       * Runs the steps from `index`. Steps run synchronously one after the other; when one
+       * returns a promise, the rest runs after it settles (still in the same transaction).
+       * @param {number} index
+       * @returns {void}
+       */
+      const run = (index) => {
+        for (let step = index; step < migrations.length; step += 1) {
+          const result = /** @type {Migration} */ (migrations[step])(db, tx, oldVersion);
+          if (isThenable(result)) {
+            result.then(
+              () => {
+                try {
+                  run(step + 1);
+                } catch (error) {
+                  console.error('[storage] a migration step failed', error);
+                  abort();
+                }
+              },
+              (/** @type {unknown} */ error) => {
+                console.error('[storage] a migration step failed', error);
+                abort();
+              },
+            );
+            return;
+          }
+        }
+      };
+      run(oldVersion);
     },
     blocked(currentVersion, blockedVersion) {
       onBlocked?.({ currentVersion, blockedVersion });

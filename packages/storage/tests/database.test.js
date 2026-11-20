@@ -159,6 +159,142 @@ describe('openDatabase', () => {
   });
 });
 
+describe('openDatabase, asynchronous steps', () => {
+  /** @param {IDBDatabase} d @param {string} store @returns {Promise<any[]>} */
+  const readAll = (d, store) =>
+    new Promise((resolve, reject) => {
+      const request = d.transaction(store).objectStore(store).getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+  /** Step: read `old` with getAll, then create `copy` (after the await). */
+  /** @type {import('../src/index.js').Migration} */
+  const copyOldIntoNew = async (db, tx) => {
+    const records = await tx.objectStore('old').getAll();
+    db.createObjectStore('copy', { keyPath: 'id' });
+    await Promise.all(
+      records.map((record) => tx.objectStore('copy').put({ ...record, copied: true })),
+    );
+  };
+  /** Sync step that needs the store created by the async one. */
+  /** @type {import('../src/index.js').Migration} */
+  const markInCopy = (_db, tx) => {
+    void tx.objectStore('copy').put({ id: 'marker' });
+  };
+  const buildOld = (/** @type {IDBDatabase} */ d) => {
+    d.createObjectStore('old', { keyPath: 'id' });
+  };
+
+  it('runs the steps after an asynchronous one once it has settled, from version 0', async () => {
+    const db = await openDatabase({
+      name: 'async-from-0',
+      migrations: [
+        (d, tx) => {
+          d.createObjectStore('old', { keyPath: 'id' });
+          tx.objectStore('old').put({ id: 'a' });
+        },
+        copyOldIntoNew,
+        markInCopy,
+      ],
+    });
+
+    expect(db.version).toBe(3);
+    expect((await db.getAll('copy')).map((r) => r.id).sort()).toEqual(['a', 'marker']);
+    db.close();
+  });
+
+  it('runs them from an intermediate version too', async () => {
+    await createRawDatabase('async-from-1', 1, buildOld, (d) => put(d, 'old', { id: 'b' }));
+
+    const db = await openDatabase({
+      name: 'async-from-1',
+      migrations: [() => {}, copyOldIntoNew, markInCopy],
+    });
+
+    expect(db.version).toBe(3);
+    expect(await db.getAll('copy')).toEqual([{ id: 'b', copied: true }, { id: 'marker' }]);
+    db.close();
+  });
+
+  it('keeps synchronous steps synchronous when nothing before them is asynchronous', async () => {
+    /** @type {string[]} */
+    const order = [];
+    const open = openDatabase({
+      name: 'sync-order',
+      migrations: [
+        () => {
+          order.push('a');
+        },
+        () => {
+          order.push('b');
+        },
+      ],
+    });
+    // The upgrade runs in a task of its own: both steps are done before any promise callback.
+    const db = await open;
+    expect(order).toEqual(['a', 'b']);
+    db.close();
+  });
+
+  it('a rejecting asynchronous step leaves the database at its previous version and data', async () => {
+    await createRawDatabase('async-reject', 1, buildOld, (d) => put(d, 'old', { id: 'c' }));
+    const later = vi.fn();
+
+    await expect(
+      openDatabase({
+        name: 'async-reject',
+        migrations: [
+          () => {},
+          async (db, tx) => {
+            await tx.objectStore('old').getAll();
+            db.createObjectStore('copy', { keyPath: 'id' });
+            throw new Error('boom');
+          },
+          later,
+        ],
+      }),
+    ).rejects.toThrow();
+
+    expect(later).not.toHaveBeenCalled();
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('async-reject');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    expect(/** @type {IDBDatabase} */ (db).version).toBe(1);
+    expect([.../** @type {IDBDatabase} */ (db).objectStoreNames]).toEqual(['old']);
+    expect(await readAll(/** @type {IDBDatabase} */ (db), 'old')).toEqual([{ id: 'c' }]);
+    /** @type {IDBDatabase} */ (db).close();
+  });
+
+  it('a step that throws after an asynchronous one aborts the upgrade', async () => {
+    await createRawDatabase('async-chained-throw', 1, buildOld, (d) => put(d, 'old', { id: 'd' }));
+
+    await expect(
+      openDatabase({
+        name: 'async-chained-throw',
+        migrations: [
+          () => {},
+          copyOldIntoNew,
+          () => {
+            throw new Error('boom');
+          },
+        ],
+      }),
+    ).rejects.toThrow();
+
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('async-chained-throw');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    expect(/** @type {IDBDatabase} */ (db).version).toBe(1);
+    expect([.../** @type {IDBDatabase} */ (db).objectStoreNames]).toEqual(['old']);
+    /** @type {IDBDatabase} */ (db).close();
+  });
+});
+
 describe('createStoresIfMissing', () => {
   it('creates missing stores and leaves existing ones and their data alone', async () => {
     await createRawDatabase(
