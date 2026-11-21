@@ -236,6 +236,9 @@ export function mountRichTextEditor({
     element: surface,
     editable,
     content: initialContent,
+    // Tiptap would add a <style> element with its base rules, which a `style-src 'self'` policy
+    // blocks: they are in `editor.css` instead.
+    injectCSS: false,
     extensions: [
       Document,
       Paragraph,
