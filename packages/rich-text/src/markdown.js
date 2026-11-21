@@ -13,11 +13,12 @@ function formatMarkedText(rawText, marks) {
   if (!marks || marks.length === 0) return rawText;
 
   // Preserve leading/trailing whitespace outside emphasis delimiters per CommonMark rules.
-  const match = /^(\s*)([\s\S]*?)(\s*)$/.exec(rawText);
-  const leading = match?.[1] ?? '';
-  const core = match?.[2] ?? rawText;
-  const trailing = match?.[3] ?? '';
+  // trimStart/trimEnd strip the same characters as `\s`, in linear time: a regex with a lazy
+  // middle group between two `\s*` backtracks quadratically on long runs of spaces (ReDoS).
+  const core = rawText.trim();
   if (!core) return rawText;
+  const leading = rawText.slice(0, rawText.length - rawText.trimStart().length);
+  const trailing = rawText.slice(rawText.trimEnd().length);
 
   let out = core;
   const hasCode = marks.some((m) => m.type === 'code');

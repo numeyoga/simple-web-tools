@@ -129,6 +129,25 @@ describe('richTextDocToMarkdown', () => {
     expect(richTextDocToMarkdown(nested)).toBe('**padded** \n\n- Parent\n  - Child');
   });
 
+  it('formats marked text with long runs of spaces in linear time', () => {
+    const spaces = ' '.repeat(100_000);
+    /**
+     * @param {string} text
+     * @returns {import('../src/index.js').RichTextDoc}
+     */
+    const boldParagraph = (text) => ({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text, marks: [{ type: 'bold' }] }] },
+      ],
+    });
+    // With the former backtracking regex, this input took minutes (CodeQL js/polynomial-redos).
+    expect(richTextDocToMarkdown(boldParagraph(`a${spaces}b${spaces}`))).toBe(
+      `**a${spaces}b**${spaces}`.trim(),
+    );
+    expect(richTextDocToMarkdown(boldParagraph(`x\t\n`))).toBe('**x**');
+  });
+
   it('returns an empty string for a missing document', () => {
     expect(richTextDocToMarkdown(null)).toBe('');
     expect(richTextDocToMarkdown({ type: 'doc' })).toBe('');
