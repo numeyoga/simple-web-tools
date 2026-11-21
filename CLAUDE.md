@@ -15,8 +15,8 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 ## Rules that are easy to miss
 
 - English for code, comments, commits and docs. UI strings go through the translation
-  catalog, never inline (decision 0002). Locavern and Chrono have English and French
-  catalogs and English docs.
+  catalog, never inline (decision 0002). Locavern, Chrono and Transient Notes have
+  English and French catalogs and English docs.
 - No runtime framework, no CDN, no third-party request. New runtime dependencies need a
   reason in the app README (decision 0003).
 - `src/core` stays pure: no DOM, no IndexedDB, no `Date.now()`. Pass time in as an argument
@@ -29,8 +29,8 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 - Install scripts are disabled (`.npmrc`). GitHub Actions are pinned by SHA with a version
   comment; keep it that way when editing workflows (decision 0007).
 - Commits: `type(scope): summary`, where the scope is the app or package name.
-- `apps/chrono` follows the same architecture as Locavern since its port (ES modules, Vite,
-  Vitest, Covenant, shared storage, strict CSP, PWA).
+- `apps/chrono` and `apps/transient-notes` follow the same architecture as Locavern (ES modules,
+  Vite, Vitest, Covenant, shared storage, strict CSP, PWA).
 
 ## Project skills
 
