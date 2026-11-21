@@ -51,6 +51,28 @@ Extracted from Locavern, the reference app ([decision 0004](decisions/0004-refer
       catalogs and add English.
 - [x] Translate the user documentation, English first.
 
+## 6. Add Transient Notes
+
+A rewrite, not an import, of the [Transient Notes](https://github.com/numeyoga/transient-notes)
+prototype (notes sorted with the PARA method, images, text export). The prototype builds its
+markup with `innerHTML`, keeps images as `data:` URLs and has French strings in its code; it
+has no users, so no data is migrated and its history is not imported.
+
+- [ ] `packages/rich-text`: Locavern's Tiptap editor, document sanitizing, plain-text and
+      Markdown conversion, extracted so that both apps use one copy (decision 0004). Labels
+      and tooltips are passed in by the app. Locavern switches to it with no visible change.
+- [ ] `apps/transient-notes` on the reference architecture: Vite, `src/core` and
+      `src/adapters`, Covenant, English and French catalogs, storage on `packages/storage`
+      (`transient-notes-db`, single writer), strict CSP, PWA scoped to its path.
+- [ ] Features: PARA categories with folders (create, rename, delete, choose the category),
+      notes (create, edit, move, delete after confirmation), search, sort, images pasted or
+      dropped and kept as local assets, export of a note or of all notes as text or
+      Markdown, JSON backup and restore, preferences (theme, text size, language,
+      single-key shortcuts).
+- [ ] Vitest for the core and the storage adapter; Playwright and axe journeys in both
+      themes, at 1280 and 390 px.
+- [ ] Root README, app README in English, published with Chrono and Locavern.
+
 ## Known issues inherited from the imported apps
 
 None at the moment.
