@@ -9,10 +9,11 @@ Small, focused web apps that run entirely in your browser.
 
 ## Apps
 
-| App                        | What it does                                                                     | Status                      |
-| -------------------------- | -------------------------------------------------------------------------------- | --------------------------- |
-| [Locavern](apps/locavern/) | Personal productivity: projects, tasks, Kanban, calendar, notes, SVG whiteboard. | Reference (English, French) |
-| [Chrono](apps/chrono/)     | Time tracking: projects, sessions, presence clock, weekly report, to-dos.        | Ported (English and French) |
+| App                                      | What it does                                                                       | Status                         |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------ |
+| [Locavern](apps/locavern/)               | Personal productivity: projects, tasks, Kanban, calendar, notes, SVG whiteboard.   | Reference (English, French)    |
+| [Chrono](apps/chrono/)                   | Time tracking: projects, sessions, presence clock, weekly report, to-dos.          | Ported (English and French)    |
+| [Transient Notes](apps/transient-notes/) | Notes sorted with the PARA method: folders, rich text, images, search, workspaces. | Rewritten (English and French) |
 
 The apps are published together on GitHub Pages, one sub-path per app.
 

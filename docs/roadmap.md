@@ -72,9 +72,9 @@ has no users, so no data is migrated and its history is not imported.
 - [x] Workspaces, as in Chrono: several independent sets of notes (one database each,
       `transient-notes__<id>`), to keep notes apart by role or by importance. Create, rename,
       delete, switch; the JSON backup covers the current workspace.
-- [ ] Vitest for the core and the storage adapter; Playwright and axe journeys in both
+- [x] Vitest for the core and the storage adapter; Playwright and axe journeys in both
       themes, at 1280 and 390 px.
-- [ ] Root README, app README in English, published with Chrono and Locavern.
+- [x] Root README, app README in English, published with Chrono and Locavern.
 
 ## Known issues inherited from the imported apps
 
