@@ -11,6 +11,7 @@ import {
   renameWorkspace,
   switchWorkspace,
 } from '../../src/adapters/workspaces.js';
+import { getCollapsedCategories, setCollapsedCategories } from '../../src/adapters/preferences.js';
 import { createAppStore } from '../../src/adapters/store.js';
 import { installBrowser, uninstallBrowser } from './support/browser.js';
 import { readStore } from './support/idb.js';
@@ -114,6 +115,17 @@ describe('deleting', () => {
 
     expect(listWorkspaces().map((w) => w.id)).toEqual(['default']);
     expect((await indexedDB.databases()).map((d) => d.name)).not.toContain('transient-notes__work');
+  });
+
+  test('forgets the folded categories of the deleted workspace only', async () => {
+    createWorkspace('Work');
+    setCollapsedCategories('default', ['projects']);
+    setCollapsedCategories('work', ['areas']);
+
+    await removeWorkspace('work', 'default');
+
+    expect(getCollapsedCategories('work')).toEqual([]);
+    expect(getCollapsedCategories('default')).toEqual(['projects']);
   });
 
   test('the last workspace cannot be deleted', async () => {

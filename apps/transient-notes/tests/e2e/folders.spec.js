@@ -128,6 +128,42 @@ test('a category is collapsed and expanded, and its folders are hidden with it',
   await expect(folder).toBeVisible();
 });
 
+test('a folded category stays folded after a reload, and a damaged value is ignored', async ({
+  page,
+}) => {
+  const { errors } = await openApp(page);
+  await createFolder(page, 'Chantier', 'Projets');
+  await createFolder(page, 'Veille', 'Ressources');
+  await nav(page).getByRole('button', { name: 'Replier Projets' }).click();
+  await expect(nav(page).getByRole('button', { name: /^Chantier/ })).toBeHidden();
+
+  await page.reload();
+
+  await expect(nav(page).getByRole('button', { name: 'Déplier Projets' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect(nav(page).getByRole('button', { name: /^Chantier/ })).toBeHidden();
+  await expect(nav(page).getByRole('button', { name: /^Veille/ })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('transient-notes-collapsed-default'))).toBe(
+    '["projects"]',
+  );
+
+  // Unfolding forgets it; a value that is not a list of categories folds nothing.
+  await nav(page).getByRole('button', { name: 'Déplier Projets' }).click();
+  await page.reload();
+  await expect(nav(page).getByRole('button', { name: /^Chantier/ })).toBeVisible();
+  for (const bad of ['{"projects":true}', 'projects', '["nope", 7]', '{']) {
+    await page.evaluate(
+      (value) => localStorage.setItem('transient-notes-collapsed-default', value),
+      bad,
+    );
+    await page.reload();
+    await expect(nav(page).getByRole('button', { name: /^Chantier/ })).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
 test('deleting a folder asks first and keeps its notes, with no folder', async ({ page }) => {
   await openApp(page);
   await createFolder(page, 'Éphémère', 'Projets');

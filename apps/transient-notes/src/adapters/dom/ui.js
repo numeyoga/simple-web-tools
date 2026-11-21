@@ -4,6 +4,7 @@
 // Every helper returns an HTMLElement.
 
 import { appendChildren, el, fieldId, icon, t } from './lib.js';
+import { liftTooltip } from './tooltip.js';
 
 /** @typedef {import('./types.js').ButtonOptions} ButtonOptions */
 /** @typedef {import('./types.js').IconButtonOptions} IconButtonOptions */
@@ -105,6 +106,7 @@ function IconButton(opts) {
   const holder = document.createDocumentFragment();
   holder.append(wrap);
   initCovenant(holder);
+  liftTooltip(wrap); // out of the clipping of the sidebar and the panes (top layer)
   return Object.assign(wrap, { button });
 }
 

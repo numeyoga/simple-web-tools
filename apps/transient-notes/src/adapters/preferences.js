@@ -4,8 +4,15 @@
 // theme and the text size before the first paint; this module does it again when the user
 // changes them.
 
-import { formatFlag, parseFlag, parseTextSize, parseTheme } from '../core/preferences.js';
-import { singleKeyShortcutsKey, textSizeKey, themeKey } from './names.js';
+import {
+  formatCollapsedCategories,
+  formatFlag,
+  parseCollapsedCategories,
+  parseFlag,
+  parseTextSize,
+  parseTheme,
+} from '../core/preferences.js';
+import { collapsedCategoriesKey, singleKeyShortcutsKey, textSizeKey, themeKey } from './names.js';
 
 /** @typedef {import('../core/preferences.js').Theme} Theme */
 /** @typedef {import('../core/preferences.js').TextSize} TextSize */
@@ -88,6 +95,26 @@ export function getSingleKeyShortcuts() {
 /** @param {boolean} enabled */
 export function setSingleKeyShortcuts(enabled) {
   write(singleKeyShortcutsKey(), formatFlag(enabled));
+}
+
+/* ---------------- Folded categories of the tree ---------------- */
+
+/**
+ * The categories of the tree the user folded in a workspace.
+ * @param {string} workspaceId
+ */
+export function getCollapsedCategories(workspaceId) {
+  return parseCollapsedCategories(read(collapsedCategoriesKey(workspaceId)));
+}
+
+/**
+ * Remembers the folded categories of a workspace; none folded removes the key.
+ * @param {string} workspaceId
+ * @param {Iterable<string>} collapsed
+ */
+export function setCollapsedCategories(workspaceId, collapsed) {
+  const value = formatCollapsedCategories(collapsed);
+  write(collapsedCategoriesKey(workspaceId), value === '[]' ? null : value);
 }
 
 /* ---------------- Page and other tabs ---------------- */
