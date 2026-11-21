@@ -2,7 +2,18 @@
 // renames, switches and deletes them, and exports or imports the JSON backup of the active one.
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import { createNote, goToSelection, openApp, openWorkspaces, waitForWrite } from './support.js';
+import {
+  PNG_BASE64,
+  createNote,
+  goToSelection,
+  openApp,
+  openWorkspaces,
+  pasteImage,
+  readStore,
+  waitForStoredText,
+  waitForWrite,
+  writeNote,
+} from './support.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
@@ -215,4 +226,129 @@ test('backup: a file that is not a backup is refused before anything is replaced
   }
   await page.keyboard.press('Escape');
   await expect(page.getByRole('main').getByRole('button', { name: 'Sans titre' })).toHaveCount(1);
+});
+
+test('backup: a note with a picture is exported, wiped, imported, and the picture is back after a reload', async ({
+  page,
+}) => {
+  const { errors } = await openApp(page);
+  await createNote(page);
+  await writeNote(page, { title: 'Avec photo', body: 'légende' });
+  await pasteImage(page, 'photo.png');
+  await expect.poll(async () => (await readStore(page, 'assets')).length).toBe(1);
+  const [asset] = await readStore(page, 'assets');
+  await waitForStoredText(page, asset.id);
+
+  // The backup holds the picture itself, as base64 (a restore must not need the old database).
+  let dialog = await openWorkspaces(page);
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Exporter JSON' }).click();
+  const path = await (await download).path();
+  const backup = JSON.parse((await readFile(path)).toString('utf8'));
+  expect(backup.data.assets).toHaveLength(1);
+  expect(backup.data.assets[0]).toMatchObject({ id: asset.id, mime: 'image/png' });
+  expect(backup.data.assets[0].data).toBe(PNG_BASE64);
+  await page.keyboard.press('Escape');
+
+  // Wipe: delete the note; the picture goes with it.
+  await page.getByRole('button', { name: 'Supprimer la note' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Supprimer', exact: true }).click();
+  await expect.poll(async () => (await readStore(page, 'assets')).length).toBe(0);
+  await expect.poll(async () => (await readStore(page, 'notes')).length).toBe(0);
+
+  // Import into the same workspace.
+  dialog = await openWorkspaces(page);
+  await dialog.locator('input[type="file"]').setInputFiles(path);
+  await page
+    .getByRole('dialog', { name: 'Remplacer les notes ?' })
+    .getByRole('button', { name: 'Remplacer les notes' })
+    .click();
+  await expect(page.getByRole('main').getByRole('button', { name: /^Avec photo/ })).toBeVisible();
+
+  await page.reload();
+  await page
+    .getByRole('main')
+    .getByRole('button', { name: /^Avec photo/ })
+    .click();
+  const picture = page.getByRole('textbox', { name: 'Contenu de la note' }).locator('img');
+  await expect(picture).toHaveAttribute('src', /^blob:/);
+  await expect
+    .poll(() => picture.evaluate((img) => /** @type {HTMLImageElement} */ (img).naturalWidth))
+    .toBe(1);
+  expect((await readStore(page, 'assets')).map((a) => a.id)).toEqual([asset.id]);
+  expect(errors).toEqual([]);
+});
+
+test('workspaces: notes and folders are separate, and deleting one removes its database', async ({
+  page,
+}) => {
+  const { errors } = await openApp(page);
+  // The main workspace: a folder with a note, and a folded category.
+  await page.getByRole('main').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('1');
+  await expect(page.getByRole('heading', { level: 1, name: 'Projets généraux' })).toBeVisible();
+  await writeNote(page, { title: 'Note principale' });
+  await waitForStoredText(page, 'Note principale');
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+  await nav.getByRole('button', { name: 'Replier Domaines' }).click();
+
+  // A second workspace has no folder, no note, and its own folded categories.
+  await createWorkspace(page, 'Perso', 'switch');
+  await expect(page.getByRole('button', { name: 'Espace de travail Perso' })).toBeVisible();
+  await expect(nav.getByRole('button', { name: /^Projets généraux/ })).toHaveCount(0);
+  await expect(page.getByRole('main').getByText('Aucune note ici pour le moment')).toBeVisible();
+  await expect(nav.getByRole('button', { name: 'Replier Domaines' })).toBeVisible();
+  await nav.getByRole('button', { name: 'Nouveau dossier' }).click();
+  const created = page.getByRole('dialog', { name: 'Nouveau dossier' });
+  await created.getByLabel('Nom du dossier').fill('Maison');
+  await created.getByRole('button', { name: 'Créer', exact: true }).click();
+  await expect(nav.getByRole('button', { name: /^Maison/ })).toBeVisible();
+  await createNote(page);
+  await writeNote(page, { title: 'Note perso' });
+  await waitForStoredText(page, 'Note perso', 'perso');
+  expect((await readStore(page, 'folders', 'perso')).map((f) => f.name)).toEqual(['Maison']);
+  expect((await readStore(page, 'folders')).map((f) => f.name)).toEqual(['Projets généraux']);
+  expect((await readStore(page, 'notes')).map((n) => n.title)).toEqual(['Note principale']);
+
+  // Back to the main workspace: its folder and note, not the other ones.
+  let dialog = await openWorkspaces(page);
+  await dialog.getByRole('button', { name: 'Basculer' }).click();
+  await page
+    .getByRole('dialog', { name: 'Changer d’espace ?' })
+    .getByRole('button', { name: 'Confirmer' })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Espace de travail Espace principal' }),
+  ).toBeVisible();
+  await expect(nav.getByRole('button', { name: /^Projets généraux/ })).toBeVisible();
+  await expect(nav.getByRole('button', { name: /^Maison/ })).toHaveCount(0);
+  await expect(nav.getByRole('button', { name: 'Déplier Domaines' })).toBeVisible();
+  await expect(
+    page.getByRole('main').getByRole('button', { name: /^Note principale/ }),
+  ).toBeVisible();
+  await expect(page.getByRole('main').getByRole('button', { name: /^Note perso/ })).toHaveCount(0);
+
+  // Both databases exist; deleting the other workspace removes its database and its storage.
+  const names = () => page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));
+  expect(await names()).toEqual(
+    expect.arrayContaining(['transient-notes__default', 'transient-notes__perso']),
+  );
+  dialog = await openWorkspaces(page);
+  await dialog.getByRole('button', { name: 'Supprimer', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Supprimer cet espace ?' })
+    .getByRole('button', { name: 'Supprimer', exact: true })
+    .click();
+  await expect(page.getByText('Espace supprimé')).toBeVisible();
+  await expect.poll(names).not.toContain('transient-notes__perso');
+  expect(await names()).toContain('transient-notes__default');
+  // The one that is left is the last one: nothing can be deleted any more.
+  await expect(
+    dialog.getByRole('button', { name: /^Impossible : actif ou dernier/ }),
+  ).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Supprimer', exact: true })).toHaveCount(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem('transient-notes-collapsed-perso')),
+  ).toBeNull();
+  expect(errors).toEqual([]);
 });

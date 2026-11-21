@@ -11,6 +11,7 @@ import {
   openApp,
   openFolderMenu,
   openWorkspaces,
+  PNG_BASE64,
   showNotesList,
 } from './support.js';
 
@@ -79,6 +80,63 @@ for (const theme of THEMES) {
         await menu.getByRole('menuitem', { name: 'Renommer' }).click();
         await expect(page.getByRole('dialog', { name: 'Renommer le dossier' })).toBeVisible();
         await expectNoA11yViolations(page, { include: ['dialog[open]'] });
+      });
+
+      test('the new folder, move folder and delete folder dialogs', async ({ page }) => {
+        const menuButton = page.getByRole('button', { name: 'Menu' });
+        if (await menuButton.isVisible()) await menuButton.click();
+        await page.getByRole('button', { name: 'Nouveau dossier' }).click();
+        const created = page.getByRole('dialog', { name: 'Nouveau dossier' });
+        await expect(created).toBeVisible();
+        await expectNoA11yViolations(page, { include: ['dialog[open]'] });
+        // The error state of the name field, then a folder to work on.
+        await created.getByRole('button', { name: 'Créer', exact: true }).click();
+        await expect(created.getByText('Le nom est vide')).toBeVisible();
+        await expectNoA11yViolations(page, { include: ['dialog[open]'] });
+        await created.getByLabel('Nom du dossier').fill('Chantier');
+        await created.getByRole('button', { name: 'Créer', exact: true }).click();
+        await expect(created).toHaveCount(0);
+
+        let menu = await openFolderMenu(page, 'Chantier');
+        await menu.getByRole('menuitem', { name: 'Déplacer vers une autre catégorie' }).click();
+        await expect(page.getByRole('dialog', { name: 'Déplacer le dossier' })).toBeVisible();
+        await expectNoA11yViolations(page, { include: ['dialog[open]'] });
+        await page.keyboard.press('Escape');
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+
+        menu = await openFolderMenu(page, 'Chantier');
+        await menu.getByRole('menuitem', { name: 'Supprimer' }).click();
+        await expect(page.getByRole('dialog', { name: 'Supprimer ce dossier ?' })).toBeVisible();
+        await expectNoA11yViolations(page, { include: ['dialog[open]'] });
+      });
+
+      test('the toast of an image that was refused', async ({ page }) => {
+        await createNote(page);
+        await expect(page.getByRole('toolbar', { name: 'Mise en forme du texte' })).toBeVisible();
+        await page.locator('.lc-editor input[type="file"]').setInputFiles({
+          name: 'notes.txt',
+          mimeType: 'text/plain',
+          buffer: Buffer.from('pas une image'),
+        });
+        await expect(page.getByText('Image non ajoutée')).toBeVisible();
+        await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+        await expectNoA11yViolations(page);
+        // A picture is fine too: the editor with an image in it.
+        await page.locator('.lc-editor input[type="file"]').setInputFiles({
+          name: 'photo.png',
+          mimeType: 'image/png',
+          buffer: Buffer.from(PNG_BASE64, 'base64'),
+        });
+        await expect(
+          page.getByRole('textbox', { name: 'Contenu de la note' }).locator('img'),
+        ).toHaveAttribute('src', /^blob:/);
+        await expectNoA11yViolations(page);
+      });
+
+      test('a tooltip shown in the top layer', async ({ page }) => {
+        await page.getByRole('button', { name: 'Préférences' }).hover();
+        await expect(page.getByRole('tooltip', { name: 'Préférences' })).toBeVisible();
+        await expectNoA11yViolations(page);
       });
 
       test('the drawer of the narrow layout', async ({ page }) => {
