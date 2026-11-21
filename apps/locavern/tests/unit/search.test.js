@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   extractNoteSearchText,
-  extractRichTextPlainText,
   extractTaskSearchText,
   extractWhiteboardSearchText,
   matchesSearchTokens,
@@ -42,10 +41,6 @@ describe('search', () => {
         },
       ],
     };
-
-    expect(extractRichTextPlainText(richDoc)).toContain('Architecture');
-    expect(extractRichTextPlainText(richDoc)).toContain('IndexedDB locale.');
-    expect(extractRichTextPlainText(richDoc)).toContain('Schéma réseau');
 
     const task = createTask({
       id: 't1',

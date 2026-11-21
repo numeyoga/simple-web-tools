@@ -58,7 +58,7 @@ prototype (notes sorted with the PARA method, images, text export). The prototyp
 markup with `innerHTML`, keeps images as `data:` URLs and has French strings in its code; it
 has no users, so no data is migrated and its history is not imported.
 
-- [ ] `packages/rich-text`: Locavern's Tiptap editor, document sanitizing, plain-text and
+- [x] `packages/rich-text`: Locavern's Tiptap editor, document sanitizing, plain-text and
       Markdown conversion, extracted so that both apps use one copy (decision 0004). Labels
       and tooltips are passed in by the app. Locavern switches to it with no visible change.
 - [ ] `apps/transient-notes` on the reference architecture: Vite, `src/core` and

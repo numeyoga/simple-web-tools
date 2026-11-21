@@ -2,8 +2,11 @@
 
 import {
   ALLOWED_IMAGE_MIMES,
-  TASK_PRIORITIES,
   collectDocAssetIds,
+  sanitizeRichTextDoc,
+} from '@simple-web-tools/rich-text';
+import {
+  TASK_PRIORITIES,
   collectWhiteboardAssetIds,
   normalizeDueDate,
   normalizeDueTime,
@@ -11,7 +14,6 @@ import {
   normalizeTags,
   normalizeTaskRecurrence,
   normalizeTaskStatuses,
-  sanitizeRichTextDoc,
   sanitizeWhiteboardElements,
   sanitizeWhiteboardViewport,
 } from './model.js';

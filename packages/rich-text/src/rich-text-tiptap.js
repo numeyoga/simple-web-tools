@@ -1,5 +1,5 @@
 /** @import { Content } from '@tiptap/core' */
-/** @import { RichTextDoc } from '../types.d.ts' */
+/** @import { RichTextDoc } from './types.d.ts' */
 
 import { Editor, Node } from '@tiptap/core';
 import Bold from '@tiptap/extension-bold';
@@ -17,16 +17,63 @@ import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Text from '@tiptap/extension-text';
 import { UndoRedo } from '@tiptap/extensions';
-import { EMPTY_RICH_DOC, sanitizeLinkHref, sanitizeRichTextDoc } from '../core/model.js';
-import { initTooltips, setTooltip } from './dom/tooltip.js';
-import { t } from './i18n.js';
+import { EMPTY_RICH_DOC, sanitizeLinkHref, sanitizeRichTextDoc } from './document.js';
+
+/**
+ * Every text the editor shows, translated by the app: the package has no catalog of its own.
+ * @typedef {{
+ *   toolbar: string;
+ *   bold: string;
+ *   italic: string;
+ *   strike: string;
+ *   code: string;
+ *   heading1: string;
+ *   heading2: string;
+ *   heading3: string;
+ *   bulletList: string;
+ *   orderedList: string;
+ *   taskList: string;
+ *   link: string;
+ *   insertImage: string;
+ *   linkLabel: string;
+ *   linkPlaceholder: string;
+ *   apply: string;
+ *   cancel: string;
+ *   localImage: string;
+ * }} RichTextEditorLabels `localImage` is the alt text of an image that has none
+ */
+
+/**
+ * Hooks of the app's own tooltip, optional: without them the toolbar buttons keep their
+ * `aria-label` only.
+ * @typedef {{
+ *   setTooltip?: (trigger: HTMLElement, text: string) => void;
+ *   initTooltips?: (root: ParentNode) => void;
+ * }} RichTextTooltipHooks
+ */
+
+/**
+ * @typedef {{
+ *   container: HTMLElement;
+ *   initialDoc: RichTextDoc;
+ *   editable: boolean;
+ *   ariaLabel: string;
+ *   labels: RichTextEditorLabels;
+ *   resolveAssetUrl: (assetId: string) => Promise<string | null>;
+ *   onUploadImage: (file: File) => Promise<{ assetId: string; alt: string } | null>;
+ *   onBlockedRemoteImage?: () => void;
+ *   onRejectedLink?: () => void;
+ *   onChange: (doc: RichTextDoc) => void;
+ * } & RichTextTooltipHooks} RichTextEditorOptions
+ */
 
 /**
  * Create a custom Tiptap Node for local-only images referenced by IndexedDB assetId.
  * Remote image URLs (http/https) are never parsed or rendered.
  * @param {(assetId: string) => Promise<string | null>} resolveAssetUrl
+ * @param {string} fallbackAlt alt text of an image that has none
  */
-function createLocalImageExtension(resolveAssetUrl) {
+function createLocalImageExtension(resolveAssetUrl, fallbackAlt) {
   return Node.create({
     name: 'localImage',
     group: 'block',
@@ -64,9 +111,7 @@ function createLocalImageExtension(resolveAssetUrl) {
         const img = document.createElement('img');
         const assetId = typeof node.attrs.assetId === 'string' ? node.attrs.assetId : '';
         img.alt =
-          typeof node.attrs.alt === 'string' && node.attrs.alt
-            ? node.attrs.alt
-            : t('common.localImage');
+          typeof node.attrs.alt === 'string' && node.attrs.alt ? node.attrs.alt : fallbackAlt;
         if (assetId) {
           img.dataset.assetId = assetId;
           void resolveAssetUrl(assetId).then((url) => {
@@ -85,14 +130,15 @@ function createLocalImageExtension(resolveAssetUrl) {
 /**
  * Create a toolbar button with Phosphor icon and aria-pressed support.
  * @param {{ icon: string; label: string; toggle?: boolean; onClick: () => void }} opts
+ * @param {RichTextTooltipHooks['setTooltip']} setTooltip
  * @returns {HTMLButtonElement}
  */
-function makeToolbarButton({ icon, label, toggle = false, onClick }) {
+function makeToolbarButton({ icon, label, toggle = false, onClick }, setTooltip) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
   btn.setAttribute('aria-label', label);
-  setTooltip(btn, label);
+  setTooltip?.(btn, label);
   if (toggle) {
     btn.setAttribute('aria-pressed', 'false');
   }
@@ -109,28 +155,21 @@ function makeToolbarButton({ icon, label, toggle = false, onClick }) {
 
 /**
  * Mount a headless Tiptap editor with Covenant toolbar and local image protection.
- * @param {{
- *   container: HTMLElement;
- *   initialDoc: RichTextDoc;
- *   editable: boolean;
- *   ariaLabel: string;
- *   resolveAssetUrl: (assetId: string) => Promise<string | null>;
- *   onUploadImage: (file: File) => Promise<{ assetId: string; alt: string } | null>;
- *   onBlockedRemoteImage?: () => void;
- *   onRejectedLink?: () => void;
- *   onChange: (doc: RichTextDoc) => void;
- * }} opts
+ * @param {RichTextEditorOptions} options
  */
 export function mountRichTextEditor({
   container,
   initialDoc,
   editable,
   ariaLabel,
+  labels,
   resolveAssetUrl,
   onUploadImage,
   onBlockedRemoteImage,
   onRejectedLink,
   onChange,
+  setTooltip,
+  initTooltips,
 }) {
   const uid = `lc-rt-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -140,7 +179,7 @@ export function mountRichTextEditor({
   const toolbar = document.createElement('div');
   toolbar.className = 'lc-editor__toolbar';
   toolbar.setAttribute('role', 'toolbar');
-  toolbar.setAttribute('aria-label', t('editor.toolbar'));
+  toolbar.setAttribute('aria-label', labels.toolbar);
 
   const linkBar = document.createElement('div');
   linkBar.className = 'lc-editor__toolbar';
@@ -149,25 +188,25 @@ export function mountRichTextEditor({
   const linkLabel = document.createElement('label');
   linkLabel.className = 'cv-label';
   linkLabel.htmlFor = `${uid}-link-input`;
-  linkLabel.textContent = t('editor.linkLabel');
+  linkLabel.textContent = labels.linkLabel;
 
   const linkInput = document.createElement('input');
   linkInput.id = `${uid}-link-input`;
   linkInput.type = 'url';
   linkInput.className = 'cv-input';
-  linkInput.placeholder = t('editor.linkPlaceholder');
+  linkInput.placeholder = labels.linkPlaceholder;
   linkInput.style.flex = '1';
   linkInput.style.minWidth = 'min(100%, 10rem)';
 
   const linkApply = document.createElement('button');
   linkApply.type = 'button';
   linkApply.className = 'cv-btn cv-btn--primary cv-btn--sm';
-  linkApply.textContent = t('common.apply');
+  linkApply.textContent = labels.apply;
 
   const linkCancel = document.createElement('button');
   linkCancel.type = 'button';
   linkCancel.className = 'cv-btn cv-btn--sm';
-  linkCancel.textContent = t('common.cancel');
+  linkCancel.textContent = labels.cancel;
 
   linkBar.append(linkLabel, linkInput, linkApply, linkCancel);
 
@@ -222,7 +261,7 @@ export function mountRichTextEditor({
           target: '_blank',
         },
       }),
-      createLocalImageExtension(resolveAssetUrl),
+      createLocalImageExtension(resolveAssetUrl, labels.localImage),
     ],
     editorProps: {
       attributes: editable
@@ -308,84 +347,120 @@ export function mountRichTextEditor({
     },
   });
 
-  const btnBold = makeToolbarButton({
-    icon: 'ph-text-b',
-    label: t('editor.bold'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleBold().run(),
-  });
-  const btnItalic = makeToolbarButton({
-    icon: 'ph-text-italic',
-    label: t('editor.italic'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleItalic().run(),
-  });
-  const btnStrike = makeToolbarButton({
-    icon: 'ph-text-strikethrough',
-    label: t('editor.strike'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleStrike().run(),
-  });
-  const btnCode = makeToolbarButton({
-    icon: 'ph-code',
-    label: t('editor.code'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleCode().run(),
-  });
-  const btnHeading1 = makeToolbarButton({
-    icon: 'ph-text-h-one',
-    label: t('editor.heading1'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-  });
-  const btnHeading2 = makeToolbarButton({
-    icon: 'ph-text-h-two',
-    label: t('editor.heading2'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-  });
-  const btnHeading3 = makeToolbarButton({
-    icon: 'ph-text-h-three',
-    label: t('editor.heading3'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-  });
-  const btnBullet = makeToolbarButton({
-    icon: 'ph-list-bullets',
-    label: t('editor.bulletList'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleBulletList().run(),
-  });
-  const btnOrdered = makeToolbarButton({
-    icon: 'ph-list-numbers',
-    label: t('editor.orderedList'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleOrderedList().run(),
-  });
-  const btnTaskList = makeToolbarButton({
-    icon: 'ph-check-square',
-    label: t('tasks.checklist'),
-    toggle: true,
-    onClick: () => editor.chain().focus().toggleTaskList().run(),
-  });
-  const btnLink = makeToolbarButton({
-    icon: 'ph-link',
-    label: t('editor.link'),
-    toggle: true,
-    onClick: () => {
-      const currentHref = editor.getAttributes('link').href;
-      linkInput.value = typeof currentHref === 'string' ? currentHref : '';
-      linkBar.hidden = !linkBar.hidden;
-      if (!linkBar.hidden) {
-        linkInput.focus();
-      }
+  const btnBold = makeToolbarButton(
+    {
+      icon: 'ph-text-b',
+      label: labels.bold,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleBold().run(),
     },
-  });
-  const btnImage = makeToolbarButton({
-    icon: 'ph-image',
-    label: t('editor.insertImage'),
-    onClick: () => fileInput.click(),
-  });
+    setTooltip,
+  );
+  const btnItalic = makeToolbarButton(
+    {
+      icon: 'ph-text-italic',
+      label: labels.italic,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleItalic().run(),
+    },
+    setTooltip,
+  );
+  const btnStrike = makeToolbarButton(
+    {
+      icon: 'ph-text-strikethrough',
+      label: labels.strike,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleStrike().run(),
+    },
+    setTooltip,
+  );
+  const btnCode = makeToolbarButton(
+    {
+      icon: 'ph-code',
+      label: labels.code,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleCode().run(),
+    },
+    setTooltip,
+  );
+  const btnHeading1 = makeToolbarButton(
+    {
+      icon: 'ph-text-h-one',
+      label: labels.heading1,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+    },
+    setTooltip,
+  );
+  const btnHeading2 = makeToolbarButton(
+    {
+      icon: 'ph-text-h-two',
+      label: labels.heading2,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+    },
+    setTooltip,
+  );
+  const btnHeading3 = makeToolbarButton(
+    {
+      icon: 'ph-text-h-three',
+      label: labels.heading3,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
+    },
+    setTooltip,
+  );
+  const btnBullet = makeToolbarButton(
+    {
+      icon: 'ph-list-bullets',
+      label: labels.bulletList,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleBulletList().run(),
+    },
+    setTooltip,
+  );
+  const btnOrdered = makeToolbarButton(
+    {
+      icon: 'ph-list-numbers',
+      label: labels.orderedList,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleOrderedList().run(),
+    },
+    setTooltip,
+  );
+  const btnTaskList = makeToolbarButton(
+    {
+      icon: 'ph-check-square',
+      label: labels.taskList,
+      toggle: true,
+      onClick: () => editor.chain().focus().toggleTaskList().run(),
+    },
+    setTooltip,
+  );
+  const btnLink = makeToolbarButton(
+    {
+      icon: 'ph-link',
+      label: labels.link,
+      toggle: true,
+      onClick: () => {
+        const currentHref = editor.getAttributes('link').href;
+        linkInput.value = typeof currentHref === 'string' ? currentHref : '';
+        linkBar.hidden = !linkBar.hidden;
+        if (!linkBar.hidden) {
+          linkInput.focus();
+        }
+      },
+    },
+    setTooltip,
+  );
+  const btnImage = makeToolbarButton(
+    {
+      icon: 'ph-image',
+      label: labels.insertImage,
+      onClick: () => fileInput.click(),
+    },
+    setTooltip,
+  );
 
   toolbar.append(
     btnBold,
@@ -404,7 +479,7 @@ export function mountRichTextEditor({
   // The toolbar is filled just above and the container is already in the page when the editor
   // arrives from its lazy chunk: wire the tooltips now, the caller's own pass has run before.
   if (editable) {
-    initTooltips(toolbar);
+    initTooltips?.(toolbar);
   }
 
   function syncToolbarState() {

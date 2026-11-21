@@ -25,11 +25,6 @@ const ALLOWED = [
     text: 'PRODID:-//Locavern//Locavern PWA//FR',
     why: 'RFC 5545 product identifier: a protocol field, the same in every language',
   },
-  {
-    file: 'markdown.js',
-    text: '](local-asset://',
-    why: 'Markdown syntax of an image link to a local asset, not text',
-  },
 ];
 
 /** @param {string} code @param {string} [file] */

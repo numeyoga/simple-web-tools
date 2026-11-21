@@ -1,4 +1,5 @@
 import '@simple-web-tools/covenant';
+import '@simple-web-tools/rich-text/editor.css';
 import './styles/app.css';
 
 /** @import { HydratePayload, LocalRef, ActiveView, AssetMeta, Note, Task, TaskDueFilter, TaskPriority, TaskStatus, TaskStatusFilter, Whiteboard } from './types.d.ts' */

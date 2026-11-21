@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { EMPTY_RICH_DOC } from '@simple-web-tools/rich-text';
 import {
   DEFAULT_TASK_STATUSES,
   DEFAULT_WHITEBOARD_VIEWPORT,
-  EMPTY_RICH_DOC,
   TASK_RECURRENCES,
-  collectDocAssetIds,
   collectWhiteboardAssetIds,
   createNote,
   createProject,
@@ -23,7 +22,6 @@ import {
   getWhiteboardElementLayerBounds,
   normalizeTaskRecurrence,
   normalizeTaskStatuses,
-  sanitizeRichTextDoc,
   stepWhiteboardElementLayer,
   sanitizeWhiteboardElements,
   sanitizeWhiteboardViewport,
@@ -188,52 +186,6 @@ describe('model', () => {
       label: 'Statut inconnu (custom_orphan)',
       badgeClass: 'cv-badge cv-badge--warning',
     });
-  });
-
-  it('assainit un document Tiptap en supprimant les URL dangereuses et les images distantes', () => {
-    const dirtyDoc = {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            {
-              type: 'text',
-              text: 'Lien sûr',
-              marks: [{ type: 'link', attrs: { href: 'https://example.org/' } }],
-            },
-            {
-              type: 'text',
-              text: 'Lien XSS',
-              marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }],
-            },
-          ],
-        },
-        {
-          type: 'image',
-          attrs: { src: 'https://tracker.example/pixel.png', alt: 'distant' },
-        },
-        {
-          type: 'localImage',
-          attrs: { assetId: 'asset-1', alt: 'Capture locale' },
-        },
-      ],
-    };
-
-    const clean = sanitizeRichTextDoc(dirtyDoc);
-    expect(clean.content).toHaveLength(2);
-    expect(clean.content?.[0]?.content?.[0]?.marks).toEqual([
-      {
-        type: 'link',
-        attrs: { href: 'https://example.org/', target: '_blank', rel: 'noopener noreferrer' },
-      },
-    ]);
-    expect(clean.content?.[0]?.content?.[1]?.marks).toEqual([]);
-    expect(clean.content?.[1]).toEqual({
-      type: 'localImage',
-      attrs: { assetId: 'asset-1', alt: 'Capture locale' },
-    });
-    expect(collectDocAssetIds(clean)).toEqual(['asset-1']);
   });
 
   it('crée une note autonome sans projet', () => {

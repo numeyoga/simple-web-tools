@@ -1,5 +1,6 @@
 /** @import { Project, Task, TaskPriority, TaskStatusConfig } from '../types.d.ts' */
 
+import { extractRichTextPlainText } from '@simple-web-tools/rich-text';
 import { parseIsoDate, parseTimeHhMm, shiftIsoDate } from './dates.js';
 import {
   DEFAULT_TASK_STATUSES,
@@ -9,7 +10,6 @@ import {
   isTerminalTaskStatus,
 } from './model.js';
 import { frenchText } from './messages.js';
-import { extractRichTextPlainText } from './search.js';
 
 const utf8Encoder = new TextEncoder();
 

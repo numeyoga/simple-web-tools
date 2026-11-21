@@ -123,8 +123,9 @@ Integration principles, all applied:
 
 - Use Core without a React or Vue wrapper.
 - Select only the free extensions that are needed.
-- Isolate the editor behind an adapter (`src/adapters/rich-text-tiptap.js`), loaded on demand: the
-  views import `src/adapters/rich-text-lazy.js`, which fetches the editor chunk with a dynamic
+- Isolate the editor behind an adapter (`packages/rich-text`, shared with the other apps), loaded
+  on demand: the views import `src/adapters/rich-text-lazy.js`, which gives the package the
+  catalog and the tooltip of the app, and the package fetches the editor chunk with a dynamic
   `import()` the first time a note or a task description is shown (a loading state meanwhile, a
   translated error with a retry if the fetch fails). The service worker precaches the chunk, so
   the editor opens offline.

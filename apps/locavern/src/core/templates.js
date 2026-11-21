@@ -1,9 +1,8 @@
 /** @import { ChecklistItem, LocalTemplate, RichTextDoc, RichTextNode, TemplateKind, WhiteboardElement, WhiteboardViewport } from '../types.d.ts' */
 
+import { EMPTY_RICH_DOC, sanitizeRichTextDoc } from '@simple-web-tools/rich-text';
 import {
   DEFAULT_WHITEBOARD_VIEWPORT,
-  EMPTY_RICH_DOC,
-  sanitizeRichTextDoc,
   sanitizeWhiteboardElements,
   sanitizeWhiteboardViewport,
 } from './model.js';
