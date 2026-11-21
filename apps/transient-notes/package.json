@@ -1,0 +1,43 @@
+{
+  "name": "transient-notes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first notes sorted with the PARA method: folders, rich-text notes with images, search, workspaces and text or Markdown export",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "apps/transient-notes"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4175 --strictPort",
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test"
+  },
+  "dependencies": {
+    "@simple-web-tools/covenant": "*",
+    "@simple-web-tools/dates": "*",
+    "@simple-web-tools/i18n": "*",
+    "@simple-web-tools/rich-text": "*",
+    "@simple-web-tools/storage": "*"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
+    "@simple-web-tools/config": "*",
+    "@simple-web-tools/test-utils": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}
