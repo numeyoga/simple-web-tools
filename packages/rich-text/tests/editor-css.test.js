@@ -15,4 +15,10 @@ describe('editor.css', () => {
     );
     expect(primitives).toBeNull();
   });
+
+  test('carries the ProseMirror base rules that Tiptap no longer injects', () => {
+    expect(css).toContain('.ProseMirror-gapcursor');
+    expect(css).toContain('.ProseMirror-hideselection');
+    expect(css).toContain('white-space: break-spaces');
+  });
 });

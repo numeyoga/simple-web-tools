@@ -93,7 +93,10 @@ precaches its build output opens the editor offline after a first visit.
 
 `editor.css` styles the editor with Covenant semantic tokens only (a test rejects primitive
 tokens), so an app must load `@simple-web-tools/covenant` as well. It is shared rather than
-copied so that every app's editor looks the same. The class names keep the `lc-` prefix they
+copied so that every app's editor looks the same. Tiptap normally injects its own base rules in a `<style>` element, which a strict Content
+Security Policy (`style-src 'self'`) blocks. The editor sets `injectCSS: false` and `editor.css`
+carries those rules (the top of the file, taken from `@tiptap/core`'s `style.ts`: compare them
+when Tiptap is updated), so the file is required, not cosmetic. The class names keep the `lc-` prefix they
 had in Locavern (`lc-editor`, `lc-editor__toolbar`, `lc-editor__surface`): an app's CSS and
 tests may target them. The file also defines `.lc-file-input-hidden`, the hidden file input of
 the image button.
