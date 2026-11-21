@@ -1,7 +1,7 @@
 // The texts the core produces, in French (what it always wrote) and in English: errors, default
 // statuses, built-in templates, the labels of the exports and the age of the last backup.
 import { createTranslator } from '@simple-web-tools/i18n';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { formatBackupAgeLabel } from '../../src/core/backup.js';
 import { decryptArchiveBytes, encryptArchiveBytes } from '../../src/core/crypto-archive.js';
 import { buildTasksIcsCalendar } from '../../src/core/ical.js';
@@ -223,5 +223,17 @@ describe('the age of the last backup', () => {
 describe('the translator of the page without a browser', () => {
   test('speaks English, the fallback, and formats like en', () => {
     expect(pageText('common.today')).toBe('Today');
+  });
+
+  test("ignores Node's navigator, whose languages follow the machine's locale", async () => {
+    vi.stubGlobal('navigator', { languages: ['fr-CH', 'fr'] });
+    vi.resetModules();
+    try {
+      const { t } = await import('../../src/adapters/i18n.js');
+      expect(t('common.today')).toBe('Today');
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 });

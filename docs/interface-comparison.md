@@ -1,9 +1,9 @@
 # Interface comparison: the Covenant skill, Chrono and Locavern
 
-> **Proposal — awaiting the maintainer's decision.**
-> Roadmap step 4, first item, redone against the updated `covenant-design-system` skill.
-> Nothing here is applied: no app code, CSS, package or skill was changed, and the roadmap item
-> is not ticked. Every recommendation is for the maintainer to accept, change or reject.
+> **Decided and applied.** Roadmap step 4, first item, redone against the updated
+> `covenant-design-system` skill. The maintainer answered the open questions on 2026-11-19 (see
+> [Decisions](#decisions-2026-11-19)); they are applied in `packages/covenant` and in Chrono, and the
+> roadmap item is ticked. The analysis below is kept as written before the decisions.
 > This replaces the comparison of 2026-11-18, which was written against the old French skill.
 
 Date: 2026-11-19. The skill (`.claude/skills/covenant-design-system/`) is the normative target for
