@@ -12,6 +12,7 @@
 import { createWorkspaceRegistry, deleteDatabase } from '@simple-web-tools/storage';
 import { APP, channelName, databaseNameFor } from './names.js';
 import { t } from './i18n.js';
+import { setCollapsedCategories } from './preferences.js';
 
 /** @typedef {import('@simple-web-tools/storage').Workspace} Workspace */
 
@@ -79,6 +80,7 @@ export async function removeWorkspace(id, shownId) {
     throw new Error('The active workspace cannot be deleted.');
   }
   registry.remove(id); // throws for the last workspace and for an unknown id
+  setCollapsedCategories(id, []); // the folded categories of the tree are gone with it
   return deleteDatabase(databaseNameFor(id));
 }
 

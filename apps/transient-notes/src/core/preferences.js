@@ -1,6 +1,8 @@
 // Display preferences: what a stored value means. Pure functions: reading and writing the
 // storage, and applying the result to the page, belong to adapters/preferences.js.
 
+import { PARA_CATEGORIES } from './model.js';
+
 /** @typedef {'light' | 'dark'} Theme */
 /** @typedef {'auto' | 'standard' | 'comfortable' | 'large'} TextSize */
 
@@ -63,4 +65,34 @@ export function allowsSingleKeyShortcut(press) {
   if (press.repeat) return false;
   if (press.shift && /^\p{L}$/u.test(press.key)) return false;
   return true;
+}
+
+/**
+ * The categories of the tree a stored value stands for: a JSON array of category names. A value
+ * that is not valid JSON, not an array, or holds anything else than a category is ignored
+ * piece by piece, so a damaged value never breaks the tree.
+ * @param {string | null | undefined} raw
+ * @returns {import('../types.d.ts').ParaCategory[]}
+ */
+export function parseCollapsedCategories(raw) {
+  if (!raw) return [];
+  /** @type {unknown} */
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return PARA_CATEGORIES.filter((category) => parsed.includes(category));
+}
+
+/**
+ * The value to store for the folded categories: a JSON array, in the order of the tree.
+ * @param {Iterable<string>} collapsed
+ * @returns {string}
+ */
+export function formatCollapsedCategories(collapsed) {
+  const set = new Set(collapsed);
+  return JSON.stringify(PARA_CATEGORIES.filter((category) => set.has(category)));
 }

@@ -7,11 +7,17 @@ import { shellCacheName } from '../../src/core/pwa.js';
 import { createAppStore } from '../../src/adapters/store.js';
 import { getRegistry } from '../../src/adapters/workspaces.js';
 import { createLocalePreference } from '@simple-web-tools/i18n';
-import { setSingleKeyShortcuts, setTheme, storeTextSize } from '../../src/adapters/preferences.js';
+import {
+  setCollapsedCategories,
+  setSingleKeyShortcuts,
+  setTheme,
+  storeTextSize,
+} from '../../src/adapters/preferences.js';
 import {
   APP,
   activeWorkspaceKey,
   channelName,
+  collapsedCategoriesKey,
   databaseNameFor,
   localeKey,
   lockChannelNameFor,
@@ -50,6 +56,7 @@ describe('the names built by the app', () => {
     ['text size', textSizeKey(), 'transient-notes-text-size'],
     ['single-key shortcuts', singleKeyShortcutsKey(), 'transient-notes-single-key-shortcuts'],
     ['language', localeKey(), 'transient-notes-locale'],
+    ['folded categories', collapsedCategoriesKey('work'), 'transient-notes-collapsed-work'],
     ['shell cache', shellCacheName('abc123'), 'transient-notes-shell-abc123'],
   ])('%s is %s', (_what, actual, expected) => {
     expect(actual).toBe(expected);
@@ -77,9 +84,11 @@ describe('the names that reach the browser', () => {
     setTheme('dark');
     storeTextSize('large');
     setSingleKeyShortcuts(false);
+    setCollapsedCategories('work', ['areas']);
     createLocalePreference({ app: APP, storage: nav.localStorage }).set('fr'); // as adapters/i18n.js
 
     expect(nav.localStorage.keys().sort()).toEqual([
+      'transient-notes-collapsed-work',
       'transient-notes-locale',
       'transient-notes-single-key-shortcuts',
       'transient-notes-text-size',

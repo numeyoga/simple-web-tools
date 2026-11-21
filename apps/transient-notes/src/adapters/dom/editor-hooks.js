@@ -2,6 +2,7 @@
 // and the translated labels. The editor package has no catalog and no tooltip of its own.
 
 import * as UI from './ui.js';
+import { liftTooltip } from './tooltip.js';
 
 const { el, t } = UI;
 
@@ -47,20 +48,22 @@ export function setEditorTooltip(trigger, text) {
 }
 
 /**
- * Wraps each noted button in a Covenant tooltip (`cv-tooltip-wrap`), shown below it: the toolbar
- * is the first row of the editor, so a tooltip above would leave the pane.
+ * Wraps each noted button in a Covenant tooltip (`cv-tooltip-wrap`). The tooltip opens above the
+ * button, so that it does not cover the text under the toolbar (it falls back below when there
+ * is no room above).
  * @param {ParentNode} root the toolbar
  */
 export function initEditorTooltips(root) {
   for (const button of root.querySelectorAll('button[data-tip-text]')) {
     const tip = el(
       'span',
-      { class: 'cv-tooltip cv-tooltip--bottom', role: 'tooltip', hidden: true },
+      { class: 'cv-tooltip', role: 'tooltip', hidden: true },
       /** @type {HTMLElement} */ (button).dataset.tipText,
     );
     const wrap = el('span', { class: 'cv-tooltip-wrap' });
     button.replaceWith(wrap);
     wrap.append(button, tip);
+    liftTooltip(wrap); // above the button by default
   }
   UI.initCovenant(root);
 }

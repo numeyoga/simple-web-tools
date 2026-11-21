@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   allowsSingleKeyShortcut,
+  formatCollapsedCategories,
   formatFlag,
+  parseCollapsedCategories,
   parseFlag,
   parseTextSize,
   parseTheme,
@@ -35,6 +37,27 @@ describe('stored values', () => {
   it('writes a flag as 1 or 0', () => {
     expect(formatFlag(true)).toBe('1');
     expect(formatFlag(false)).toBe('0');
+  });
+});
+
+describe('the folded categories of the tree', () => {
+  it('reads a JSON array of categories, in the order of the tree', () => {
+    expect(parseCollapsedCategories('["archives","projects"]')).toEqual(['projects', 'archives']);
+    expect(parseCollapsedCategories('[]')).toEqual([]);
+  });
+
+  it('ignores whatever is not a category, and a value that is not a list', () => {
+    expect(parseCollapsedCategories('["areas","bogus",3,null,"areas"]')).toEqual(['areas']);
+    for (const raw of [null, undefined, '', '{', 'areas', '{"areas":true}', '42', 'null']) {
+      expect(parseCollapsedCategories(raw)).toEqual([]);
+    }
+  });
+
+  it('writes a JSON array that reads back the same', () => {
+    expect(formatCollapsedCategories(new Set(['resources', 'projects', 'bogus']))).toBe(
+      '["projects","resources"]',
+    );
+    expect(parseCollapsedCategories(formatCollapsedCategories(['areas']))).toEqual(['areas']);
   });
 });
 

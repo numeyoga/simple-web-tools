@@ -6,6 +6,7 @@
 import { PARA_CATEGORIES } from '../../core/model.js';
 import { selectFolders, selectNoteCounts } from '../../core/selectors.js';
 import { createNoteCommand } from '../commands.js';
+import { getCollapsedCategories, setCollapsedCategories } from '../preferences.js';
 import { categoryLabel } from '../labels.js';
 import {
   confirmDeleteFolder,
@@ -34,8 +35,8 @@ const CATEGORY_ICONS = {
 export function createTree(store, { toasts, onNavigate }) {
   const root = el('div', { class: 'tn-tree' });
   const collator = new Intl.Collator(UI.locale, { numeric: true, sensitivity: 'base' });
-  /** Categories the user folded. @type {Set<string>} */
-  const collapsed = new Set();
+  /** Categories the user folded, remembered per workspace. @type {Set<string>} */
+  const collapsed = new Set(getCollapsedCategories(store.workspaceId));
   let lastKey = '';
 
   /** @param {import('../../types.d.ts').Selection} selection */
@@ -61,6 +62,7 @@ export function createTree(store, { toasts, onNavigate }) {
         onclick: () => {
           if (open) collapsed.add(category);
           else collapsed.delete(category);
+          setCollapsedCategories(store.workspaceId, collapsed);
           paint(true);
         },
       },

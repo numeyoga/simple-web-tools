@@ -50,3 +50,6 @@ export const singleKeyShortcutsKey = () => storageName(APP, 'single-key-shortcut
 
 /** Language chosen in the preferences: `en` or `fr`; absent, the browser's language. */
 export const localeKey = () => storageName(APP, 'locale');
+
+/** The categories of the tree the user folded, per workspace: `transient-notes-collapsed-<id>`. @param {string} id */
+export const collapsedCategoriesKey = (id) => storageName(APP, `collapsed-${id}`);
