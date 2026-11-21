@@ -4,7 +4,8 @@
 // one language). The translator's locale is the language plus the user's region when the browser
 // gives one, `en-GB` for instance: the catalog is `en`, the date formats are British. Views get
 // `t` and the formatters from here. The module is safe to import where there is no browser (unit
-// tests): the language is then English.
+// tests): the language is then English. Node has a `navigator` too, whose languages follow the
+// machine's locale, so the browser test is on `window`.
 
 import { createLocalePreference, createTranslator } from '@simple-web-tools/i18n';
 import { applyDocumentLanguage } from '@simple-web-tools/i18n/dom';
@@ -46,7 +47,7 @@ export function saveLocaleChoice(choice) {
 export const i18n = createTranslator({
   locale: resolveFormatLocale({
     stored: preference.get(),
-    languages: typeof navigator === 'undefined' ? [] : navigator.languages,
+    languages: typeof window === 'undefined' ? [] : navigator.languages,
   }),
   catalogs,
   // A key missing from every catalog shows its name: say so in the console while developing.
