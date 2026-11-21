@@ -55,6 +55,6 @@ test('the lock is given back when the database cannot be opened: another tab can
   const healthy = await context.newPage();
   await healthy.goto('/');
 
-  await expect(healthy.getByRole('button', { name: 'Nouvelle note' })).toBeEnabled();
+  await expect(healthy.getByRole('button', { name: 'Nouvelle note', exact: true })).toBeEnabled();
   await expect(healthy.getByTestId('read-only-banner')).toHaveCount(0);
 });

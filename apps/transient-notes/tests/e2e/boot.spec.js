@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createNote, goToSelection, openApp, waitForWrite } from './support.js';
+import { createNote, goToSelection, openApp, treeRowName, waitForWrite } from './support.js';
 
 test('the application starts: sidebar, one h1, the workspace, no error and no request out', async ({
   page,
@@ -8,10 +8,10 @@ test('the application starts: sidebar, one h1, the workspace, no error and no re
 
   const nav = page.getByRole('navigation', { name: 'Navigation principale' });
   for (const name of ['Toutes les notes', 'Projets', 'Domaines', 'Ressources', 'Archives']) {
-    await expect(nav.getByRole('button', { name })).toBeVisible();
+    await expect(nav.getByRole('button', { name: treeRowName(name) })).toBeVisible();
   }
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Toutes les notes');
-  await expect(nav.getByRole('button', { name: 'Toutes les notes' })).toHaveAttribute(
+  await expect(nav.getByRole('button', { name: treeRowName('Toutes les notes') })).toHaveAttribute(
     'aria-current',
     'page',
   );
@@ -35,7 +35,9 @@ test('a note is created, listed, counted, and still there after a reload', async
   await createNote(page);
 
   await expect(main.getByRole('button', { name: 'Sans titre' })).toBeVisible();
-  await expect(nav.getByRole('button', { name: /^Toutes les notes/ })).toContainText('1');
+  await expect(nav.getByRole('button', { name: treeRowName('Toutes les notes') })).toContainText(
+    '1',
+  );
   await waitForWrite(page, 'notes', 'title', '');
   await page.reload();
   await expect(main.getByRole('button', { name: 'Sans titre' })).toBeVisible();
@@ -56,8 +58,8 @@ test('a category with no folder gets its default folder when a note is created i
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ressources');
   // The note is counted in its category, and in "All notes".
   const nav = page.getByRole('navigation', { name: 'Navigation principale' });
-  await expect(nav.getByRole('button', { name: /^Ressources/ })).toContainText('1');
-  await expect(nav.getByRole('button', { name: /^Projets/ })).toContainText('0');
+  await expect(nav.getByRole('button', { name: treeRowName('Ressources') })).toContainText('1');
+  await expect(nav.getByRole('button', { name: treeRowName('Projets') })).toContainText('0');
   await goToSelection(page, 'Archives');
   await expect(page.getByRole('main').getByText('Aucune note ici pour le moment')).toBeVisible();
 });

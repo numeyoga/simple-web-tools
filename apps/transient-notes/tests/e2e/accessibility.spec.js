@@ -5,7 +5,14 @@
 // in place when they open).
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { expect, test } from '@playwright/test';
-import { createNote, goToSelection, openApp, openWorkspaces } from './support.js';
+import {
+  createNote,
+  goToSelection,
+  openApp,
+  openFolderMenu,
+  openWorkspaces,
+  showNotesList,
+} from './support.js';
 
 const THEMES = ['light', 'dark'];
 const VIEWPORTS = /** @type {const} */ ([
@@ -30,7 +37,9 @@ for (const theme of THEMES) {
       test('the selections, empty and with notes', async ({ page }) => {
         await expectNoA11yViolations(page);
         await createNote(page);
+        await showNotesList(page);
         await createNote(page);
+        await showNotesList(page);
         await expect(
           page.getByRole('main').getByRole('button', { name: 'Sans titre' }),
         ).toHaveCount(2);
@@ -41,6 +50,35 @@ for (const theme of THEMES) {
           await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
           await expectNoA11yViolations(page);
         }
+      });
+
+      test('a note open in the editor, with its menus and the folder dialogs', async ({ page }) => {
+        await createNote(page);
+        await expect(page.getByRole('toolbar', { name: 'Mise en forme du texte' })).toBeVisible();
+        await page.getByRole('textbox', { name: 'Contenu de la note' }).fill('Un texte');
+        await expectNoA11yViolations(page);
+
+        await page.getByRole('button', { name: 'Exporter la note' }).click();
+        await expect(page.getByRole('menuitem', { name: 'En Markdown (.md)' })).toBeVisible();
+        await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+        await expectNoA11yViolations(page);
+        await page.keyboard.press('Escape');
+
+        await page.getByRole('button', { name: 'Supprimer la note' }).click();
+        await expect(page.getByRole('dialog', { name: 'Supprimer cette note ?' })).toBeVisible();
+        await expectNoA11yViolations(page, { include: ['dialog[open]'] });
+        await page.keyboard.press('Escape');
+      });
+
+      test('the folder menu and its dialogs', async ({ page }) => {
+        await page.getByRole('main').click({ position: { x: 5, y: 5 } });
+        await page.keyboard.press('1');
+        const menu = await openFolderMenu(page, 'Projets généraux');
+        await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
+        await expectNoA11yViolations(page);
+        await menu.getByRole('menuitem', { name: 'Renommer' }).click();
+        await expect(page.getByRole('dialog', { name: 'Renommer le dossier' })).toBeVisible();
+        await expectNoA11yViolations(page, { include: ['dialog[open]'] });
       });
 
       test('the drawer of the narrow layout', async ({ page }) => {

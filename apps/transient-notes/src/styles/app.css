@@ -243,22 +243,236 @@ body {
   list-style: none;
 }
 
-/* --- Notes list (stand-in for the three panes) ------------------------------ */
+/* --- Sidebar: the PARA tree ------------------------------------------------- */
+.tn-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+}
+.tn-tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-1);
+}
+.tn-tree-row .tn-tree-link {
+  flex: 1;
+  min-width: 0;
+}
+.tn-tree-row--folder {
+  padding-left: var(--cv-space-6);
+}
+.tn-tree-folders {
+  margin-top: var(--cv-space-1);
+}
+.tn-tree-all {
+  padding-left: var(--cv-space-3);
+}
+.tn-tree-new-folder {
+  align-self: flex-start;
+}
+.tn-menu-host {
+  display: inline-flex;
+}
+
+/* --- Main region: the notes list and the editor ---------------------------------
+   Two panes from 768 px (the tree is the sidebar); below, one pane at a time: the list while no
+   note is open, the editor once one is (`data-pane`), with a back control in the editor. Each
+   pane scrolls on its own from 768 px, under the sticky top bar. */
+.cv-shell__content.tn-main {
+  max-width: none;
+  padding: 0;
+  gap: 0;
+  flex: 1;
+}
+.tn-main > .cv-alert {
+  margin: var(--cv-space-4);
+}
+.tn-notes {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+  flex: 1;
+}
+.tn-list-pane,
+.tn-editor-pane {
+  min-width: 0;
+  position: sticky;
+  top: var(--cv-topbar-h);
+  height: calc(100vh - var(--cv-topbar-h));
+  overflow-y: auto;
+}
+.tn-list-pane {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--cv-border);
+  background: var(--cv-surface);
+}
+.tn-list-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-3);
+  padding: var(--cv-space-4);
+  border-bottom: 1px solid var(--cv-border);
+}
+.tn-list-count {
+  margin: 0;
+}
+.tn-list-body {
+  flex: 1;
+  min-height: 0;
+}
 .tn-note-list {
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--cv-border);
-  border-radius: var(--cv-radius-md);
-  background: var(--cv-surface);
 }
 .tn-note-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-1);
   width: 100%;
-  justify-content: flex-start;
-  border-radius: 0;
+  padding: var(--cv-space-3) var(--cv-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--cv-border);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--cv-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tn-note-item:hover {
+  background: var(--cv-surface-2);
 }
 .tn-note-item[aria-current='true'] {
+  border-left-color: var(--cv-border-selected);
   background: var(--cv-bg-accent-subtle);
+}
+.tn-note-title {
+  font-weight: var(--cv-weight-medium);
+}
+.tn-note-preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.tn-note-meta {
+  display: flex;
+  gap: var(--cv-space-3);
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-xs);
+}
+.tn-list-body .cv-empty {
+  margin: var(--cv-space-5) var(--cv-space-4);
+}
+
+.tn-editor-pane {
+  display: flex;
+  flex-direction: column;
+  padding: var(--cv-space-5);
+}
+.tn-editor-pane:focus {
+  outline: none;
+}
+.tn-editor-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+  min-height: 0;
+}
+.tn-editor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cv-space-3);
+}
+.tn-editor-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-2);
+}
+.tn-folder-field {
+  min-width: 12rem;
+  max-width: 18rem;
+}
+.tn-back {
+  display: none;
+  margin-right: auto;
+}
+.tn-title-input {
+  font-size: var(--cv-text-xl);
+  font-weight: var(--cv-weight-semibold);
+  min-height: calc(var(--cv-row-md) * 1.25);
+}
+.tn-editor-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 12rem;
+}
+.tn-editor-body > .lc-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+}
+.tn-editor-body .lc-editor__toolbar {
+  border-radius: var(--cv-radius-md) var(--cv-radius-md) 0 0;
+}
+.tn-editor-body .lc-editor__surface {
+  flex: 1;
+  max-height: none;
+  min-height: 0;
+}
+.tn-editor-meta {
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .tn-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tn-list-pane,
+  .tn-editor-pane {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+  .tn-list-pane {
+    border-right: 0;
+    min-height: calc(100vh - var(--cv-topbar-h));
+  }
+  .tn-notes[data-pane='list'] .tn-editor-pane,
+  .tn-notes[data-pane='editor'] .tn-list-pane {
+    display: none;
+  }
+  .tn-editor-pane {
+    padding: var(--cv-space-4);
+  }
+  .tn-back {
+    display: inline-flex;
+  }
+  .tn-editor-head {
+    justify-content: space-between;
+  }
+  .tn-editor-body > .lc-editor,
+  .tn-editor-body .lc-editor__surface {
+    min-height: 14rem;
+  }
+  /* Icon-only buttons on a small screen: the aria-label carries the name. */
+  .cv-topbar .tn-btn-label {
+    display: none;
+  }
+  .tn-folder-field {
+    flex: 1;
+    min-width: 8rem;
+  }
 }

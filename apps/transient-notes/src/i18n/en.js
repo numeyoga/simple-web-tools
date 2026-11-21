@@ -6,7 +6,8 @@
 //
 // Layout of the keys: `app` (name, title), `common` (shared button labels), `shell` (frame,
 // read-only tab, storage errors), `nav`, `para` (the four categories and their default
-// folders), `notes`, `export` (texts written into export files), `prefs`, `workspaces`, `pwa`,
+// folders), `tree` (the PARA tree), `folders` (the folder dialogs), `notes` (list and note), `editor`
+// (the rich-text editor), `export` (texts written into export files), `prefs`, `workspaces`, `pwa`,
 // `importErrors`.
 
 export default {
@@ -77,6 +78,38 @@ export default {
     },
   },
 
+  tree: {
+    expand: 'Expand {name}',
+    collapse: 'Collapse {name}',
+    newNoteIn: 'New note in {name}',
+    newFolder: 'New folder',
+    folderActions: 'Actions for the folder “{name}”',
+    renameFolder: 'Rename',
+    moveFolder: 'Move to another category',
+    deleteFolder: 'Delete',
+  },
+
+  folders: {
+    newTitle: 'New folder',
+    nameLabel: 'Folder name',
+    namePlaceholder: 'E.g. Website redesign',
+    nameEmpty: 'The name is empty. Enter a name for the folder.',
+    categoryLabel: 'Category',
+    renameTitle: 'Rename the folder',
+    rename: 'Rename',
+    moveTitle: 'Move the folder',
+    move: 'Move',
+    deleteTitle: 'Delete this folder?',
+    deleteMessage: {
+      '=0': 'The folder “{name}” will be deleted. It has no notes.',
+      one: 'The folder “{name}” will be deleted. Its note is kept with no folder: you find it in All notes.',
+      other:
+        'The folder “{name}” will be deleted. Its {count} notes are kept with no folder: you find them in All notes.',
+    },
+    deleteConfirm: 'Delete folder',
+    deleted: 'Folder deleted',
+  },
+
   notes: {
     new: 'New note',
     untitled: 'Untitled',
@@ -84,6 +117,68 @@ export default {
     listLabel: 'Notes',
     emptyTitle: 'No notes here yet',
     emptyText: 'Create a note to start. It is saved in this browser only.',
+    noMatchTitle: 'No note matches',
+    noMatchText: 'Change or clear the search to see more notes.',
+    search: 'Search notes',
+    searchPlaceholder: 'Search…',
+    sort: 'Sort by',
+    sortUpdated: 'Last edited',
+    sortCreated: 'Creation date',
+    sortTitle: 'Title',
+    editorLabel: 'Note',
+    title: 'Title',
+    body: 'Note content',
+    folder: 'Folder',
+    noFolder: 'No folder',
+    back: 'Back to notes',
+    edited: 'Edited {date}',
+    selectTitle: 'No note selected',
+    selectText: 'Choose a note in the list, or create one.',
+    delete: 'Delete note',
+    deleteTitle: 'Delete this note?',
+    deleteMessage:
+      'The note “{title}” and the images only it uses will be erased. You cannot undo this.',
+    deleted: 'Note deleted',
+    export: 'Export note',
+    exportText: 'As text (.txt)',
+    exportMarkdown: 'As Markdown (.md)',
+    exportAll: 'Export all',
+    exportAllMenu: 'Export all notes',
+    exportAllText: 'All notes as text (.txt)',
+    exportAllMarkdown: 'All notes as Markdown (.md)',
+  },
+
+  editor: {
+    loading: 'Loading the editor',
+    loadFailed: 'Could not load the editor.',
+    loadFailedText:
+      'The file did not arrive, so you cannot edit this text yet. Check your connection, then retry.',
+    retry: 'Retry',
+    remoteImageBlocked: 'Remote image blocked',
+    remoteImageBlockedText: 'Only images saved in this browser are allowed.',
+    linkRejected: 'Link rejected',
+    linkRejectedText: 'Only https:// and mailto: links are accepted.',
+    imageUnsupported: 'Image not added',
+    imageUnsupportedText: 'Only PNG, JPEG, WebP and GIF images are accepted.',
+    imageTooLarge: 'Image too large',
+    imageTooLargeText: 'An image can be 10 MB at most.',
+    toolbar: 'Text formatting',
+    linkLabel: 'Link (https://)',
+    linkPlaceholder: 'https://example.org',
+    apply: 'Apply',
+    bold: 'Bold',
+    italic: 'Italic',
+    strike: 'Strikethrough',
+    code: 'Inline code',
+    heading1: 'Heading 1',
+    heading2: 'Heading 2',
+    heading3: 'Heading 3',
+    bulletList: 'Bulleted list',
+    orderedList: 'Numbered list',
+    taskList: 'Task list',
+    link: 'Link',
+    insertImage: 'Insert an image',
+    localImage: 'Image',
   },
 
   // Texts written inside the files of an export (text and Markdown), in the language of the page.
@@ -115,9 +210,10 @@ export default {
     textSizeHint: 'Automatic enlarges the text on large screens.',
     singleKey: 'Single-key shortcuts',
     singleKeyHint:
-      'N, 1, 2, 3 and 4 work without any other key. They never fire while you type or when a dialog is open.',
+      'N, /, 1, 2, 3 and 4 work without any other key. They never fire while you type or when a dialog is open.',
     shortcuts: 'Shortcuts',
     shortcutNew: 'New note',
+    shortcutSearch: 'Search the notes',
     shortcutCategory: 'New note in Projects, Areas, Resources or Archives',
   },
 

@@ -64,7 +64,7 @@ has no users, so no data is migrated and its history is not imported.
 - [x] `apps/transient-notes` on the reference architecture: Vite, `src/core` and
       `src/adapters`, Covenant, English and French catalogs, storage on `packages/storage`
       (one database per workspace, one write lock for the app), strict CSP, PWA scoped to its path.
-- [ ] Features: PARA categories with folders (create, rename, delete, choose the category),
+- [x] Features: PARA categories with folders (create, rename, delete, choose the category),
       notes (create, edit, move, delete after confirmation), search, sort, images pasted or
       dropped and kept as local assets, export of a note or of all notes as text or
       Markdown, JSON backup and restore, preferences (theme, text size, language,

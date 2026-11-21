@@ -116,6 +116,33 @@ export interface BadgeOptions {
   children?: Child;
 }
 
+export type MenuItem =
+  | { separator: true }
+  | {
+      label: string;
+      icon: string;
+      onclick: () => void;
+      /** A destructive item: shown in the danger colour, placed last after a separator. */
+      danger?: boolean;
+      /** The item changes data: it is disabled in a read-only tab. */
+      mutates?: boolean;
+    };
+
+export interface MenuOptions {
+  /** Names the button (`aria-label`). */
+  label: string;
+  /** Names the menu (default: `label`). */
+  menuLabel?: string;
+  icon: string;
+  /** A visible text beside the icon; without it the button is icon-only, with a tooltip. */
+  text?: string;
+  items: MenuItem[];
+  size?: 'sm' | 'md';
+}
+
+/** The host of a menu button and its popover; `button` opens `menu`. */
+export type MenuHost = HTMLSpanElement & { button: HTMLButtonElement; menu: HTMLElement };
+
 export interface ModalOptions {
   title: string;
   body: Child;
@@ -171,4 +198,6 @@ export type TargetMouseEvent = MouseEvent & {
 export interface View {
   el: HTMLElement;
   destroy?: () => void;
+  /** Called once the element is in the document (menus and tooltips need it to be wired). */
+  mounted?: () => void;
 }
