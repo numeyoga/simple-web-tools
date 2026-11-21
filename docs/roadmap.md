@@ -61,7 +61,7 @@ has no users, so no data is migrated and its history is not imported.
 - [x] `packages/rich-text`: Locavern's Tiptap editor, document sanitizing, plain-text and
       Markdown conversion, extracted so that both apps use one copy (decision 0004). Labels
       and tooltips are passed in by the app. Locavern switches to it with no visible change.
-- [ ] `apps/transient-notes` on the reference architecture: Vite, `src/core` and
+- [x] `apps/transient-notes` on the reference architecture: Vite, `src/core` and
       `src/adapters`, Covenant, English and French catalogs, storage on `packages/storage`
       (one database per workspace, one write lock for the app), strict CSP, PWA scoped to its path.
 - [ ] Features: PARA categories with folders (create, rename, delete, choose the category),
@@ -69,7 +69,7 @@ has no users, so no data is migrated and its history is not imported.
       dropped and kept as local assets, export of a note or of all notes as text or
       Markdown, JSON backup and restore, preferences (theme, text size, language,
       single-key shortcuts).
-- [ ] Workspaces, as in Chrono: several independent sets of notes (one database each,
+- [x] Workspaces, as in Chrono: several independent sets of notes (one database each,
       `transient-notes__<id>`), to keep notes apart by role or by importance. Create, rename,
       delete, switch; the JSON backup covers the current workspace.
 - [ ] Vitest for the core and the storage adapter; Playwright and axe journeys in both
