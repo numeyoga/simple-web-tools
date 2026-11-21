@@ -76,6 +76,8 @@ has no users, so no data is migrated and its history is not imported.
       themes, at 1280 and 390 px.
 - [x] Root README, app README in English, published with Chrono and Locavern.
 
+Follow-ups that came out of this step are listed in [To do](todo.md).
+
 ## Known issues inherited from the imported apps
 
 None at the moment.
