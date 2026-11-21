@@ -1,8 +1,7 @@
 /** @import { AppCommand, AppState, LocalRef, Note, RichTextDoc, StoreEffect } from '../../types.d.ts' */
 
-import { collectDocAssetIds } from '../../core/model.js';
+import { collectDocAssetIds, extractRichTextPlainText } from '@simple-web-tools/rich-text';
 import { noteToMarkdown } from '../../core/markdown.js';
-import { extractRichTextPlainText } from '../../core/search.js';
 import {
   selectAllTags,
   selectNotes,

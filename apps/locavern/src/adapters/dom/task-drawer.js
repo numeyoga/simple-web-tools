@@ -1,10 +1,13 @@
 /** @import { AppCommand, AppState, ChecklistItem, LocalRef, RichTextDoc, StoreEffect, Task, TaskPriority, TaskRecurrence, TaskStatus } from '../../types.d.ts' */
 
+import {
+  collectDocAssetIds,
+  EMPTY_RICH_DOC,
+  extractRichTextPlainText,
+} from '@simple-web-tools/rich-text';
 import { isOffHoursDueTime } from '../../core/dates.js';
 import {
-  EMPTY_RICH_DOC,
   TASK_RECURRENCES,
-  collectDocAssetIds,
   getDefaultInitialTaskStatusId,
   getTaskRecurrenceLabel,
   getTaskStatusMeta,
@@ -13,7 +16,6 @@ import {
   normalizeDueTime,
   normalizeTaskRecurrence,
 } from '../../core/model.js';
-import { extractRichTextPlainText } from '../../core/search.js';
 import {
   selectAllTags,
   selectOrphanedAssetIds,

@@ -1,98 +1,61 @@
-/** @import { RichTextDoc } from '../types.d.ts' */
-
+import { mountRichTextEditor as mountSharedEditor } from '@simple-web-tools/rich-text/editor-lazy';
 import { showChunkError, showChunkLoading } from './dom/lazy-chunk-state.js';
+import { initTooltips, setTooltip } from './dom/tooltip.js';
 import { t } from './i18n.js';
 
 /**
- * Lazy front door of the rich-text editor. Tiptap and its extensions are most of the
- * application's third-party code: they live in their own chunk, fetched by a dynamic `import()`
- * the first time an editor is shown (a note, a task description). The chunk is in the service
- * worker's precache, so the editor also opens offline after a first visit. CSP
- * `script-src 'self'` covers it: same origin.
+ * Locavern's front door of the rich-text editor, which lives in `@simple-web-tools/rich-text`:
+ * the package takes its texts and its tooltip from the app, this module gives it Locavern's
+ * catalog, tooltip and loading states. Tiptap stays in its own lazy chunk (the package loads it
+ * with a dynamic `import()`); the chunk is in the service worker's precache.
  *
- * Once the chunk is in, `mountRichTextEditor` mounts at once and returns the real editor's
- * handle, as before. Until then it returns a stand-in with the same shape: `getDoc()` gives the
- * document the editor was given or last `setDoc()` with (nothing can have been typed yet), and
- * `destroy()` cancels the pending mount.
- *
- * @typedef {typeof import('./rich-text-tiptap.js')} EditorModule
- * @typedef {Parameters<EditorModule['mountRichTextEditor']>[0]} RichTextEditorOptions
- * @typedef {ReturnType<EditorModule['mountRichTextEditor']>} RichTextEditorHandle
+ * @typedef {Omit<
+ *   Parameters<typeof mountSharedEditor>[0],
+ *   'labels' | 'setTooltip' | 'initTooltips' | 'showLoading' | 'showError'
+ * >} RichTextEditorOptions
+ * @typedef {ReturnType<typeof mountSharedEditor>} RichTextEditorHandle
  */
 
-/** @type {Promise<EditorModule> | null} */
-let pending = null;
-/** @type {EditorModule | null} */
-let loaded = null;
-
-/**
- * Load the editor chunk once. A failed load is forgotten, so that a retry fetches it again.
- * @returns {Promise<EditorModule>}
- */
-function loadEditorModule() {
-  if (!pending) {
-    pending = import('./rich-text-tiptap.js').then(
-      (module) => {
-        loaded = module;
-        return module;
-      },
-      (error) => {
-        pending = null;
-        throw error;
-      },
-    );
-  }
-  return pending;
+/** The editor's texts, in the language of the interface when the editor is mounted. */
+function editorLabels() {
+  return {
+    toolbar: t('editor.toolbar'),
+    bold: t('editor.bold'),
+    italic: t('editor.italic'),
+    strike: t('editor.strike'),
+    code: t('editor.code'),
+    heading1: t('editor.heading1'),
+    heading2: t('editor.heading2'),
+    heading3: t('editor.heading3'),
+    bulletList: t('editor.bulletList'),
+    orderedList: t('editor.orderedList'),
+    taskList: t('tasks.checklist'),
+    link: t('editor.link'),
+    insertImage: t('editor.insertImage'),
+    linkLabel: t('editor.linkLabel'),
+    linkPlaceholder: t('editor.linkPlaceholder'),
+    apply: t('common.apply'),
+    cancel: t('common.cancel'),
+    localImage: t('common.localImage'),
+    loading: t('editor.loading'),
+    loadFailed: t('editor.loadFailed'),
+    loadFailedText: t('editor.loadFailedText'),
+    retry: t('common.retry'),
+  };
 }
 
 /**
- * Same contract as `mountRichTextEditor` of `rich-text-tiptap.js`.
+ * Same contract as the package's `mountRichTextEditor`, without the labels and hooks.
  * @param {RichTextEditorOptions} options
  * @returns {RichTextEditorHandle}
  */
 export function mountRichTextEditor(options) {
-  if (loaded) return loaded.mountRichTextEditor(options);
-
-  /** @type {RichTextEditorHandle | null} */
-  let editor = null;
-  let destroyed = false;
-  let doc = options.initialDoc;
-  let editable = options.editable;
-
-  function start() {
-    showChunkLoading(options.container, t('editor.loading'));
-    loadEditorModule().then(
-      (module) => {
-        if (destroyed) return;
-        editor = module.mountRichTextEditor({ ...options, initialDoc: doc });
-        if (editable !== options.editable) editor.setEditable(editable);
-      },
-      () => {
-        if (destroyed) return;
-        showChunkError(
-          options.container,
-          { title: t('editor.loadFailed'), text: t('editor.loadFailedText') },
-          start,
-        );
-      },
-    );
-  }
-  start();
-
-  return {
-    getDoc: () => (editor ? editor.getDoc() : /** @type {RichTextDoc} */ (doc)),
-    setDoc(next) {
-      doc = next;
-      editor?.setDoc(next);
-    },
-    setEditable(next) {
-      editable = next;
-      editor?.setEditable(next);
-    },
-    destroy() {
-      destroyed = true;
-      editor?.destroy();
-      editor = null;
-    },
-  };
+  return mountSharedEditor({
+    ...options,
+    labels: editorLabels(),
+    setTooltip,
+    initTooltips,
+    showLoading: showChunkLoading,
+    showError: showChunkError,
+  });
 }

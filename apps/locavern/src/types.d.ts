@@ -1,3 +1,14 @@
+import type {
+  AllowedImageMimeType,
+  RichTextDoc,
+  RichTextMark,
+  RichTextNode,
+} from '@simple-web-tools/rich-text';
+
+// The rich-text document types belong to the shared package: re-exported here so that the app's
+// own modules keep importing every domain type from one place.
+export type { AllowedImageMimeType, RichTextDoc, RichTextMark, RichTextNode };
+
 export type TaskStatus = string;
 
 export type TaskStatusRole = 'initial' | 'terminal';
@@ -56,8 +67,6 @@ export interface LocalRef {
 
 export type TaskDueFilter = 'all' | 'overdue' | 'today' | 'week' | 'undated';
 
-export type AllowedImageMimeType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
-
 export type InputPresentationScreen = 'tasks' | 'projects' | 'notes' | 'whiteboards';
 
 export type ActiveView = InputPresentationScreen | 'calendar' | 'today' | 'archives';
@@ -115,24 +124,6 @@ export interface Whiteboard {
   readonly archivedAt?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
-}
-
-export interface RichTextMark {
-  readonly type: string;
-  readonly attrs?: Readonly<Record<string, unknown>>;
-}
-
-export interface RichTextNode {
-  readonly type: string;
-  readonly attrs?: Readonly<Record<string, unknown>>;
-  readonly text?: string;
-  readonly marks?: readonly RichTextMark[];
-  readonly content?: readonly RichTextNode[];
-}
-
-export interface RichTextDoc {
-  readonly type: 'doc';
-  readonly content?: readonly RichTextNode[];
 }
 
 export interface ChecklistItem {

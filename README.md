@@ -33,7 +33,7 @@ Work on a single app with npm workspaces, for example `npm run dev -w locavern`.
 
 ```text
 apps/<app>/        one folder per app, each with its own README and tests
-packages/<name>/   code shared by the apps (design system, storage, i18n…), added as it is extracted
+packages/<name>/   code shared by the apps (design system, storage, i18n, rich text…), added as it is extracted
 docs/              architecture decisions, roadmap and cross-app guides
 scripts/           repository tooling (Pages site assembly)
 ```

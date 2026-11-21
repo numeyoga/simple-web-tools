@@ -1,8 +1,9 @@
 /** @import { AppCommand, AppState, LocalRef, Note, Project, StoreEffect, Task, Whiteboard } from '../../types.d.ts' */
 
+import { extractRichTextPlainText } from '@simple-web-tools/rich-text';
 import { isOffHoursDueTime } from '../../core/dates.js';
 import { getTaskRecurrenceLabel, getTaskStatusMeta, getTaskStatusRole } from '../../core/model.js';
-import { extractRichTextPlainText, extractWhiteboardSearchText } from '../../core/search.js';
+import { extractWhiteboardSearchText } from '../../core/search.js';
 import { selectArchivedEntries, selectEntityLinkEntries } from '../../core/store.js';
 import { confirmAction, notify } from './app-shell.js';
 import { format, t } from '../i18n.js';

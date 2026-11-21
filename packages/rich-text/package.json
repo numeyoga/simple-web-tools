@@ -1,0 +1,50 @@
+{
+  "name": "@simple-web-tools/rich-text",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rich-text editing for the Simple Web Tools apps: a Tiptap editor with a Covenant toolbar, document sanitizing, plain-text and Markdown conversion",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/rich-text"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./editor": "./src/rich-text-tiptap.js",
+    "./editor-lazy": "./src/rich-text-lazy.js",
+    "./editor.css": "./src/editor.css"
+  },
+  "scripts": {
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.34.0",
+    "@tiptap/extension-bold": "^3.34.0",
+    "@tiptap/extension-bullet-list": "^3.34.0",
+    "@tiptap/extension-code": "^3.34.0",
+    "@tiptap/extension-document": "^3.34.0",
+    "@tiptap/extension-heading": "^3.34.0",
+    "@tiptap/extension-italic": "^3.34.0",
+    "@tiptap/extension-link": "^3.34.0",
+    "@tiptap/extension-list-item": "^3.34.0",
+    "@tiptap/extension-ordered-list": "^3.34.0",
+    "@tiptap/extension-paragraph": "^3.34.0",
+    "@tiptap/extension-strike": "^3.34.0",
+    "@tiptap/extension-task-item": "^3.34.0",
+    "@tiptap/extension-task-list": "^3.34.0",
+    "@tiptap/extension-text": "^3.34.0",
+    "@tiptap/extensions": "^3.34.0",
+    "@tiptap/pm": "^3.34.0"
+  },
+  "devDependencies": {
+    "@simple-web-tools/config": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,5 +1,6 @@
 /** @import { AllowedImageMimeType, BackupData, BackupManifest } from '../types.d.ts' */
 
+import { ALLOWED_IMAGE_MIMES } from '@simple-web-tools/rich-text';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { validateArchiveContents } from '../core/backup.js';
 import {
@@ -7,7 +8,6 @@ import {
   encryptArchiveBytes,
   parseEncryptionHeader,
 } from '../core/crypto-archive.js';
-import { ALLOWED_IMAGE_MIMES } from '../core/model.js';
 import { failure } from '../core/messages.js';
 import { MAX_ARCHIVE_BYTES, MAX_ASSET_BYTES } from '../core/schema.js';
 import { saveBlobToExportDirectory } from './export-directory.js';

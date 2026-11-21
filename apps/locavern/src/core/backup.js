@@ -1,6 +1,7 @@
 /** @import { AppState, AssetMeta, BackupData, BackupManifest, Note, Project, RichTextDoc, RichTextNode, Task, TaskStatusConfig, Whiteboard } from '../types.d.ts' */
 
-import { collectDocAssetIds, collectWhiteboardAssetIds } from './model.js';
+import { collectDocAssetIds } from '@simple-web-tools/rich-text';
+import { collectWhiteboardAssetIds } from './model.js';
 import {
   CURRENT_SCHEMA_VERSION,
   MAX_ARCHIVE_BYTES,

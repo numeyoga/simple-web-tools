@@ -6,11 +6,11 @@ browser. The interface is available in English and French (it follows the browse
 in the display preferences). Nothing is sent to a server.
 
 The runtime dependencies are the monorepo packages `@simple-web-tools/covenant` (design system,
-bundled fonts and icons), `storage`, `dates` and `i18n`, plus three third-party libraries, each
-with a reason ([decision 0003](../../docs/decisions/0003-no-runtime-framework.md)):
+bundled fonts and icons), `storage`, `dates`, `i18n` and `rich-text` (the Tiptap editor of notes and
+task descriptions, which carries the Tiptap dependencies: see
+[its README](../../packages/rich-text/README.md)), plus two third-party libraries, each with a reason
+([decision 0003](../../docs/decisions/0003-no-runtime-framework.md)):
 
-- `@tiptap/*` (headless Tiptap Core v3, a minimal set of extensions): the rich-text editor of notes
-  and task descriptions.
 - `fflate`: ZIP archives for backups.
 - `idb` (1 kB): a promise wrapper around IndexedDB, used through `@simple-web-tools/storage`.
 
@@ -65,8 +65,9 @@ src/
   core/               PURE business logic: store, model, schema, backup, crypto, dates, search,
                       iCalendar and Markdown serialization, templates, whiteboard geometry
   adapters/           everything that touches the browser: IndexedDB, files, service worker,
-    dom/              views and dialogs, Tiptap and SVG whiteboard engines (the editor and the
-                      whiteboard screen are separate chunks, loaded on first use: `*-lazy.js`)
+    dom/              views and dialogs, SVG whiteboard engine, the editor's wiring to
+                      `@simple-web-tools/rich-text` (the editor and the whiteboard screen are
+                      separate chunks, loaded on first use: `*-lazy.js`)
   i18n/               en.js (the reference), fr.js, index.js
   styles/app.css      layout and semantic roles (the rest comes from Covenant); the whiteboard
                       colours are `--lc-wb-*` tokens built from semantic roles only

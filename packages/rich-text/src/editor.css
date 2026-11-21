@@ -1,0 +1,209 @@
+/*
+ * Styles of the rich-text editor (Tiptap headless + Covenant controls). They use Covenant
+ * semantic tokens only, so an app must load `@simple-web-tools/covenant` too. The `lc-` prefix
+ * is the one Locavern's markup already used: it is kept so that the apps' own CSS and tests
+ * that target `.lc-editor` keep working.
+ */
+
+.lc-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cv-border-control);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+  overflow: hidden;
+}
+
+.lc-editor:focus-within {
+  outline: 2px solid var(--cv-border-focus);
+  outline-offset: 0;
+  border-color: var(--cv-border-focus);
+}
+
+.lc-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cv-space-1);
+  padding: var(--cv-space-2);
+  border-bottom: 1px solid var(--cv-border);
+  background: var(--cv-surface-2);
+}
+
+.lc-editor__toolbar .cv-btn[aria-pressed='true'] {
+  background: var(--cv-fg);
+  color: var(--cv-fg-inverse);
+  border-color: var(--cv-fg);
+}
+
+.lc-editor__surface {
+  min-height: 10rem;
+  max-height: 28.75rem;
+  overflow-y: auto;
+  padding: var(--cv-space-4);
+}
+
+.lc-editor__surface .ProseMirror {
+  outline: none;
+  min-height: 7.5rem;
+}
+
+.lc-editor__surface .ProseMirror > * + * {
+  margin-top: var(--cv-space-3);
+}
+
+.lc-editor__surface .ProseMirror h1,
+.lc-editor__surface .ProseMirror h2,
+.lc-editor__surface .ProseMirror h3 {
+  font-weight: var(--cv-weight-semibold);
+  line-height: var(--cv-leading-snug);
+  margin-bottom: var(--cv-space-2);
+}
+
+.lc-editor__surface .ProseMirror a {
+  color: var(--cv-fg-accent);
+  text-decoration: underline;
+}
+
+.lc-editor__surface .ProseMirror code {
+  padding: var(--cv-space-1) var(--cv-space-2);
+  border-radius: var(--cv-radius-sm);
+  background: var(--cv-surface-2);
+  font-family: var(--cv-font-mono);
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-2);
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] ul[data-type='taskList'] {
+  margin-top: var(--cv-space-2);
+  padding-left: var(--cv-space-6);
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cv-space-2);
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] li > label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: var(--cv-target-min);
+  cursor: pointer;
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] li > label > input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: var(--cv-target-min);
+  height: var(--cv-target-min);
+  margin: 0;
+  flex-shrink: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--cv-radius-sm);
+}
+
+.lc-editor__surface
+  .ProseMirror
+  ul[data-type='taskList']
+  li
+  > label
+  > input[type='checkbox']::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--cv-border-control);
+  border-radius: var(--cv-radius-sm);
+  background: var(--cv-surface);
+}
+
+.lc-editor__surface
+  .ProseMirror
+  ul[data-type='taskList']
+  li
+  > label
+  > input[type='checkbox']:checked::before {
+  background: var(--cv-accent-fill);
+  border-color: var(--cv-accent-fill);
+}
+
+.lc-editor__surface
+  .ProseMirror
+  ul[data-type='taskList']
+  li
+  > label
+  > input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.3125rem;
+  height: 0.5625rem;
+  border-right: 2px solid var(--cv-fg-on-accent);
+  border-bottom: 2px solid var(--cv-fg-on-accent);
+  transform: translate(-50%, -60%) rotate(45deg);
+}
+
+.lc-editor__surface
+  .ProseMirror
+  ul[data-type='taskList']
+  li
+  > label
+  > input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (forced-colors: active) {
+  .lc-editor__surface .ProseMirror ul[data-type='taskList'] li > label > input[type='checkbox'] {
+    appearance: auto;
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: max(0px, calc((var(--cv-target-min) - 1em * var(--cv-leading-normal)) / 2));
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] li > div > p {
+  margin: 0;
+}
+
+.lc-editor__surface .ProseMirror ul[data-type='taskList'] li > div > * + * {
+  margin-top: var(--cv-space-2);
+}
+
+.lc-editor__surface .ProseMirror img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--cv-radius-md);
+  border: 1px solid var(--cv-border);
+}
+
+/* The hidden input behind the toolbar's image button. */
+.lc-file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

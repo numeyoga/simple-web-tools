@@ -1,5 +1,6 @@
 /** @import { AppCommand, AppPreferences, AppState, LocalEntityKind, LocalRef, LocalTemplate, Note, Project, StoreEffect, Task, TaskDueFilter, TaskPriority, TaskStatus, TaskStatusConfig, TaskStatusFilter, TemplateKind, TrashItem, Whiteboard } from '../types.d.ts' */
 
+import { collectDocAssetIds, sanitizeRichTextDoc } from '@simple-web-tools/rich-text';
 import {
   INPUT_PRESENTATION_SCREENS,
   DEFAULT_INPUT_PRESENTATIONS,
@@ -9,7 +10,6 @@ import {
   computeTrashExpiresAt,
   normalizeTrashRetentionDays,
   TASK_PRIORITIES,
-  collectDocAssetIds,
   collectWhiteboardAssetIds,
   createNote,
   createProject,
@@ -27,7 +27,6 @@ import {
   normalizeTaskRecurrence,
   normalizeTaskStatuses,
   normalizeToastDurationSeconds,
-  sanitizeRichTextDoc,
   sanitizeWhiteboardElements,
   sanitizeWhiteboardViewport,
 } from './model.js';
