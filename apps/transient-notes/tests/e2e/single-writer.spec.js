@@ -1,7 +1,7 @@
 // Single-writer model: one tab writes, the others are read-only until the writer goes away. Two
 // pages of the SAME browser context share the origin, the storage and the Web Locks.
 import { expect, test } from '@playwright/test';
-import { createNote, goToSelection, openApp } from './support.js';
+import { createNote, goToSelection, openApp, waitForStoredText, writeNote } from './support.js';
 
 const BANNER = 'Transient Notes est ouvert dans un autre onglet. Cet onglet est en lecture seule.';
 
@@ -103,4 +103,54 @@ test('a tab that reloads gets the lock back and stays the writer', async ({ page
 
   await expect(page.getByRole('button', { name: 'Nouvelle note', exact: true })).toBeEnabled();
   await expect(page.getByTestId('read-only-banner')).toHaveCount(0);
+});
+
+test('a note open in a read-only tab cannot be edited, follows the writer, then is editable after the takeover', async ({
+  context,
+}) => {
+  const writer = await context.newPage();
+  await openApp(writer);
+  await createNote(writer);
+  await writeNote(writer, { title: 'Partagée', body: 'Version un' });
+  await waitForStoredText(writer, 'Version un');
+  const reader = await context.newPage();
+  const { errors } = await openApp(reader);
+  await reader
+    .getByRole('main')
+    .getByRole('button', { name: /^Partagée/ })
+    .click();
+  const title = reader.getByRole('textbox', { name: 'Titre' });
+  // Not a textbox while it is read-only: the role goes with the editing.
+  const body = reader.locator('.lc-editor__surface .ProseMirror');
+  await expect(title).toHaveValue('Partagée');
+  await expect(body).toContainText('Version un');
+
+  // Nothing can be typed, and the write controls are off; reading and exporting stay possible.
+  await expect(title).not.toBeEditable();
+  await expect(body).toHaveAttribute('contenteditable', 'false');
+  await expect(reader.getByRole('button', { name: 'Supprimer la note' })).toBeDisabled();
+  await expect(reader.getByRole('combobox', { name: 'Dossier' })).toBeDisabled();
+  await expect(reader.getByRole('button', { name: 'Exporter la note' })).toBeEnabled();
+  await body.click({ force: true });
+  await reader.keyboard.type('intrus');
+  await expect(body).not.toContainText('intrus');
+
+  // The writer edits: the read-only tab shows it with no action on its side.
+  await writer.getByRole('textbox', { name: 'Titre' }).fill('Partagée v2');
+  await writer.getByRole('textbox', { name: 'Contenu de la note' }).click();
+  await writer.keyboard.type(' et deux');
+  await expect(title).toHaveValue('Partagée v2');
+  await expect(body).toContainText('Version un et deux');
+  await expect(body).toHaveAttribute('contenteditable', 'false');
+
+  // The writer closes: this tab takes the lock over and edits the same note.
+  await writer.close();
+  await expect(reader.getByTestId('read-only-banner')).toHaveCount(0);
+  await expect(title).toBeEditable();
+  await expect(body).toHaveAttribute('contenteditable', 'true');
+  await expect(reader.getByRole('button', { name: 'Supprimer la note' })).toBeEnabled();
+  await body.click();
+  await reader.keyboard.type(' et trois');
+  await waitForStoredText(reader, 'Version un et deux et trois');
+  expect(errors).toEqual([]);
 });

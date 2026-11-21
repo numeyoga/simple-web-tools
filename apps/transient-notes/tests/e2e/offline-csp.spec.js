@@ -4,7 +4,17 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
-import { createNote, goToSelection, openWorkspaces, waitForWrite, watchPage } from './support.js';
+import {
+  createNote,
+  goToSelection,
+  openWorkspaces,
+  pasteImage,
+  readStore,
+  waitForStoredText,
+  waitForWrite,
+  watchPage,
+  writeNote,
+} from './support.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
@@ -230,6 +240,62 @@ test.describe('PWA', () => {
     await goToSelection(page, 'Projects');
     await expect(page.getByRole('heading', { level: 1, name: 'Projects' })).toBeVisible();
     await expectNoA11yViolations(page);
+    await context.setOffline(false);
+
+    expect(violations).toEqual([]);
+    expect(errors).toEqual([]);
+    expect(external).toEqual([]);
+  });
+
+  test('a note with a picture opens offline: the editor chunk comes from the worker, the picture from IndexedDB', async ({
+    context,
+    page,
+  }) => {
+    const { violations, errors, external } = await watchPage(page);
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1, name: 'All notes' })).toBeVisible();
+    await waitForController(page);
+    // The lazy editor chunk is part of what the worker keeps for offline use.
+    const precached = JSON.parse(
+      (await (await page.request.get('/precache-manifest.json')).body()).toString('utf8'),
+    );
+    expect(JSON.stringify(precached)).toMatch(/rich-text-tiptap-[\w-]+\.js/);
+
+    await createNote(page);
+    await writeNote(page, { title: 'Offline note', body: 'Still readable' });
+    await pasteImage(page, 'offline.png');
+    await expect.poll(async () => (await readStore(page, 'assets')).length).toBe(1);
+    const [asset] = await readStore(page, 'assets');
+    await waitForStoredText(page, asset.id);
+    await waitForStoredText(page, 'Still readable');
+
+    await context.setOffline(true);
+    /** @type {{ url: string, fromWorker: boolean }[]} */
+    const chunks = [];
+    page.on('response', (response) => {
+      if (/rich-text-tiptap-[\w-]+\.js$/.test(response.url())) {
+        chunks.push({ url: response.url(), fromWorker: response.fromServiceWorker() });
+      }
+    });
+    await page.reload();
+    await page
+      .getByRole('main')
+      .getByRole('button', { name: /^Offline note/ })
+      .click();
+
+    const editor = page.getByRole('textbox', { name: 'Note content' });
+    await expect(editor).toContainText('Still readable');
+    const picture = editor.locator('img');
+    await expect(picture).toHaveAttribute('src', /^blob:/);
+    await expect
+      .poll(() => picture.evaluate((img) => /** @type {HTMLImageElement} */ (img).naturalWidth))
+      .toBe(1);
+    // The editor works with no network: typing is saved.
+    await editor.click();
+    await page.keyboard.type(' and editable');
+    await waitForStoredText(page, 'Still readable and editable');
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.fromWorker).toBe(true);
     await context.setOffline(false);
 
     expect(violations).toEqual([]);

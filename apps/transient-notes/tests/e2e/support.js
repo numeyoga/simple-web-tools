@@ -217,9 +217,9 @@ export async function pasteImage(page, name = 'capture.png') {
  * @param {{ title?: string, body?: string }} text
  */
 export async function writeNote(page, { title, body }) {
-  if (title !== undefined) await page.getByRole('textbox', { name: 'Titre' }).fill(title);
+  if (title !== undefined) await page.getByRole('textbox', { name: /^(Titre|Title)$/ }).fill(title);
   if (body !== undefined) {
-    const editor = page.getByRole('textbox', { name: 'Contenu de la note' });
+    const editor = page.getByRole('textbox', { name: /^(Contenu de la note|Note content)$/ });
     await editor.click();
     await page.keyboard.type(body);
   }
@@ -255,9 +255,12 @@ export function readStore(page, collection, workspaceId = 'default') {
  * Waits until a note whose stored text (title and document) contains `text` is on disk.
  * @param {import('@playwright/test').Page} page
  * @param {string} text
+ * @param {string} [workspaceId]
  */
-export async function waitForStoredText(page, text) {
-  await expect.poll(async () => JSON.stringify(await readStore(page, 'notes'))).toContain(text);
+export async function waitForStoredText(page, text, workspaceId = 'default') {
+  await expect
+    .poll(async () => JSON.stringify(await readStore(page, 'notes', workspaceId)))
+    .toContain(text);
 }
 
 /** The local calendar date, `YYYY-MM-DD`, as a person reads it (never the UTC day). */
