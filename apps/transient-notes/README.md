@@ -8,9 +8,10 @@ in English and French.
 It is a rewrite of the earlier Transient Notes prototype, on the repository's
 [reference architecture](../../docs/decisions/0004-reference-architecture.md).
 
-> Work in progress: the shell, the data model, the storage and the workspaces are in place; the
-> three-pane interface and the rich-text editor are next (see the
-> [roadmap](../../docs/roadmap.md), step 6). This README grows with them.
+> Work in progress: the shell, the data model, the storage, the workspaces and the three-pane
+> interface with its rich-text editor are in place; the remaining journeys and the full
+> accessibility matrix come next (see the [roadmap](../../docs/roadmap.md), step 6). This README
+> grows with them.
 
 ## Running locally
 

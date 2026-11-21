@@ -3,7 +3,7 @@
 // run in French (playwright.config.js sets the browser locale to fr-FR).
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { expect, test } from '@playwright/test';
-import { createNote, openApp } from './support.js';
+import { createNote, openApp, treeRowName } from './support.js';
 
 test.describe('browser in English (en-US)', () => {
   test.use({ locale: 'en-US', reducedMotion: 'reduce' });
@@ -15,7 +15,7 @@ test.describe('browser in English (en-US)', () => {
 
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
     for (const name of ['All notes', 'Projects', 'Areas', 'Resources', 'Archives']) {
-      await expect(nav.getByRole('button', { name })).toBeVisible();
+      await expect(nav.getByRole('button', { name: treeRowName(name) })).toBeVisible();
     }
     await expect(page.getByRole('link', { name: 'Skip to content' })).toBeAttached();
     await expect(page.getByRole('button', { name: 'Workspace Main workspace' })).toBeVisible();

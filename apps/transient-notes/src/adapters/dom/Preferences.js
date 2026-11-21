@@ -15,6 +15,7 @@ const { el, t } = UI;
 /** The shortcuts that need no modifier key (single-key shortcuts preference, WCAG 2.1.4). */
 const SHORTCUTS = [
   { key: 'N', label: t('prefs.shortcutNew') },
+  { key: '/', label: t('prefs.shortcutSearch') },
   { key: '1 – 4', label: t('prefs.shortcutCategory') },
 ];
 

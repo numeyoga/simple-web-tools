@@ -1,4 +1,5 @@
 import '@simple-web-tools/covenant';
+import '@simple-web-tools/rich-text/editor.css';
 import './styles/app.css';
 
 // Entry point: mounts the application in #root once the DOM is ready.

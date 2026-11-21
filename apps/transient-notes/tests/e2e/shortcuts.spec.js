@@ -1,7 +1,7 @@
 // Single-key shortcuts (WCAG 2.1.4): N and 1 to 4 create a note, never while typing, behind a
 // dialog or with a modifier, and the preference turns them off.
 import { expect, test } from '@playwright/test';
-import { openApp } from './support.js';
+import { openApp, treeRowName } from './support.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
@@ -38,10 +38,14 @@ test('1 to 4 create a note in Projects, Areas, Resources and Archives', async ({
   const nav = page.getByRole('navigation', { name: 'Navigation principale' });
   await page.getByRole('main').click({ position: { x: 5, y: 5 } });
 
-  for (const key of ['1', '2', '3', '4']) await page.keyboard.press(key);
+  // A new note takes the focus (its title field): leave it before the next key.
+  for (const key of ['1', '2', '3', '4']) {
+    await page.getByRole('main').click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press(key);
+  }
 
   for (const name of ['Projets', 'Domaines', 'Ressources', 'Archives']) {
-    await expect(nav.getByRole('button', { name: new RegExp(`^${name}`) })).toContainText('1');
+    await expect(nav.getByRole('button', { name: treeRowName(name) })).toContainText('1');
   }
   // Each key made its default folder, and the last one selected it.
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Archives générales');

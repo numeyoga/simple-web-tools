@@ -1,6 +1,6 @@
 // The app shell: skip link, landmarks, the sidebar and its drawer below 1024 px.
 import { expect, test } from '@playwright/test';
-import { goToSelection, openApp } from './support.js';
+import { goToSelection, openApp, treeRowName } from './support.js';
 
 const SELECTIONS = ['Toutes les notes', 'Projets', 'Domaines', 'Ressources', 'Archives'];
 
@@ -34,11 +34,14 @@ test('the five selections are visible at 1280 × 720 and the current one follows
   const nav = page.getByRole('navigation', { name: 'Navigation principale' });
 
   for (const name of SELECTIONS) {
-    await expect(nav.getByRole('button', { name })).toBeInViewport({ ratio: 1 });
+    await expect(nav.getByRole('button', { name: treeRowName(name) })).toBeInViewport({ ratio: 1 });
   }
   for (const name of SELECTIONS) {
-    await nav.getByRole('button', { name }).click();
-    await expect(nav.getByRole('button', { name })).toHaveAttribute('aria-current', 'page');
+    await nav.getByRole('button', { name: treeRowName(name) }).click();
+    await expect(nav.getByRole('button', { name: treeRowName(name) })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
   }

@@ -108,6 +108,59 @@ function IconButton(opts) {
   return Object.assign(wrap, { button });
 }
 
+/* ------------------ Menu ------------------ */
+/**
+ * A menu button and its popover (the Menu anatomy): the native popover API opens it, Covenant
+ * positions it, moves the focus into it and handles the arrow keys. The invoker must be in the
+ * document when `Covenant.init` runs on the menu, so the owner calls `initCovenant` on a
+ * container once the host is attached.
+ * @param {import('./types.js').MenuOptions} opts
+ * @returns {import('./types.js').MenuHost}
+ */
+function Menu(opts) {
+  const { label, menuLabel = label, icon: iconName, text, items, size = 'md' } = opts;
+  const menuId = fieldId('tn-menu');
+  /** @type {HTMLButtonElement} */
+  let button;
+  /** @type {HTMLElement} */
+  let trigger;
+  if (text) {
+    // A visible text names the button: the aria-label repeats it (WCAG 2.5.3).
+    const textNode = el('span', { class: 'tn-btn-label' }, text);
+    button = Button({ icon: iconName, children: textNode, size });
+    button.setAttribute('aria-label', label);
+    trigger = button;
+  } else {
+    const wrap = IconButton({ icon: iconName, label, size });
+    button = wrap.button;
+    trigger = wrap;
+  }
+  button.setAttribute('popovertarget', menuId);
+  button.setAttribute('aria-haspopup', 'menu');
+  button.setAttribute('aria-expanded', 'false');
+  const menu = el(
+    'div',
+    { class: 'cv-menu', id: menuId, popover: '', role: 'menu', 'aria-label': menuLabel },
+    items.map((item) => {
+      if ('separator' in item) return el('hr', { class: 'cv-menu__sep' });
+      return el(
+        'button',
+        {
+          type: 'button',
+          class: `cv-menu__item${item.danger ? ' cv-menu__item--danger' : ''}`,
+          role: 'menuitem',
+          'data-mutates': item.mutates ? '' : null,
+          onclick: item.onclick,
+        },
+        icon(item.icon),
+        item.label,
+      );
+    }),
+  );
+  const host = el('span', { class: 'tn-menu-host' }, trigger, menu);
+  return Object.assign(host, { button, menu });
+}
+
 /* ------------------ FormField ------------------ */
 /**
  * The FormField anatomy around one control: label, control, hint and error, linked with
@@ -577,6 +630,7 @@ export {
   IconButton,
   Input,
   Kbd,
+  Menu,
   Modal,
   Segmented,
   Select,

@@ -13,7 +13,7 @@ test('a second tab is read-only: banner, disabled actions, no shortcut', async (
 
   await expect(reader.getByTestId('read-only-banner')).toContainText(BANNER);
   await expect(writer.getByTestId('read-only-banner')).toHaveCount(0);
-  await expect(reader.getByRole('button', { name: 'Nouvelle note' })).toBeDisabled();
+  await expect(reader.getByRole('button', { name: 'Nouvelle note', exact: true })).toBeDisabled();
   // The shortcuts that create a note do nothing.
   await reader.getByRole('main').click({ position: { x: 5, y: 5 } });
   await reader.keyboard.press('n');
@@ -23,7 +23,7 @@ test('a second tab is read-only: banner, disabled actions, no shortcut', async (
   await goToSelection(reader, 'Archives');
   await expect(reader.getByRole('heading', { level: 1 })).toHaveText('Archives');
   // The writer is not affected.
-  await expect(writer.getByRole('button', { name: 'Nouvelle note' })).toBeEnabled();
+  await expect(writer.getByRole('button', { name: 'Nouvelle note', exact: true })).toBeEnabled();
   expect(errors).toEqual([]);
 });
 
@@ -78,7 +78,7 @@ test('closing the writer promotes the read-only tab, which re-reads and can writ
   await writer.close();
 
   await expect(reader.getByTestId('read-only-banner')).toHaveCount(0);
-  await expect(reader.getByRole('button', { name: 'Nouvelle note' })).toBeEnabled();
+  await expect(reader.getByRole('button', { name: 'Nouvelle note', exact: true })).toBeEnabled();
   await expect(reader.getByText('Édition rétablie')).toBeVisible();
   await createNote(reader);
   await expect(reader.getByRole('main').getByRole('button', { name: 'Sans titre' })).toHaveCount(2);
@@ -101,6 +101,6 @@ test('a tab that reloads gets the lock back and stays the writer', async ({ page
 
   await page.reload();
 
-  await expect(page.getByRole('button', { name: 'Nouvelle note' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Nouvelle note', exact: true })).toBeEnabled();
   await expect(page.getByTestId('read-only-banner')).toHaveCount(0);
 });

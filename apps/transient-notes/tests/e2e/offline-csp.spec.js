@@ -4,41 +4,11 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
-import { createNote, goToSelection, openWorkspaces, waitForWrite } from './support.js';
+import { createNote, goToSelection, openWorkspaces, waitForWrite, watchPage } from './support.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
 test.use({ locale: 'en-US', reducedMotion: 'reduce' });
-
-/**
- * Collects what the browser reports about the page: CSP violations (the event of the document
- * and the console message), page errors and requests that leave the origin.
- * @param {Page} page
- */
-async function watchPage(page) {
-  /** @type {string[]} */
-  const violations = [];
-  /** @type {string[]} */
-  const errors = [];
-  /** @type {string[]} */
-  const external = [];
-  await page.addInitScript(() => {
-    document.addEventListener('securitypolicyviolation', (event) => {
-      // Read back through the exposed function below: it lives outside the page's own scripts.
-      /** @type {any} */ (window).__reportCsp(`${event.violatedDirective} ${event.blockedURI}`);
-    });
-  });
-  await page.exposeFunction('__reportCsp', (/** @type {string} */ text) => violations.push(text));
-  page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => {
-    if (m.type() === 'error' || /Content Security Policy/i.test(m.text())) errors.push(m.text());
-  });
-  page.on('request', (request) => {
-    const { protocol, origin } = new URL(request.url());
-    if (/^https?:$/.test(protocol) && origin !== 'http://127.0.0.1:4175') external.push(origin);
-  });
-  return { violations, errors, external };
-}
 
 /** Waits until the service worker controls the page. @param {Page} page */
 async function waitForController(page) {
@@ -154,7 +124,8 @@ test.describe('strict Content Security Policy', () => {
     const main = page.getByRole('main');
     await expect(main.getByRole('button', { name: 'Untitled' })).toBeVisible();
 
-    // The selections, with a note in one of them.
+    // The selections, with a note in one of them (the new note holds the focus: leave its title).
+    await main.click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('2');
     for (const [label, heading] of [
       ['Projects', 'Projects'],

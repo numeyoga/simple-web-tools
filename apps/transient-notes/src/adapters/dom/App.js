@@ -1,37 +1,29 @@
-// Main shell (the AppShell of the Covenant skill): skip link, sidebar (brand, workspace, the
-// selection of notes: all notes and the four PARA categories), sticky top bar (page title, new
-// note, preferences) and the main region. Below 1024 px the sidebar is an off-canvas drawer.
+// Main shell (the AppShell of the Covenant skill): skip link, sidebar (brand, workspace, the PARA
+// tree), sticky top bar (page title, new note, export all, preferences) and the main region (the
+// notes list and the editor). Below 1024 px the sidebar is an off-canvas drawer.
 // The tab that does not hold the write lock is read-only: a banner says so, the controls that
 // change data are disabled and the shortcuts do nothing.
 import { PARA_CATEGORIES } from '../../core/model.js';
 import { allowsSingleKeyShortcut } from '../../core/preferences.js';
-import { selectNoteCounts } from '../../core/selectors.js';
 import { createNoteCommand } from '../commands.js';
-import { categoryLabel } from '../labels.js';
+import { EXPORT_FORMAT, exportAllNotes } from '../export-actions.js';
 import { getSingleKeyShortcuts, watchPreferences } from '../preferences.js';
 import { registerServiceWorker } from '../pwa.js';
 import { StorageError, createAppStore } from '../store.js';
 import { activeWorkspace, activeWorkspaceId, listWorkspaces } from '../workspaces.js';
 import { openPreferences } from './Preferences.js';
 import { createNotesView, selectionTitle } from './NotesView.js';
+import { createTree } from './Tree.js';
 import * as UI from './ui.js';
 import { openWorkspaceManager } from './WorkspacesView.js';
 
 const { el, icon, t } = UI;
 
-/** Phosphor icon of each PARA category. @type {Record<import('../../types.d.ts').ParaCategory, { icon: string }>} */
-const CATEGORY_ICONS = {
-  projects: { icon: 'target' },
-  areas: { icon: 'house-line' },
-  resources: { icon: 'books' },
-  archives: { icon: 'archive' },
-};
-
 /** @param {HTMLElement} rootEl */
 export function start(rootEl) {
   const store = createAppStore({ workspaceId: activeWorkspaceId() });
   const toasts = UI.ToastHost();
-  /** @type {import('./types.js').View | null} */
+  /** @type {(import('./types.js').View & { focusSearch: () => void, commit: () => void }) | null} */
   let currentView = null;
 
   watchPreferences();
@@ -64,54 +56,19 @@ export function start(rootEl) {
     );
   }
 
-  /** @type {Map<string, HTMLElement>} */
-  const navButtons = new Map();
-  /** @type {Map<string, HTMLElement>} */
-  const navCounts = new Map();
+  // The PARA tree: choosing a row closes the drawer of the narrow layout and moves on to the list.
+  const tree = createTree(store, {
+    toasts,
+    onNavigate() {
+      if (shell.hasAttribute('data-nav-open')) {
+        closeNav();
+        main.focus({ preventScroll: true });
+      }
+    },
+  });
 
-  /**
-   * @param {{ id: string, icon: string, label: string, selection: import('../../types.d.ts').Selection }} item
-   */
-  function navItem({ id, icon: iconName, label, selection }) {
-    const count = el('span', { class: 'tn-nav-count cv-num' });
-    const button = el(
-      'button',
-      {
-        type: 'button',
-        class: 'cv-nav-item tn-nav-btn',
-        onclick: () => {
-          store.dispatch({ type: 'select', selection });
-          if (shell.hasAttribute('data-nav-open')) {
-            closeNav();
-            main.focus({ preventScroll: true });
-          }
-        },
-      },
-      icon(iconName),
-      el('span', { class: 'tn-grow tn-ellipsis' }, label),
-      count,
-    );
-    navButtons.set(id, button);
-    navCounts.set(id, count);
-    return el('li', null, button);
-  }
-
-  const navList = el(
-    'ul',
-    null,
-    navItem({ id: 'all', icon: 'notebook', label: t('nav.allNotes'), selection: { kind: 'all' } }),
-    ...PARA_CATEGORIES.map((category) =>
-      navItem({
-        id: category,
-        icon: CATEGORY_ICONS[category].icon,
-        label: categoryLabel(category),
-        selection: { kind: 'category', category },
-      }),
-    ),
-  );
-
-  // The sidebar is navigation only: brand, workspace, then the selections. The skill's own
-  // script opens and closes it below 1024 px.
+  // The sidebar is navigation only: brand, workspace, then the tree. The skill's own script opens
+  // and closes it below 1024 px.
   const sidebar = el(
     'nav',
     { id: 'shell-nav', 'aria-label': t('shell.navLabel'), class: 'cv-sidebar' },
@@ -122,7 +79,7 @@ export function start(rootEl) {
       t('app.name'),
     ),
     el('div', { class: 'tn-sidebar-workspace' }, workspaceChip()),
-    navList,
+    tree.el,
   );
 
   // The page title is the one h1 of the page: the name of what the list shows.
@@ -139,19 +96,41 @@ export function start(rootEl) {
     },
     icon('list'),
   );
+  const exportMenu = UI.Menu({
+    icon: 'download-simple',
+    label: t('notes.exportAll'),
+    menuLabel: t('notes.exportAllMenu'),
+    text: t('notes.exportAll'),
+    items: [
+      {
+        label: t('notes.exportAllText'),
+        icon: 'file-text',
+        onclick: () => exportAll(EXPORT_FORMAT.text),
+      },
+      {
+        label: t('notes.exportAllMarkdown'),
+        icon: 'file-md',
+        onclick: () => exportAll(EXPORT_FORMAT.markdown),
+      },
+    ],
+  });
+  // The text is hidden on a narrow screen: the label names the button then (and repeats the text).
+  const newNoteButton = UI.Button({
+    variant: 'primary',
+    icon: 'plus',
+    children: el('span', { class: 'tn-btn-label' }, t('notes.new')),
+    mutates: true,
+    onclick: () => newNote(),
+  });
+  newNoteButton.setAttribute('aria-label', t('notes.new'));
   const topbar = el(
     'header',
     { class: 'cv-topbar' },
     menuButton,
     pageTitle,
     el('span', { class: 'cv-topbar__spacer' }),
-    UI.Button({
-      variant: 'primary',
-      icon: 'plus',
-      children: t('notes.new'),
-      mutates: true,
-      onclick: () => newNote(),
-    }),
+    newNoteButton,
+    exportMenu,
     UI.IconButton({
       icon: 'gear',
       label: t('shell.preferences'),
@@ -159,7 +138,7 @@ export function start(rootEl) {
     }),
   );
 
-  const main = el('main', { class: 'cv-shell__content', id: 'shell-main', tabindex: -1 });
+  const main = el('main', { class: 'cv-shell__content tn-main', id: 'shell-main', tabindex: -1 });
 
   const shell = el(
     'div',
@@ -171,6 +150,9 @@ export function start(rootEl) {
   );
 
   rootEl.appendChild(shell);
+  // Menus are wired to their buttons once both are in the document.
+  UI.initCovenant(shell);
+  tree.mounted?.();
 
   /** Closes the drawer of the narrow layout; `focusToggle` gives the focus back to its button. */
   /** @param {{ focusToggle?: boolean }} [opts] */
@@ -195,23 +177,14 @@ export function start(rootEl) {
   function paintSelection() {
     const state = store.getState();
     pageTitle.textContent = selectionTitle(state);
-    const counts = selectNoteCounts(state);
-    const current =
-      state.selection.kind === 'all'
-        ? 'all'
-        : state.selection.kind === 'category'
-          ? state.selection.category
-          : (state.folders.find(
-              (f) => f.id === /** @type {{ folderId: string }} */ (state.selection).folderId,
-            )?.category ?? 'all');
-    for (const [key, button] of navButtons) {
-      if (key === current) button.setAttribute('aria-current', 'page');
-      else button.removeAttribute('aria-current');
-    }
-    for (const [key, count] of navCounts) {
-      const n = key === 'all' ? counts.all : counts.byCategory[/** @type {never} */ (key)];
-      count.textContent = String(n);
-    }
+    // Nothing to export from an empty workspace.
+    exportMenu.button.disabled = state.notes.length === 0;
+  }
+
+  /** Saves every note of the workspace in one file. @param {import('../export-actions.js').ExportFormat} format */
+  function exportAll(format) {
+    currentView?.commit();
+    exportAllNotes(store.getState().notes, format, store.workspaceId);
   }
 
   /* ---------------- read-only tab (another tab holds the write lock) ---------------- */
@@ -273,7 +246,7 @@ export function start(rootEl) {
   }
 
   /* ---------------- keyboard shortcuts ---------------- */
-  // Single-key shortcuts (`N`, and `1` to `4` for a new note in a category) are on by default and
+  // Single-key shortcuts (`N`, `/` for the search, and `1` to `4` for a new note in a category) are on by default and
   // the user can turn them off in the preferences (WCAG 2.1.4). They never steal a key from a
   // control that uses it: a text field, an open dialog (a native <dialog>: the page behind is
   // inert) or the open drawer, a combination with Ctrl, Alt or Meta, Shift on a letter, and the
@@ -305,6 +278,11 @@ export function start(rootEl) {
     if (e.key.toLowerCase() === 'n') {
       e.preventDefault();
       newNote();
+      return;
+    }
+    if (e.key === '/') {
+      e.preventDefault();
+      currentView?.focusSearch();
       return;
     }
     const category = PARA_CATEGORIES[Number(e.key) - 1];
@@ -437,8 +415,9 @@ export function start(rootEl) {
     .init()
     .then(() => {
       wasReadOnly = store.getState().readOnly;
-      currentView = createNotesView(store);
+      currentView = createNotesView(store, { toasts });
       main.replaceChildren(currentView.el);
+      currentView.mounted?.();
       paintSelection();
       paintReadOnly();
     })
