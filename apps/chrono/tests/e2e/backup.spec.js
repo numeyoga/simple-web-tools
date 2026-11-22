@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { readFile } from 'node:fs/promises';
 import { createProject, openApp, waitForWrite } from './support.js';
 
@@ -18,7 +19,7 @@ test('JSON export then import into an empty workspace: the data is restored', as
     .getByRole('button', { name: 'Exporter JSON' })
     .click();
   const download = await downloadEvent;
-  const content = await readFile(await download.path());
+  const content = await readFile(await saveDownload(download));
   const exported = JSON.parse(content.toString('utf8'));
   expect(exported).toMatchObject({ app: 'chrono', format: 'chrono-workspace', version: 3 });
   expect(exported.data.projects.map((/** @type {{ name: string }} */ p) => p.name)).toEqual([

@@ -3,6 +3,7 @@
 // `vite preview` on 127.0.0.1 (see playwright.config.js).
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { goToSection, loadDemoData, waitForWrite } from './support.js';
 
@@ -143,7 +144,9 @@ test.describe('strict Content Security Policy', () => {
     // The JSON download (a blob: link).
     const jsonDownload = page.waitForEvent('download');
     await workspaces.getByRole('button', { name: 'Export JSON' }).click();
-    const json = JSON.parse((await readFile(await (await jsonDownload).path())).toString('utf8'));
+    const json = JSON.parse(
+      (await readFile(await saveDownload(await jsonDownload))).toString('utf8'),
+    );
     expect(json).toMatchObject({ app: 'chrono', format: 'chrono-workspace' });
     await page.keyboard.press('Escape');
 
@@ -151,7 +154,7 @@ test.describe('strict Content Security Policy', () => {
     await goToSection(page, 'Report');
     const csvDownload = page.waitForEvent('download');
     await page.getByRole('main').getByRole('button', { name: 'Export CSV' }).click();
-    const csv = (await readFile(await (await csvDownload).path())).toString('utf8');
+    const csv = (await readFile(await saveDownload(await csvDownload))).toString('utf8');
     expect(csv).toContain('"Date","Project"');
 
     expect(violations).toEqual([]);

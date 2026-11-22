@@ -4,6 +4,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { goToSection, openApp } from './support.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
@@ -105,7 +106,7 @@ test.describe('browser in English (en-US)', () => {
     await page.getByRole('button', { name: 'Export CSV' }).click();
     const file = await download;
     expect(file.suggestedFilename()).toBe('report-2026-11-16.csv');
-    const path = await file.path();
+    const path = await saveDownload(file);
     const text = (await (await import('node:fs/promises')).readFile(path, 'utf8')) ?? '';
     expect(text.charCodeAt(0)).toBe(0xfeff);
     expect(text.split('\r\n')[0]).toBe(
