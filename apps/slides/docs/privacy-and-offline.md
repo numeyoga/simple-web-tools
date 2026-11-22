@@ -29,9 +29,18 @@ A slide can hold HTML, and a presentation may not be yours, so the page is stric
 ## Offline
 
 Slides is a web app that installs its own files: after the first visit (online) it opens with no
-network, including the example and the diagrams. A new version, when there is one, waits in the
-background and a message offers to reload. Your presentations are folders on your disk, so they do
-not need the network either.
+network, including the example. Your presentations are folders on your disk, so they do not need
+the network either.
+
+**Diagrams** use a large drawing library (about 5 MB), which is not downloaded when the app is
+installed: it is fetched the first time a slide with a diagram is shown, and kept. So diagrams work
+offline once a presentation with a diagram has been shown online in this browser; if you prepare a
+talk for a room without network, show its diagram slides once beforehand (the example has one).
+Until then, offline, the slide keeps the diagram's code and a message says it could not be drawn.
+
+A new version, when there is one, waits in the background and a message offers to reload. The
+drawing library already downloaded is kept across updates when the new version uses the same
+files; otherwise it is downloaded again the next time a diagram is shown.
 
 ## Browsers
 

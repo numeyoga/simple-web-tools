@@ -71,9 +71,17 @@ A presentation is often someone else's file, and raw HTML in Markdown is HTML.
 `mermaid` is a dynamic `import()` in `src/adapters/mermaid.js`, run the first time a slide on
 screen (or the print view) holds a diagram. A talk with no diagram never fetches it. Vite splits it
 into about ninety chunks (one per diagram type and shared helper, 5.1 MB of script, 1.5 MB
-compressed, the layout engine alone being 1.5 MB). They are all in `precache-manifest.json`, so
-the service worker caches them at install and a diagram is drawn offline; the cost is a larger first
-install, not a larger first load. The main chunk is 305 kB (98 kB compressed).
+compressed, the layout engine alone being 1.5 MB). They are **cached on first use, not at
+install**: `vite.config.js` passes `onDemandModules: [/node_modules/mermaid/]` to the PWA plugin,
+which takes the chunks that only Mermaid's modules need (the diagram types, KaTeX, Cytoscape, dagre,
+ELK, d3 helpers, whatever they are called) and lists them in `precache-manifest.json` under
+`onDemand` instead of `precache`. The install fetches 47 files (1.2 MB, 6.4 MB before); the worker
+serves a Mermaid chunk cache first and, the first time one is asked for, fetches it and stores it
+in the shell cache. An update copies the entries that are still the same files (same hashed name)
+from the old cache before deleting it, so they are not downloaded again. The consequence for
+offline use: **diagrams work offline once a presentation with a diagram has been shown online**
+(and only the diagram types shown are cached). The main chunk is 305 kB (98 kB compressed). The
+mechanism is described in [`@simple-web-tools/pwa`](../../packages/pwa/README.md).
 
 Mermaid's SVG carries `<style>` elements and `style` attributes, so **`style-src` allows
 `'unsafe-inline'` in this app, and in this app only**. The rest of the policy is unchanged and there
@@ -87,15 +95,15 @@ No document is stored: a presentation is read from the folder each time and live
 persisted names are the preferences, all prefixed with the app name (decision 0005), and the offline
 cache:
 
-| Name                                         | Holds                                                    |
-| -------------------------------------------- | -------------------------------------------------------- |
-| `localStorage` `slides-theme`                | `light` or `dark`; absent, the system theme              |
-| `localStorage` `slides-text-size`            | `standard`, `comfortable` or `large`; absent, automatic  |
-| `localStorage` `slides-single-key-shortcuts` | `1` or `0`; absent, on                                   |
-| `localStorage` `slides-locale`               | `en` or `fr`; absent, the browser's language             |
-| `BroadcastChannel` `slides-sync`             | main window and presenter window                         |
-| window name `slides-presenter`               | the presenter window, so that opening it twice reuses it |
-| Cache Storage `slides-shell-<build id>`      | the offline shell (`@simple-web-tools/pwa`)              |
+| Name                                         | Holds                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| `localStorage` `slides-theme`                | `light` or `dark`; absent, the system theme                        |
+| `localStorage` `slides-text-size`            | `standard`, `comfortable` or `large`; absent, automatic            |
+| `localStorage` `slides-single-key-shortcuts` | `1` or `0`; absent, on                                             |
+| `localStorage` `slides-locale`               | `en` or `fr`; absent, the browser's language                       |
+| `BroadcastChannel` `slides-sync`             | main window and presenter window                                   |
+| window name `slides-presenter`               | the presenter window, so that opening it twice reuses it           |
+| Cache Storage `slides-shell-<build id>`      | the offline shell, and Mermaid once used (`@simple-web-tools/pwa`) |
 
 There is no schema and no migration: nothing is stored that could change shape. The earlier app
 stored nothing either, so there is nothing to import.
@@ -196,7 +204,8 @@ npm run verify               # from the root: typecheck, lint, format, tests, bu
 - **End to end**: the home screen and the folders (picked, dropped, no `slides.md`, invalid YAML),
   navigation and the overview, the presenter window in step with the main one in both directions
   (two pages of one browser context), the timers (with a fake clock), print media, Mermaid (lazy
-  load, offline, a broken diagram, strict mode), the sanitizer with a hostile fixture folder,
+  load, a broken diagram, strict mode; Mermaid absent from the cache at install, cached when a
+  diagram is shown, drawn offline after a reload), the sanitizer with a hostile fixture folder,
   CSP and offline, preferences, English and French, and axe (WCAG 2.0 A/AA, 2.1 AA, 2.2 AA) on
   every screen in light and dark at 1280 and 390 px. The suites run with the browser in French
   (`playwright.config.js`). `PLAYWRIGHT_WS_ENDPOINT` points them at a shared Playwright server.
@@ -225,10 +234,10 @@ Covenant, dom, i18n and suite are workspace packages of this repository. Four sm
 what would otherwise be hand-written and risky; each is bundled, none makes a request
 ([decision 0003](../../docs/decisions/0003-no-runtime-framework.md)):
 
-| Library        | Version  | Licence               | Why                                                                                                          |
-| -------------- | -------- | --------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `marked`       | ^18.2.1  | MIT                   | GitHub-flavoured Markdown to HTML and tokens; a parser is not worth writing.                                 |
-| `yaml`         | ^2.9.1   | ISC                   | The frontmatter. It has no custom tags and caps alias expansion, which a hand parser would not.              |
-| `highlight.js` | ^11.12.0 | BSD-3-Clause          | Syntax colours. Only `lib/core` and five grammars are imported, so the rest is not bundled.                  |
-| `mermaid`      | 12.3.0   | MIT                   | Diagrams, from a lazy chunk (see above). Pinned: the earlier version pinned it for a CVE.                    |
-| `dompurify`    | 3.4.17   | MPL-2.0 OR Apache-2.0 | Sanitizing HTML is the one thing not to write by hand. Pinned, and shared with Mermaid, which depends on it. |
+| Library        | Version  | Licence               | Why                                                                                                                           |
+| -------------- | -------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `marked`       | ^18.2.1  | MIT                   | GitHub-flavoured Markdown to HTML and tokens; a parser is not worth writing.                                                  |
+| `yaml`         | ^2.9.1   | ISC                   | The frontmatter. It has no custom tags and caps alias expansion, which a hand parser would not.                               |
+| `highlight.js` | ^11.12.0 | BSD-3-Clause          | Syntax colours. Only `lib/core` and five grammars are imported, so the rest is not bundled.                                   |
+| `mermaid`      | 12.3.0   | MIT                   | Diagrams, from a lazy chunk cached on first use, not at install (see above). Pinned: the earlier version pinned it for a CVE. |
+| `dompurify`    | 3.4.17   | MPL-2.0 OR Apache-2.0 | Sanitizing HTML is the one thing not to write by hand. Pinned, and shared with Mermaid, which depends on it.                  |

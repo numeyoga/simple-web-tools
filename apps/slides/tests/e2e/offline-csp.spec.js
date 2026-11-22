@@ -3,7 +3,14 @@
 // playwright.config.js).
 import { expect, test } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
-import { chooseFolder, expectSlide, loadExample, watchPage } from './support.js';
+import {
+  cachedPaths,
+  chooseFolder,
+  expectSlide,
+  loadExample,
+  waitForShell,
+  watchPage,
+} from './support.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
@@ -170,16 +177,11 @@ test.describe('PWA', () => {
     expect(info.caches.length).toBeGreaterThan(0);
     expect(info.caches.every((name) => name.startsWith('slides-'))).toBe(true);
 
-    // The shell holds what the build manifest lists, and nothing from another origin.
-    const precached = JSON.parse(
-      (await (await page.request.get('/precache-manifest.json')).body()).toString('utf8'),
-    );
-    const cached = await page.evaluate(async () => {
-      const [name] = await caches.keys();
-      const cache = await caches.open(name ?? '');
-      return (await cache.keys()).map((r) => new URL(r.url).pathname);
-    });
-    expect(cached.length).toBe(precached.length);
+    // The shell holds what the build manifest precaches, and nothing from another origin. Mermaid
+    // is on demand (mermaid.spec.js): it is cached the first time a diagram is shown.
+    const manifest = await waitForShell(page);
+    const cached = await cachedPaths(page);
+    expect(cached.length).toBe(manifest.precache.length + 1);
     expect(cached).toContain('/index.html');
     expect(cached.some((path) => /^\/assets\/index-.*\.js$/.test(path))).toBe(true);
     expect(cached.some((path) => path.endsWith('.woff2'))).toBe(true);
@@ -187,7 +189,14 @@ test.describe('PWA', () => {
     expect(cached.some((path) => /^\/assets\/en-.*\.js$/.test(path))).toBe(true);
     expect(cached.some((path) => /^\/assets\/fr-.*\.js$/.test(path))).toBe(true);
 
-    // Offline: the app starts, the example loads, a folder is read, a diagram is drawn.
+    // A presentation with a diagram, shown online: its diagram is now available offline.
+    await loadExample(page);
+    await page.keyboard.press('4');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('pre.mermaid[data-drawn]')).toBeVisible();
+    await page.getByRole('button', { name: 'Fermer la présentation' }).click();
+
+    // Offline: the app starts, the example loads, a folder is read, the diagram is drawn again.
     await context.setOffline(true);
     await page.reload();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ouvrir une présentation');
