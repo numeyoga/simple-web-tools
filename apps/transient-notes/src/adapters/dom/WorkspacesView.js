@@ -252,7 +252,7 @@ export function openWorkspaceManager({ store, toasts }) {
     return el(
       'section',
       { class: 'tn-block tn-block--dashed tn-stack tn-gap-4' },
-      el('h3', { class: 'cv-overline tn-title-reset' }, t('workspaces.newTitle')),
+      el('h3', { class: 'cv-overline' }, t('workspaces.newTitle')),
       el(
         'div',
         { class: 'tn-row tn-wrap tn-align-end tn-gap-3' },
@@ -313,7 +313,7 @@ export function openWorkspaceManager({ store, toasts }) {
     return el(
       'section',
       { class: 'tn-block tn-stack tn-gap-3' },
-      el('h3', { class: 'cv-overline tn-title-reset' }, t('workspaces.backup')),
+      el('h3', { class: 'cv-overline' }, t('workspaces.backup')),
       el('div', { class: 'tn-meta' }, t('workspaces.backupHint')),
       el(
         'div',

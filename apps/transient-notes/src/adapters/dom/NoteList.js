@@ -55,7 +55,7 @@ export function createNoteList(store) {
         sort: /** @type {'updated' | 'created' | 'title'} */ (value),
       }),
   });
-  const count = el('p', { class: 'tn-meta tn-list-count', role: 'status' });
+  const count = el('p', { class: 'tn-meta', role: 'status' });
   const body = el('div', { class: 'tn-list-body' });
 
   const header = el(

@@ -337,8 +337,8 @@ export function start(rootEl) {
             'div',
             { role: 'alert', class: 'tn-error-screen' },
             icon('warning', { className: 'tn-warning-text tn-icon-xl' }),
-            el('h1', { class: 'cv-h1 tn-page-title' }, message.title),
-            el('p', { class: 'tn-message' }, message.body),
+            el('h1', { class: 'cv-h1' }, message.title),
+            el('p', null, message.body),
             el(
               'div',
               null,
