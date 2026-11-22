@@ -220,8 +220,9 @@ fresh id, adopts the returned data and notifies listeners (`store.onState`). A o
 notifies `store.onTick`, for the running durations, in read-only tabs too. Database writes are
 batched and delayed by a few tens of milliseconds. The views (`adapters/dom/`) subscribe to the
 store and **render their whole content again** on every notification: no diff, no persistent local
-state. `lib.js` and `ui.js` provide the DOM helpers and primitives (Button, Input, Select,
-Badge, Kbd, Modal, Toast); `App.js` assembles the sidebar, the navigation and the shortcuts. The
+state. `lib.js` and `ui.js` give the views the DOM helpers and primitives (Button, Input, Select,
+Badge, Kbd, Modal, Toast) of [`@simple-web-tools/dom`](../../packages/dom/README.md), set up with
+the prefix `ch` and Chrono's translator, with the app's own formatting helpers; `App.js` assembles the sidebar, the navigation and the shortcuts. The
 brand at the top of the sidebar and the links to the sibling apps at the bottom come from
 `@simple-web-tools/suite`. No global is shared between modules.
 

@@ -282,7 +282,6 @@ export default {
       other: '{count} clients already entered, or type a new name',
     },
     noMatchingClient: 'No matching client. This name will be created.',
-    noSuggestion: 'No suggestions.',
     color: 'Color',
     customColor: 'Custom color',
     nameEmpty: 'The name is empty. Enter a project name.',
