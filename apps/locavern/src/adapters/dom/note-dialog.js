@@ -190,7 +190,6 @@ export function openNoteDialog(opts) {
     } else {
       const emptyBody = document.createElement('p');
       emptyBody.className = 'cv-caption';
-      emptyBody.style.margin = '0';
       emptyBody.textContent = t('notes.noContent');
       contentField.append(emptyBody);
     }

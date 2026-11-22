@@ -54,11 +54,9 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
   const titleGroup = document.createElement('div');
   const titleEl = document.createElement('h2');
   titleEl.className = 'cv-h2';
-  titleEl.style.margin = '0';
   titleEl.textContent = t('common.archives');
   const subtitleEl = document.createElement('p');
   subtitleEl.className = 'cv-caption';
-  subtitleEl.style.margin = '0';
   subtitleEl.textContent = t('archives.count', { count: allArchivedEntries.length });
   titleGroup.append(titleEl, subtitleEl);
   header.append(titleGroup);
@@ -370,14 +368,12 @@ export function renderArchivesView({ container, store, filters, onNavigateLocalR
 
       const titleH3 = document.createElement('h3');
       titleH3.className = 'cv-h3';
-      titleH3.style.margin = '0';
       titleH3.textContent = activeEntry.title;
 
       detailHead.append(kindPill, titleH3);
 
       const originNote = document.createElement('p');
       originNote.className = 'cv-hint';
-      originNote.style.margin = '0';
       originNote.textContent =
         activeEntry.archiveReason === 'project' && activeEntry.projectName
           ? t('archives.viaProjectText', { project: activeEntry.projectName })

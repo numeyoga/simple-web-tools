@@ -255,7 +255,6 @@ export function openTaskDrawer(opts) {
     if (checklistItems.length === 0) {
       const emptyCk = document.createElement('p');
       emptyCk.className = 'cv-caption';
-      emptyCk.style.margin = '0';
       emptyCk.textContent = t('tasks.noSteps');
       checklistField.append(emptyCk);
     } else {
@@ -308,7 +307,6 @@ export function openTaskDrawer(opts) {
     } else {
       const emptyDesc = document.createElement('p');
       emptyDesc.className = 'cv-caption';
-      emptyDesc.style.margin = '0';
       emptyDesc.textContent = t('common.noDescription');
       descField.append(emptyDesc);
     }

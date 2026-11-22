@@ -160,7 +160,6 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     statsHead.className = 'lc-view-header';
     const statsTitle = document.createElement('h3');
     statsTitle.className = 'cv-h4';
-    statsTitle.style.margin = '0';
     statsTitle.textContent = t('backup.storage.title');
 
     const persistBadge = document.createElement('span');
@@ -340,11 +339,9 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     exportSection.className = 'lc-backup-section';
     const exportTitle = document.createElement('h3');
     exportTitle.className = 'cv-h4';
-    exportTitle.style.margin = '0';
     exportTitle.textContent = t('backup.export.title');
     const exportDesc = document.createElement('p');
     exportDesc.className = 'cv-caption';
-    exportDesc.style.margin = '0';
     exportDesc.textContent = t('backup.export.desc');
 
     const encryptCheckLabel = document.createElement('label');
@@ -376,7 +373,6 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     const encryptHint = document.createElement('p');
     encryptHint.id = 'export-encrypt-hint';
     encryptHint.className = 'cv-hint';
-    encryptHint.style.margin = '0';
     encryptHint.textContent = t('backup.export.encryptHint');
 
     const exportEncryptError = document.createElement('span');
@@ -511,11 +507,9 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     importSection.className = 'lc-backup-section';
     const importTitle = document.createElement('h3');
     importTitle.className = 'cv-h4';
-    importTitle.style.margin = '0';
     importTitle.textContent = t('backup.import.title');
     const importDesc = document.createElement('p');
     importDesc.className = 'cv-caption';
-    importDesc.style.margin = '0';
     importDesc.textContent = t('backup.import.desc');
 
     const fileField = document.createElement('div');
@@ -559,7 +553,6 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
 
       const summary = document.createElement('p');
       summary.className = 'cv-caption';
-      summary.style.margin = '0';
       const items = i18n.formatList([
         spelled.projects(parsed.data.projects.length),
         spelled.tasks(parsed.data.tasks.length),
@@ -634,7 +627,6 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       if (parsed.data.projects.length === 0) {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'cv-caption';
-        emptyMsg.style.margin = '0';
         emptyMsg.textContent = t('backup.import.noProjects');
         projectSelectionWrap.append(emptyMsg);
       } else {
@@ -835,7 +827,6 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
 
       const info = document.createElement('p');
       info.className = 'cv-caption';
-      info.style.margin = '0';
       info.textContent = t('backup.decrypt.info', {
         name: encryptedFile.name || t('backup.import.defaultFile'),
       });
@@ -968,7 +959,6 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
     resetSection.className = 'lc-backup-section';
     const resetTitle = document.createElement('h3');
     resetTitle.className = 'cv-h4';
-    resetTitle.style.margin = '0';
     resetTitle.textContent = t('backup.reset.title');
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';

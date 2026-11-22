@@ -318,7 +318,6 @@ export function renderCalendarView({
   const periodHeading = document.createElement('h2');
   periodHeading.id = 'cal-period-label';
   periodHeading.className = 'cv-h3';
-  periodHeading.style.margin = '0';
 
   const weekCells = buildWeekCalendarGrid(calendarState.anchorDate);
   const monthCells = buildMonthCalendarGrid(anchorParts.year, anchorParts.month);
@@ -338,7 +337,6 @@ export function renderCalendarView({
 
   const helpText = document.createElement('p');
   helpText.className = 'cv-caption';
-  helpText.style.margin = '0';
   helpText.textContent =
     calendarState.mode === 'week' ? t('calendar.helpWeek') : t('calendar.helpMonth');
 
@@ -929,7 +927,6 @@ export function renderCalendarView({
   undatedHead.className = 'lc-view-header';
   const undatedTitle = document.createElement('h3');
   undatedTitle.className = 'cv-h4';
-  undatedTitle.style.margin = '0';
   undatedTitle.textContent = t('calendar.undatedTitle', { count: undatedTasks.length });
   undatedHead.append(undatedTitle);
 
@@ -938,7 +935,6 @@ export function renderCalendarView({
   if (undatedTasks.length === 0) {
     const emptyUndated = document.createElement('p');
     emptyUndated.className = 'cv-caption';
-    emptyUndated.style.margin = '0';
     emptyUndated.textContent = t('calendar.undatedEmpty');
     undatedList.append(emptyUndated);
   } else {

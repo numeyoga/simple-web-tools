@@ -366,7 +366,6 @@ export function renderProjectsView({
 
   const heading = document.createElement('h2');
   heading.className = 'cv-h2';
-  heading.style.margin = '0';
   heading.textContent = t('projects.heading');
   leftGroup.append(heading);
 

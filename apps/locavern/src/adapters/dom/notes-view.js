@@ -447,7 +447,6 @@ export function renderNotesView({
       } else {
         const emptyMsg = document.createElement('p');
         emptyMsg.className = 'cv-caption';
-        emptyMsg.style.margin = '0';
         emptyMsg.textContent = t('notes.emptyView');
         editorHost.append(emptyMsg);
       }
