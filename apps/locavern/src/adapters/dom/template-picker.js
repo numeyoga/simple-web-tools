@@ -1,4 +1,3 @@
-import { setTooltip } from './tooltip.js';
 import { t } from '../i18n.js';
 
 /** @import { LocalTemplate } from '../../types.d.ts' */
@@ -76,7 +75,7 @@ export function createTemplatePicker({
   deleteBtn.id = `${idPrefix}-delete`;
   deleteBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
   deleteBtn.setAttribute('aria-label', t('templates.deleteSelected'));
-  setTooltip(deleteBtn, t('templates.deleteCustomTooltip'));
+  window.Covenant?.setTooltip?.(deleteBtn, t('templates.deleteCustomTooltip'));
   deleteBtn.hidden = true;
   const delIc = document.createElement('i');
   delIc.className = 'ph ph-trash cv-icon';

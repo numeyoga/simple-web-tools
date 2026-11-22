@@ -24,7 +24,6 @@ import {
   snapValueToGrid,
   stepValueWithGrid,
 } from '../core/whiteboard.js';
-import { initTooltips, setTooltip } from './dom/tooltip.js';
 import { t } from './i18n.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -198,7 +197,7 @@ function createToolbarBtn({ icon, label, action, tool, toggle = false, text }) {
   btn.type = 'button';
   btn.className = 'cv-btn cv-btn--ghost cv-btn--sm';
   btn.setAttribute('aria-label', label);
-  setTooltip(btn, label);
+  window.Covenant?.setTooltip?.(btn, label);
   if (action) btn.dataset.wbAction = action;
   if (tool) btn.dataset.wbTool = tool;
   if (toggle) btn.setAttribute('aria-pressed', 'false');
@@ -462,7 +461,7 @@ export function mountWhiteboardCanvas({
     btn.setAttribute('role', 'radio');
     btn.setAttribute('aria-checked', String(colorToken === activeColor));
     btn.setAttribute('aria-label', t('whiteboard.colorNamed', { name: COLOR_LABELS[colorToken] }));
-    setTooltip(btn, COLOR_LABELS[colorToken]);
+    window.Covenant?.setTooltip?.(btn, COLOR_LABELS[colorToken]);
 
     const swatch = document.createElement('span');
     swatch.className = `lc-wb-swatch lc-wb-swatch--${colorToken}`;
@@ -493,7 +492,7 @@ export function mountWhiteboardCanvas({
     action: 'toggle-transparent-bg',
     toggle: true,
   });
-  setTooltip(transparentBgBtn, t('whiteboard.transparentBgTooltip'));
+  window.Covenant?.setTooltip?.(transparentBgBtn, t('whiteboard.transparentBgTooltip'));
   transparentBgBtn.addEventListener('click', () => {
     if (!editable) return;
     const bgTargets = elements.filter(
@@ -549,7 +548,7 @@ export function mountWhiteboardCanvas({
     label: t('whiteboard.forward'),
     action: 'bring-forward',
   });
-  setTooltip(bringForwardBtn, t('whiteboard.forwardTooltip'));
+  window.Covenant?.setTooltip?.(bringForwardBtn, t('whiteboard.forwardTooltip'));
   bringForwardBtn.addEventListener('click', () => {
     if (editable && selectedIds.size === 1 && primarySelectedId) {
       stepSelectedLayer(1);
@@ -561,7 +560,7 @@ export function mountWhiteboardCanvas({
     label: t('whiteboard.backward'),
     action: 'send-backward',
   });
-  setTooltip(sendBackwardBtn, t('whiteboard.backwardTooltip'));
+  window.Covenant?.setTooltip?.(sendBackwardBtn, t('whiteboard.backwardTooltip'));
   sendBackwardBtn.addEventListener('click', () => {
     if (editable && selectedIds.size === 1 && primarySelectedId) {
       stepSelectedLayer(-1);
@@ -611,7 +610,7 @@ export function mountWhiteboardCanvas({
     action: 'toggle-grid',
     toggle: true,
   });
-  setTooltip(gridBtn, t('whiteboard.gridTooltip'));
+  window.Covenant?.setTooltip?.(gridBtn, t('whiteboard.gridTooltip'));
   gridBtn.addEventListener('click', () => {
     gridVisible = !gridVisible;
     syncGridDisplay();
@@ -625,7 +624,7 @@ export function mountWhiteboardCanvas({
     action: 'toggle-snap',
     toggle: true,
   });
-  setTooltip(snapBtn, t('whiteboard.snapTooltip', { size: GRID_SIZE }));
+  window.Covenant?.setTooltip?.(snapBtn, t('whiteboard.snapTooltip', { size: GRID_SIZE }));
   snapBtn.addEventListener('click', () => {
     if (!editable) return;
     snapToGrid = !snapToGrid;
@@ -651,7 +650,7 @@ export function mountWhiteboardCanvas({
   zoomResetBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm cv-num';
   zoomResetBtn.dataset.wbAction = 'zoom-reset';
   zoomResetBtn.setAttribute('aria-label', t('whiteboard.zoomReset'));
-  setTooltip(zoomResetBtn, t('whiteboard.zoomReset'));
+  window.Covenant?.setTooltip?.(zoomResetBtn, t('whiteboard.zoomReset'));
   zoomResetBtn.textContent = t('whiteboard.zoomPercent', {
     value: Math.round(viewport.zoom * 100),
   });
@@ -687,7 +686,7 @@ export function mountWhiteboardCanvas({
       action: 'toggle-maximize',
       toggle: true,
     });
-    setTooltip(maximizeBtn, t('whiteboard.maximize'));
+    window.Covenant?.setTooltip?.(maximizeBtn, t('whiteboard.maximize'));
     maximizeBtn.addEventListener('click', () => {
       onToggleMaximize();
     });
@@ -825,7 +824,7 @@ export function mountWhiteboardCanvas({
     root.append(toolbar, stage, announcer);
   }
   container.replaceChildren(root);
-  initTooltips(toolbar);
+  window.Covenant?.init?.(toolbar);
 
   /**
    * @param {WhiteboardElementType} type
@@ -993,7 +992,10 @@ export function mountWhiteboardCanvas({
     root.dataset.wbMaximized = String(maximized);
     if (maximizeBtn) {
       maximizeBtn.setAttribute('aria-pressed', String(maximized));
-      setTooltip(maximizeBtn, maximized ? t('whiteboard.unmaximize') : t('whiteboard.maximize'));
+      window.Covenant?.setTooltip?.(
+        maximizeBtn,
+        maximized ? t('whiteboard.unmaximize') : t('whiteboard.maximize'),
+      );
       const iconEl = maximizeBtn.querySelector('i');
       if (iconEl) {
         iconEl.className = `ph ${maximized ? 'ph-arrows-in-simple' : 'ph-arrows-out-simple'} cv-icon`;
@@ -1003,7 +1005,10 @@ export function mountWhiteboardCanvas({
     snapBtn.disabled = !editable;
     snapBtn.setAttribute('aria-pressed', String(snapToGrid));
     const centerType = activeTool === 'select' || activeTool === 'marquee' ? 'sticky' : activeTool;
-    setTooltip(addCenterBtn, t('whiteboard.addCenterTooltip', { type: TYPE_LABELS[centerType] }));
+    window.Covenant?.setTooltip?.(
+      addCenterBtn,
+      t('whiteboard.addCenterTooltip', { type: TYPE_LABELS[centerType] }),
+    );
     for (const [tool, btn] of toolButtons) {
       btn.setAttribute('aria-pressed', String(tool === activeTool));
     }

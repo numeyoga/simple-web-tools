@@ -18,7 +18,6 @@ import { buildTasksIcsCalendar } from '../../core/ical.js';
 import { selectProjectById, selectProjects, selectTasks } from '../../core/store.js';
 import { saveArchiveBlob } from '../archive-file.js';
 import { notify } from './app-shell.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { format, i18n, t } from '../i18n.js';
 
 /**
@@ -580,7 +579,7 @@ export function renderCalendarView({
     const prioIcon = document.createElement('i');
     prioIcon.className = `${prioMeta.icon} cv-icon`;
     prioMark.append(prioIcon);
-    setTooltip(prioMark, prioMeta.tooltip);
+    window.Covenant?.setTooltip?.(prioMark, prioMeta.tooltip);
     const titleEl = document.createElement('span');
     titleEl.className = 'lc-cal-task__title';
     titleEl.textContent = task.title;
@@ -620,7 +619,7 @@ export function renderCalendarView({
       editBtn.type = 'button';
       editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-cal-edit-btn';
       editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
-      setTooltip(editBtn, t('common.edit'));
+      window.Covenant?.setTooltip?.(editBtn, t('common.edit'));
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
@@ -635,7 +634,7 @@ export function renderCalendarView({
         minusBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm lc-cal-shift-btn';
         minusBtn.setAttribute('aria-label', t('calendar.backOneDayNamed', { title: task.title }));
         minusBtn.textContent = t('calendar.minusDay');
-        setTooltip(minusBtn, t('calendar.backOneDay'));
+        window.Covenant?.setTooltip?.(minusBtn, t('calendar.backOneDay'));
         minusBtn.addEventListener('click', () =>
           moveTaskToSchedule(task.id, shiftIsoDate(dueDate, -1)),
         );
@@ -645,7 +644,7 @@ export function renderCalendarView({
         plusBtn.className = 'cv-btn cv-btn--ghost cv-btn--sm lc-cal-shift-btn';
         plusBtn.setAttribute('aria-label', t('calendar.forwardOneDayNamed', { title: task.title }));
         plusBtn.textContent = t('calendar.plusDay');
-        setTooltip(plusBtn, t('calendar.forwardOneDay'));
+        window.Covenant?.setTooltip?.(plusBtn, t('calendar.forwardOneDay'));
         plusBtn.addEventListener('click', () =>
           moveTaskToSchedule(task.id, shiftIsoDate(dueDate, 1)),
         );
@@ -779,7 +778,7 @@ export function renderCalendarView({
         date: format.formatShortDate(cellInfo.date, true),
       });
       addDayBtn.setAttribute('aria-label', addDayLabel);
-      setTooltip(addDayBtn, addDayLabel);
+      window.Covenant?.setTooltip?.(addDayBtn, addDayLabel);
       const addIc = document.createElement('i');
       addIc.className = 'ph ph-plus cv-icon';
       addIc.setAttribute('aria-hidden', 'true');
@@ -887,7 +886,7 @@ export function renderCalendarView({
             ? t('calendar.addOnDateAtOffHours', slotParams)
             : t('calendar.addOnDateAt', slotParams);
           addSlotBtn.setAttribute('aria-label', slotLabel);
-          setTooltip(
+          window.Covenant?.setTooltip?.(
             addSlotBtn,
             t('calendar.scheduleAt', { time: format.formatTimeOfDay(slotTime) }),
           );
@@ -963,7 +962,7 @@ export function renderCalendarView({
         editBtn.type = 'button';
         editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
         editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
-        setTooltip(editBtn, t('common.edit'));
+        window.Covenant?.setTooltip?.(editBtn, t('common.edit'));
         const editIc = document.createElement('i');
         editIc.className = 'ph ph-pencil-simple cv-icon';
         editIc.setAttribute('aria-hidden', 'true');
@@ -988,7 +987,7 @@ export function renderCalendarView({
   undatedSection.append(undatedHead, undatedList);
 
   container.replaceChildren(header, subBar, legendBar, gridWrapper, undatedSection);
-  initTooltips(container);
+  window.Covenant?.init?.(container);
 
   // Restore focus after keyboard rescheduling
   if (calendarState.focusTaskId) {

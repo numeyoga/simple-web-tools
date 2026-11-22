@@ -28,7 +28,6 @@ import { createTemplatePicker } from './template-picker.js';
 import { mountRichTextEditor } from '../rich-text-lazy.js';
 import { createLinkEditor } from './link-editor.js';
 import { createTagEditor } from './tag-editor.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import {
   applyDialogPresentation,
   closeDialogById,
@@ -713,7 +712,7 @@ export function openTaskDrawer(opts) {
       rmBtn.type = 'button';
       rmBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
       rmBtn.setAttribute('aria-label', t('tasks.removeStepNamed', { name: item.text }));
-      setTooltip(rmBtn, t('tasks.removeStep'));
+      window.Covenant?.setTooltip?.(rmBtn, t('tasks.removeStep'));
       rmBtn.disabled = readOnly;
       const rmIcon = document.createElement('i');
       rmIcon.className = 'ph ph-x cv-icon';
@@ -727,7 +726,7 @@ export function openTaskDrawer(opts) {
       row.append(checkLabel, rmBtn);
       checklistList.append(row);
     }
-    initTooltips(checklistList);
+    window.Covenant?.init?.(checklistList);
   }
 
   checklistAddBtn.addEventListener('click', () => {

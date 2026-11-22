@@ -7,7 +7,6 @@ import {
   isWhiteboardEffectivelyArchived,
   selectEntityLinkEntries,
 } from '../../core/store.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { t } from '../i18n.js';
 
 /** @type {Readonly<Record<LocalEntityKind, { icon: string; label: string }>>} */
@@ -158,7 +157,7 @@ export function createLinkEditor({
       removeBtn.type = 'button';
       removeBtn.className = 'lc-tag-chip__remove';
       removeBtn.setAttribute('aria-label', t('links.removeNamed', { title: entry.title }));
-      setTooltip(removeBtn, t('links.remove'));
+      window.Covenant?.setTooltip?.(removeBtn, t('links.remove'));
       const xIc = document.createElement('i');
       xIc.className = 'ph ph-x cv-icon';
       xIc.setAttribute('aria-hidden', 'true');
@@ -265,7 +264,7 @@ export function createLinkEditor({
       }
     }
 
-    initTooltips(outgoingList);
+    window.Covenant?.init?.(outgoingList);
     renderSelectOptions();
   }
 

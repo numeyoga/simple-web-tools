@@ -42,7 +42,6 @@ import {
   waitForWriteLock,
 } from './adapters/storage-idb.js';
 import { translateStaticMarkup } from './adapters/dom/static-text.js';
-import { hideAllTooltips, initTooltips } from './adapters/dom/tooltip.js';
 import {
   initCovenant,
   mountSuiteChrome,
@@ -602,9 +601,9 @@ async function bootstrap() {
   }
 
   function renderCurrentView() {
-    hideAllTooltips();
+    window.Covenant?.hideTooltips?.();
     renderCurrentViewContent();
-    initTooltips(rootView);
+    window.Covenant?.init?.(rootView);
   }
 
   /** @type {() => void} */

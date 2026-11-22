@@ -87,7 +87,7 @@ test.describe('Lazy chunks: rich-text editor and whiteboard', () => {
     const toolbar = page.locator('#drawer-task [role="toolbar"].lc-editor__toolbar');
     await expect(toolbar).toBeVisible();
     // Tooltips are wired once the editor has arrived.
-    await expect(toolbar.locator('button[aria-label="Gras"]')).toHaveAttribute('interestfor', /.+/);
+    await expect(toolbar.locator('button[aria-label="Gras"] + .cv-tooltip')).toHaveCount(1);
     expect(editorRequests).toHaveLength(1);
 
     await page.locator('#task-title-input').fill('Tâche avec description');

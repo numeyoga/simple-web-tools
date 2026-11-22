@@ -1928,61 +1928,6 @@ dialog::backdrop {
   }
 }
 
-/* Top-layer accessible tooltips (WCAG 1.4.13, Covenant tokens) */
-[interestfor] {
-  --interest-delay-start: 0.3s;
-  interest-delay-start: var(--interest-delay-start);
-  --interest-delay-end: 0.15s;
-  interest-delay-end: var(--interest-delay-end);
-}
-
-.lc-tooltip[popover] {
-  position: fixed;
-  max-width: min(18rem, calc(100vw - 1rem));
-  padding: var(--cv-space-2) var(--cv-space-3);
-  border: 1px solid var(--cv-border-strong);
-  border-radius: var(--cv-radius-sm);
-  background: var(--cv-surface-inverse);
-  color: var(--cv-fg-inverse);
-  box-shadow: var(--cv-shadow-sm);
-  font: var(--cv-weight-regular) var(--cv-text-xs) / 1.3 var(--cv-font-sans);
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  pointer-events: auto;
-}
-
-.lc-tooltip[popover]:is(:popover-open, .\:popover-open) {
-  display: block;
-}
-
-@position-try --lc-tip-above-start {
-  position-area: block-start span-inline-end;
-}
-
-@position-try --lc-tip-below-start {
-  position-area: block-end span-inline-end;
-}
-
-@position-try --lc-tip-above-end {
-  position-area: block-start span-inline-start;
-}
-
-@position-try --lc-tip-below-end {
-  position-area: block-end span-inline-start;
-}
-
-@supports (position-area: block-start) {
-  .lc-tooltip[popover][data-lc-anchor-css='true'] {
-    inset: auto;
-    margin: 0;
-    margin-block: var(--cv-space-2);
-    position-area: block-start;
-    position-try-fallbacks:
-      flip-block, --lc-tip-above-start, --lc-tip-below-start, --lc-tip-above-end, --lc-tip-below-end;
-  }
-}
-
 /* Task drawer field header, due time inputs & 18h-7h off-hours badge */
 .lc-field-head {
   display: flex;

@@ -6,7 +6,6 @@ import {
   normalizeTaskStatuses,
 } from '../../core/model.js';
 import { closeDialogById, notify, openDialogById } from './app-shell.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { t } from '../i18n.js';
 
 /**
@@ -224,7 +223,7 @@ export function wireStatusModal({ store }) {
         'aria-label',
         t('statuses.moveUpNamed', { name: statusItem.label || String(idx + 1) }),
       );
-      setTooltip(upBtn, t('statuses.moveUp'));
+      window.Covenant?.setTooltip?.(upBtn, t('statuses.moveUp'));
       const upIc = document.createElement('i');
       upIc.className = 'ph ph-arrow-up cv-icon';
       upIc.setAttribute('aria-hidden', 'true');
@@ -249,7 +248,7 @@ export function wireStatusModal({ store }) {
         'aria-label',
         t('statuses.moveDownNamed', { name: statusItem.label || String(idx + 1) }),
       );
-      setTooltip(downBtn, t('statuses.moveDown'));
+      window.Covenant?.setTooltip?.(downBtn, t('statuses.moveDown'));
       const downIc = document.createElement('i');
       downIc.className = 'ph ph-arrow-down cv-icon';
       downIc.setAttribute('aria-hidden', 'true');
@@ -274,7 +273,7 @@ export function wireStatusModal({ store }) {
         'aria-label',
         t('statuses.deleteNamed', { name: statusItem.label || String(idx + 1) }),
       );
-      setTooltip(delBtn, t('statuses.delete'));
+      window.Covenant?.setTooltip?.(delBtn, t('statuses.delete'));
       const delIc = document.createElement('i');
       delIc.className = 'ph ph-trash cv-icon';
       delIc.setAttribute('aria-hidden', 'true');
@@ -393,7 +392,7 @@ export function wireStatusModal({ store }) {
 
     form.append(intro, listGroup, addField);
     modalBody.replaceChildren(form);
-    initTooltips(modalBody);
+    window.Covenant?.init?.(modalBody);
 
     // Footer buttons
     const resetBtn = document.createElement('button');

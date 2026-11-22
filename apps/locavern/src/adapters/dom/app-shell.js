@@ -4,7 +4,6 @@
 import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { DEFAULT_TOAST_DURATION_SECONDS, normalizeToastDurationSeconds } from '../../core/model.js';
 import { wireCommandPalette } from './command-palette.js';
-import { hideAllTooltips, initTooltips, setTooltip } from './tooltip.js';
 import { t } from '../i18n.js';
 
 const THEME_STORAGE_KEY = 'locavern-color-scheme';
@@ -219,7 +218,7 @@ export function notify(opts) {
     const dismissBtn = toastEl.querySelector('[data-cv-dismiss]');
     if (dismissBtn instanceof HTMLElement) {
       dismissBtn.setAttribute('aria-label', t('shell.dismissNotification'));
-      setTooltip(dismissBtn, t('shell.dismissNotification'));
+      window.Covenant?.setTooltip?.(dismissBtn, t('shell.dismissNotification'));
     }
   }
   return toastEl;
@@ -281,7 +280,7 @@ function enhanceMenus(root = document) {
         return;
       }
 
-      hideAllTooltips();
+      window.Covenant?.hideTooltips?.();
 
       const invoker = node.id
         ? document.querySelector(`[popovertarget="${CSS.escape(node.id)}"]`)
@@ -310,13 +309,12 @@ function enhanceMenus(root = document) {
 }
 
 /**
- * Initialize Covenant behaviours, enhanced menu positioning, and accessible tooltips on a subtree.
+ * Initialize Covenant behaviours (tooltips included) and the enhanced menu positioning on a subtree.
  * @param {ParentNode} [root]
  */
 export function initCovenant(root) {
   window.Covenant?.init?.(root);
   enhanceMenus(root);
-  initTooltips(root);
 }
 
 /**
@@ -346,7 +344,7 @@ export function applyDialogPresentation(dialog, presentation) {
  * @param {string} id
  */
 export function openDialogById(id) {
-  hideAllTooltips();
+  window.Covenant?.hideTooltips?.();
   if (typeof window.Covenant?.openDialog === 'function') {
     window.Covenant.openDialog(id);
   } else {
@@ -355,7 +353,7 @@ export function openDialogById(id) {
   }
   const dlg = document.getElementById(id);
   if (dlg) {
-    initTooltips(dlg);
+    window.Covenant?.init?.(dlg);
   }
 }
 
@@ -364,7 +362,7 @@ export function openDialogById(id) {
  * @param {string} id
  */
 export function closeDialogById(id) {
-  hideAllTooltips();
+  window.Covenant?.hideTooltips?.();
   if (typeof window.Covenant?.closeDialog === 'function') {
     window.Covenant.closeDialog(id);
   } else {

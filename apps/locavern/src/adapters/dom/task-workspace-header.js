@@ -1,7 +1,6 @@
 /** @import { AppCommand, AppState, StoreEffect, TaskDisplayMode } from '../../types.d.ts' */
 
 import { openStatusModal } from './status-modal.js';
-import { setTooltip } from './tooltip.js';
 import { t } from '../i18n.js';
 
 /**
@@ -93,7 +92,7 @@ export function createTaskWorkspaceHeader({ state, dispatch, onOpenNewTask }) {
   statusIcon.className = 'ph ph-columns cv-icon';
   statusIcon.setAttribute('aria-hidden', 'true');
   statusBtn.append(statusIcon, document.createTextNode(` ${t('tasks.statuses')}`));
-  setTooltip(statusBtn, t('tasks.configureKanban'));
+  window.Covenant?.setTooltip?.(statusBtn, t('tasks.configureKanban'));
   statusBtn.addEventListener('click', openStatusModal);
 
   const newBtn = document.createElement('button');

@@ -15,7 +15,6 @@ import {
   selectUnmappedKanbanTasks,
 } from '../../core/store.js';
 import { confirmAction, initCovenant, notify } from './app-shell.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { openStatusModal } from './status-modal.js';
 import { createTaskWorkspaceHeader } from './task-workspace-header.js';
 import { format, t } from '../i18n.js';
@@ -341,7 +340,7 @@ export function renderKanbanView({
           editUnmappedBtn.type = 'button';
           editUnmappedBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
           editUnmappedBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
-          setTooltip(editUnmappedBtn, t('common.edit'));
+          window.Covenant?.setTooltip?.(editUnmappedBtn, t('common.edit'));
           const penIc = document.createElement('i');
           penIc.className = 'ph ph-pencil-simple cv-icon';
           penIc.setAttribute('aria-hidden', 'true');
@@ -460,7 +459,10 @@ export function renderKanbanView({
       quickAddBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
       quickAddBtn.disabled = currentState.readOnly;
       quickAddBtn.setAttribute('aria-label', t('kanban.addInColumn', { column: colMeta.label }));
-      setTooltip(quickAddBtn, t('kanban.addInColumn', { column: colMeta.label }));
+      window.Covenant?.setTooltip?.(
+        quickAddBtn,
+        t('kanban.addInColumn', { column: colMeta.label }),
+      );
       const addIc = document.createElement('i');
       addIc.className = 'ph ph-plus cv-icon';
       addIc.setAttribute('aria-hidden', 'true');
@@ -691,7 +693,7 @@ export function renderKanbanView({
         menuBtn.setAttribute('aria-haspopup', 'menu');
         menuBtn.setAttribute('aria-expanded', 'false');
         menuBtn.setAttribute('aria-label', t('kanban.actionsFor', { title: task.title }));
-        setTooltip(menuBtn, t('kanban.taskActions'));
+        window.Covenant?.setTooltip?.(menuBtn, t('kanban.taskActions'));
         const dotsIc = document.createElement('i');
         dotsIc.className = 'ph ph-dots-three-vertical cv-icon';
         dotsIc.setAttribute('aria-hidden', 'true');
@@ -904,7 +906,7 @@ export function renderKanbanView({
       boardSlot.replaceChildren(board);
     }
     initCovenant(boardSlot);
-    initTooltips(boardSlot);
+    window.Covenant?.init?.(boardSlot);
   }
 
   searchInput.addEventListener('input', () => {

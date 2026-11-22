@@ -1,5 +1,4 @@
 import { normalizeTags, parseTagsInput } from '../../core/model.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { t } from '../i18n.js';
 
 /**
@@ -116,7 +115,7 @@ export function createTagEditor({
           removeBtn.type = 'button';
           removeBtn.className = 'lc-tag-chip__remove';
           removeBtn.setAttribute('aria-label', t('tags.removeNamed', { tag }));
-          setTooltip(removeBtn, t('tags.remove'));
+          window.Covenant?.setTooltip?.(removeBtn, t('tags.remove'));
           const ic = document.createElement('i');
           ic.className = 'ph ph-x cv-icon';
           ic.setAttribute('aria-hidden', 'true');
@@ -132,7 +131,7 @@ export function createTagEditor({
 
         chipsBox.append(chip);
       }
-      initTooltips(chipsBox);
+      window.Covenant?.init?.(chipsBox);
     }
   }
 
