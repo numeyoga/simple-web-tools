@@ -147,15 +147,23 @@ environments, the metadata fields and the link patterns (`{env}`, `{slug}`, `{ji
 `{meta}`); each application fills them in and adds extra links. Admin screens for templates,
 metadata fields, tags, import and export, profiles and settings.
 
-- [ ] `apps/dashboard` (name "Dashboard") on the reference architecture, as in step 8.
-- [ ] Profiles become workspaces (`dashboard__<id>`); data in IndexedDB through
+- [x] `apps/dashboard` (name "Dashboard") on the reference architecture, as in step 8.
+- [x] Profiles become workspaces (`dashboard__<id>`); data in IndexedDB through
       `packages/storage`, with a schema version.
-- [ ] **Existing data**: the old app is on GitLab Pages, another origin, so its data comes
+- [x] **Existing data**: the old app is on GitLab Pages, another origin, so its data comes
       over by its JSON export (`{ version: 1, exportedAt, data }`, or the bare object). The
-      import accepts it, with a test that loads that format; merge and replace are kept.
-- [ ] The prototype's dead tests (they load files that no longer exist) are not ported; the
+      import accepts it, with a test that loads that format; merge and replace are kept, and
+      "new workspace" takes the place of the old "new key". The steps are in the user docs.
+- [x] The prototype's dead tests (they load files that no longer exist) are not ported; the
       core gets its own tests. Ctrl+K opens Covenant's command palette.
-- [ ] Vitest, Playwright and axe journeys, docs, registered in `packages/suite`.
+- [x] Vitest, Playwright and axe journeys, docs, registered in `packages/suite`.
+
+Decisions taken in this step, to confirm with the maintainer: the dashboard name, the default
+application and environment, and the tags belong to the workspace; theme, text size, language and
+density are preferences (the old file's theme and density are not imported); the old `profiles`
+become workspaces; link patterns accept `{meta.<key>}` besides the old `{<key>}`; an address that
+resolves to anything but `http:` or `https:` is shown disabled, with its reason, never opened; the
+app makes no third-party request (`img-src 'self'`).
 
 ## 10. Port Slides
 
