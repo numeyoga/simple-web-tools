@@ -447,7 +447,7 @@ input.cv-input[type="date"], input.cv-input[type="time"], input.cv-input[type="d
 @keyframes cv-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* -----------------------------------------------------------------------------
-   Tooltip (shown by bundle.js; dismissable with Escape, hoverable)
+   Tooltip (shown by covenant.js; dismissable with Escape, hoverable)
    ----------------------------------------------------------------------------- */
 .cv-tooltip-wrap { position: relative; display: inline-flex; }
 .cv-tooltip {
@@ -460,6 +460,14 @@ input.cv-input[type="date"], input.cv-input[type="time"], input.cv-input[type="d
   white-space: nowrap; box-shadow: var(--cv-shadow-sm);
 }
 .cv-tooltip--bottom { bottom: auto; top: calc(100% + var(--cv-space-2)); }
+/* Wired by covenant.js: placed from the rect of its trigger (inline left and top), on the side that
+   has room, and in the top layer (popover) where the browser has one. The popover's own box (inset,
+   margin, border) is reset; long text wraps instead of running off the window. */
+.cv-tooltip[data-cv-placed] {
+  position: fixed; inset: auto; margin: 0; border: 0; transform: none; overflow: visible;
+  max-width: min(18rem, calc(100vw - 1rem));
+  white-space: normal; overflow-wrap: anywhere; text-align: center;
+}
 
 /* -----------------------------------------------------------------------------
    Skeleton and empty state

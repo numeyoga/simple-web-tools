@@ -44,7 +44,7 @@ the first paint (a small classic script in `<head>`) is the app's job, as Locave
 The individual entries are for an app that needs another order or leaves a part out. The
 behaviours script is the skill's IIFE, unchanged: it sets `window.Covenant`
 (`init`, `toast`, `setTextSize`, `getTextSize`, `openDialog`, `closeDialog`, `categoryColors`,
-`setCategory`) and calls `init(document)` when the page is ready. Call
+`setCategory`, `setTooltip`, `hideTooltips`, `placeTooltip`) and calls `init(document)` when the page is ready. Call
 `window.Covenant.init(root)` after inserting markup.
 
 ### Fonts and icons: why they are dependencies of this package
