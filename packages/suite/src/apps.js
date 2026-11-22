@@ -20,6 +20,7 @@ export const APPS = Object.freeze([
   Object.freeze({ id: 'transient-notes', name: 'Transient Notes', icon: 'note-pencil' }),
   Object.freeze({ id: 'favoris', name: 'Favoris', icon: 'bookmarks-simple' }),
   Object.freeze({ id: 'dashboard', name: 'Dashboard', icon: 'squares-four' }),
+  Object.freeze({ id: 'slides', name: 'Slides', icon: 'presentation-chart' }),
 ]);
 
 /**

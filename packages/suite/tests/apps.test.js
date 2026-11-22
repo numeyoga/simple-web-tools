@@ -10,6 +10,7 @@ describe('APPS', () => {
       'transient-notes',
       'favoris',
       'dashboard',
+      'slides',
     ]);
   });
 

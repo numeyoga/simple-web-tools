@@ -1,0 +1,48 @@
+{
+  "name": "slides",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Markdown slides read from a local folder: presenter window with notes and timers, overview and print view, with Mermaid diagrams",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "apps/slides"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4178 --strictPort",
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test"
+  },
+  "dependencies": {
+    "@simple-web-tools/covenant": "*",
+    "@simple-web-tools/dom": "*",
+    "@simple-web-tools/i18n": "*",
+    "@simple-web-tools/suite": "*",
+    "dompurify": "3.4.17",
+    "highlight.js": "^11.12.0",
+    "marked": "^18.2.1",
+    "mermaid": "12.3.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
+    "@simple-web-tools/config": "*",
+    "@simple-web-tools/pwa": "*",
+    "@simple-web-tools/test-utils": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

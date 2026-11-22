@@ -1,0 +1,17 @@
+{
+  "extends": "@simple-web-tools/config/jsconfig.base.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "paths": {
+      "highlight.js/lib/languages/*": ["./src/highlight-languages.d.ts"]
+    }
+  },
+  "include": [
+    "src/**/*.js",
+    "src/env.d.ts",
+    "src/highlight-languages.d.ts",
+    "src/adapters/dom/types.d.ts",
+    "tests/unit/**/*.js"
+  ],
+  "exclude": ["node_modules", "dist"]
+}
