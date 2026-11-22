@@ -28,11 +28,7 @@ describe('cache names', () => {
 
 describe('staleCaches', () => {
   test('lists the old Locavern caches and keeps the current one', () => {
-    const names = [
-      'locavern-shell-old',
-      'locavern-shell-new',
-      'locavern-other',
-    ];
+    const names = ['locavern-shell-old', 'locavern-shell-new', 'locavern-other'];
     expect(staleCaches(names, 'locavern-shell-new')).toEqual([
       'locavern-shell-old',
       'locavern-other',
@@ -40,12 +36,7 @@ describe('staleCaches', () => {
   });
 
   test('never lists a cache that belongs to another app', () => {
-    const names = [
-      'chrono-shell-v4',
-      'workbox-precache',
-      'locavern',
-      'locavern-shell-old',
-    ];
+    const names = ['chrono-shell-v4', 'workbox-precache', 'locavern', 'locavern-shell-old'];
     expect(staleCaches(names, 'locavern-shell-new')).toEqual(['locavern-shell-old']);
   });
 
@@ -106,9 +97,7 @@ describe('precacheUrls', () => {
 describe('isHandledRequest', () => {
   const origin = 'https://example.github.io';
   test('a same-origin GET is handled', () => {
-    expect(isHandledRequest({ method: 'GET', url: `${origin}/locavern/` }, origin)).toBe(
-      true,
-    );
+    expect(isHandledRequest({ method: 'GET', url: `${origin}/locavern/` }, origin)).toBe(true);
   });
 
   test('another origin is never handled, so nothing cross-origin is cached', () => {
@@ -118,9 +107,7 @@ describe('isHandledRequest', () => {
   });
 
   test('a write, or a URL that does not parse, is left to the browser', () => {
-    expect(isHandledRequest({ method: 'POST', url: `${origin}/locavern/` }, origin)).toBe(
-      false,
-    );
+    expect(isHandledRequest({ method: 'POST', url: `${origin}/locavern/` }, origin)).toBe(false);
     expect(isHandledRequest({ method: 'GET', url: 'not a url' }, origin)).toBe(false);
   });
 });
