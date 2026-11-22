@@ -3,6 +3,7 @@
 // notes list and the editor). Below 1024 px the sidebar is an off-canvas drawer.
 // The tab that does not hold the write lock is read-only: a banner says so, the controls that
 // change data are disabled and the shortcuts do nothing.
+import { registerServiceWorker } from '@simple-web-tools/pwa/update';
 import { findApp } from '@simple-web-tools/suite';
 import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { PARA_CATEGORIES } from '../../core/model.js';
@@ -10,7 +11,6 @@ import { allowsSingleKeyShortcut } from '../../core/preferences.js';
 import { createNoteCommand } from '../commands.js';
 import { EXPORT_FORMAT, exportAllNotes } from '../export-actions.js';
 import { getSingleKeyShortcuts, watchPreferences } from '../preferences.js';
-import { registerServiceWorker } from '../pwa.js';
 import { StorageError, createAppStore } from '../store.js';
 import { activeWorkspace, activeWorkspaceId, listWorkspaces } from '../workspaces.js';
 import { openPreferences } from './Preferences.js';
@@ -393,7 +393,8 @@ export function start(rootEl) {
   }).observe(document.body, { childList: true, subtree: true });
 
   // A new version waits in the background: the toast stays until the person reloads or dismisses it.
-  registerServiceWorker({
+  void registerServiceWorker({
+    enabled: import.meta.env.PROD,
     onUpdateReady(applyUpdate) {
       toasts.push({
         variant: 'info',
