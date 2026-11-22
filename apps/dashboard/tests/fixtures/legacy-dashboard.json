@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "exportedAt": "2025-03-05T09:30:00.000Z",
+  "data": {
+    "dashboardName": "Mon Backoffice perso",
+    "defaultAppId": "app_mcp001",
+    "defaultEnv": "last",
+    "theme": "dark",
+    "density": "compact",
+    "tags": {
+      "cicd": {
+        "label": "CI / CD",
+        "icon": "git-branch"
+      },
+      "app": {
+        "label": "Application",
+        "icon": "browser"
+      },
+      "monitoring": {
+        "label": "Monitoring",
+        "icon": "gauge"
+      },
+      "docs": {
+        "label": "Docs",
+        "icon": "book-open"
+      },
+      "team": {
+        "label": "Équipe",
+        "icon": "users-three"
+      }
+    },
+    "templates": [
+      {
+        "id": "tpl_web0001",
+        "name": "webapp-spring",
+        "description": "Application Spring Boot avec front intégré, déployée en pods OpenShift.",
+        "envs": [
+          {
+            "key": "dev",
+            "label": "DEV"
+          },
+          {
+            "key": "test",
+            "label": "TEST"
+          },
+          {
+            "key": "prod",
+            "label": "PROD"
+          }
+        ],
+        "metaFields": [
+          {
+            "key": "cluster",
+            "label": "Cluster",
+            "type": "mono"
+          },
+          {
+            "key": "namespace",
+            "label": "Namespace",
+            "type": "mono"
+          },
+          {
+            "key": "region",
+            "label": "Région",
+            "type": "select",
+            "options": ["eu-west-3", "eu-west-1"]
+          },
+          {
+            "key": "owner",
+            "label": "Owner",
+            "type": "text"
+          },
+          {
+            "key": "lastDeploy",
+            "label": "Dernier déploiement",
+            "type": "date"
+          }
+        ],
+        "links": [
+          {
+            "id": "lnk_gocd01",
+            "name": "GoCD pipeline",
+            "tag": "cicd",
+            "scope": "env",
+            "pattern": "https://gocd.example.invalid/go/tab/pipeline/history/{slug}-{env}"
+          },
+          {
+            "id": "lnk_git001",
+            "name": "Git repo",
+            "tag": "cicd",
+            "scope": "global",
+            "pattern": "https://gitlab.example.invalid/backoffice/{slug}"
+          },
+          {
+            "id": "lnk_console",
+            "name": "OpenShift console",
+            "tag": "app",
+            "scope": "env",
+            "pattern": "https://console.{cluster}.openshift.example.invalid/k8s/ns/{namespace}/deployments"
+          },
+          {
+            "id": "lnk_graf01",
+            "name": "Grafana",
+            "tag": "monitoring",
+            "scope": "env",
+            "pattern": "https://grafana.example.invalid/d/{slug}-{env}/overview"
+          },
+          {
+            "id": "lnk_jira01",
+            "name": "Jira board",
+            "tag": "tickets",
+            "scope": "global",
+            "pattern": "https://jira.example.invalid/secure/RapidBoard.jspa?projectKey={jiraKey}"
+          },
+          {
+            "id": "lnk_evil01",
+            "name": "Lien piégé",
+            "tag": "docs",
+            "scope": "global",
+            "pattern": "javascript:alert('{slug}')"
+          }
+        ]
+      },
+      {
+        "id": "tpl_batch01",
+        "name": "batch-java",
+        "description": "Batchs Spring Batch déclenchés par Control-M.",
+        "envs": [
+          {
+            "key": "dev",
+            "label": "DEV"
+          },
+          {
+            "key": "prod",
+            "label": "PROD"
+          }
+        ],
+        "metaFields": [
+          {
+            "key": "controlM",
+            "label": "Folder Control-M",
+            "type": "mono"
+          },
+          {
+            "key": "owner",
+            "label": "Owner",
+            "type": "text"
+          }
+        ],
+        "links": [
+          {
+            "id": "lnk_ctrlm01",
+            "name": "Control-M",
+            "tag": "app",
+            "scope": "env",
+            "pattern": "https://ctrlm.example.invalid/folder/{controlM}?env={env}"
+          },
+          {
+            "id": "lnk_sonar01",
+            "name": "SonarQube",
+            "tag": "quality",
+            "scope": "global",
+            "pattern": "https://sonar.example.invalid/dashboard?id={slug}"
+          }
+        ]
+      }
+    ],
+    "apps": [
+      {
+        "id": "app_mcp001",
+        "name": "MonComptePerso",
+        "slug": "mon-compte-perso",
+        "templateId": "tpl_web0001",
+        "jiraKey": "MCP",
+        "description": "Espace client perso — équipe Compte.",
+        "envs": {
+          "dev": {
+            "meta": {
+              "cluster": "ocp-dev-paris",
+              "namespace": "mcp-dev",
+              "region": "eu-west-3",
+              "owner": "alice",
+              "lastDeploy": "2025-03-04"
+            },
+            "overrides": {}
+          },
+          "test": {
+            "meta": {
+              "cluster": "ocp-test-paris",
+              "namespace": "mcp-test",
+              "owner": "alice"
+            },
+            "overrides": {
+              "lnk_graf01": "https://grafana.example.invalid/d/custom-test"
+            }
+          },
+          "prod": {
+            "meta": {
+              "cluster": "ocp-prod-paris",
+              "namespace": "mcp-prod",
+              "region": "eu-west-3",
+              "owner": "alice"
+            },
+            "overrides": {
+              "lnk_gocd01": "javascript:alert(1)"
+            }
+          }
+        },
+        "extras": [
+          {
+            "id": "ex_conf001",
+            "name": "Confluence — espace produit",
+            "url": "https://confluence.example.invalid/display/MCP",
+            "tag": "docs"
+          },
+          {
+            "id": "ex_chat001",
+            "name": "Canal Teams",
+            "url": "https://teams.example.invalid/l/channel/mcp",
+            "tag": "team"
+          },
+          {
+            "id": "ex_evil001",
+            "name": "Extra piégé",
+            "url": "data:text/html,<script>alert(1)</script>",
+            "tag": "docs"
+          }
+        ]
+      },
+      {
+        "id": "app_pay001",
+        "name": "PaiementCore",
+        "slug": "paiement-core",
+        "templateId": "tpl_batch01",
+        "jiraKey": "PAY",
+        "description": "",
+        "envs": {
+          "dev": {
+            "meta": {
+              "controlM": "PAY_DEV",
+              "owner": "chloe"
+            },
+            "overrides": {}
+          },
+          "prod": {
+            "meta": {
+              "controlM": "PAY_PROD",
+              "owner": "chloe"
+            },
+            "overrides": {}
+          }
+        },
+        "extras": []
+      },
+      {
+        "id": "app_orph001",
+        "name": "Orpheline",
+        "slug": "orpheline",
+        "templateId": "tpl_disparu",
+        "jiraKey": "",
+        "description": "Référence un template qui n'existe plus.",
+        "envs": {},
+        "extras": []
+      },
+      {
+        "name": "Sans identifiant ni template"
+      },
+      "pas un objet"
+    ]
+  }
+}
