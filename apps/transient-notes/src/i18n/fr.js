@@ -19,6 +19,7 @@ export default {
     skipLink: 'Aller au contenu',
     navLabel: 'Navigation principale',
     menu: 'Menu',
+    apps: 'Applications',
     preferences: 'Préférences',
     workspace: 'Espace de travail',
     loading: 'Chargement…',

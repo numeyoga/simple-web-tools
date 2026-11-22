@@ -1,4 +1,5 @@
 import '@simple-web-tools/covenant';
+import '@simple-web-tools/suite/suite.css';
 import '@simple-web-tools/rich-text/editor.css';
 import './styles/app.css';
 

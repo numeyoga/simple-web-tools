@@ -11,8 +11,9 @@ not a port: the prototype had no users, so **nothing is migrated** and its data 
 read. The runtime dependencies are the monorepo packages `@simple-web-tools/covenant` (design
 system, bundled fonts and icons), `storage` (storage names, IndexedDB migrations, workspaces,
 JSON export and import, single-writer lock, which uses `idb`, see
-[its reason](../../packages/storage/README.md)), `dates`, `i18n` and `rich-text` (the Tiptap
-editor, see [its reason](../../packages/rich-text/README.md)).
+[its reason](../../packages/storage/README.md)), `dates`, `i18n`, `suite` (the
+brand and the links to the sibling apps, at the top and the bottom of the sidebar) and
+`rich-text` (the Tiptap editor, see [its reason](../../packages/rich-text/README.md)).
 
 ## Features
 
@@ -230,8 +231,8 @@ Ctrl+Z...).
 
 ## Runtime dependencies
 
-None of its own: Covenant, i18n, dates, storage and rich-text are workspace packages of this
-repository, and `idb` comes with the storage package. The one third-party library on the
+None of its own: Covenant, i18n, dates, storage, suite and rich-text are workspace packages of
+this repository, and `idb` comes with the storage package. The one third-party library on the
 editing path is **Tiptap** (MIT, headless, loaded on demand in its own chunk), pulled in by
 [`packages/rich-text`](../../packages/rich-text/README.md), which explains why it replaces a
 hand-written `contenteditable` editor (decision 0003).

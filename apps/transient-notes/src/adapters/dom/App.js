@@ -3,6 +3,8 @@
 // notes list and the editor). Below 1024 px the sidebar is an off-canvas drawer.
 // The tab that does not hold the write lock is read-only: a banner says so, the controls that
 // change data are disabled and the shortcuts do nothing.
+import { findApp } from '@simple-web-tools/suite';
+import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { PARA_CATEGORIES } from '../../core/model.js';
 import { allowsSingleKeyShortcut } from '../../core/preferences.js';
 import { createNoteCommand } from '../commands.js';
@@ -18,6 +20,9 @@ import * as UI from './ui.js';
 import { openWorkspaceManager } from './WorkspacesView.js';
 
 const { el, icon, t } = UI;
+
+/** Id of this app in the suite registry (brand, switcher, icon). */
+const APP_ID = 'transient-notes';
 
 /** @param {HTMLElement} rootEl */
 export function start(rootEl) {
@@ -67,19 +72,15 @@ export function start(rootEl) {
     },
   });
 
-  // The sidebar is navigation only: brand, workspace, then the tree. The skill's own script opens
-  // and closes it below 1024 px.
+  // The sidebar is navigation only: brand, workspace, the tree, then the app switcher (pinned to
+  // the bottom). The skill's own script opens and closes it below 1024 px.
   const sidebar = el(
     'nav',
     { id: 'shell-nav', 'aria-label': t('shell.navLabel'), class: 'cv-sidebar' },
-    el(
-      'div',
-      { class: 'cv-sidebar__brand' },
-      icon('note-pencil', { weight: 'bold', className: 'tn-brand-icon' }),
-      t('app.name'),
-    ),
+    createAppBrand(APP_ID),
     el('div', { class: 'tn-sidebar-workspace' }, workspaceChip()),
     tree.el,
+    createAppSwitcher(APP_ID, { label: t('shell.apps') }),
   );
 
   // The page title is the one h1 of the page: the name of what the list shows.
@@ -320,7 +321,7 @@ export function start(rootEl) {
           el(
             'span',
             { class: 'tn-brand' },
-            icon('note-pencil', { weight: 'bold', className: 'tn-brand-icon' }),
+            icon(findApp(APP_ID).icon, { weight: 'bold', className: 'swt-brand__icon' }),
             t('app.name'),
           ),
         ),

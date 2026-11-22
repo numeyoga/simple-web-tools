@@ -47,6 +47,36 @@ test('the five selections are visible at 1280 × 720 and the current one follows
   }
 });
 
+test('the sidebar shows the brand first and the app switcher last, with the three apps', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const { errors } = await openApp(page);
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+  const brand = nav.locator('.cv-sidebar__brand');
+  const apps = nav.getByRole('list', { name: 'Applications' });
+
+  await expect(brand).toBeVisible();
+  await expect(brand).toHaveText('Transient Notes');
+  await expect(nav.locator(':scope > :first-child')).toHaveClass(/cv-sidebar__brand/);
+  await expect(nav.locator(':scope > :last-child')).toHaveClass(/swt-switcher/);
+  await expect(apps).toBeVisible();
+
+  const links = apps.getByRole('link');
+  await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes']);
+  await expect(links).toHaveCount(3);
+  await expect(links.nth(0)).toHaveAttribute('href', '../chrono/');
+  await expect(links.nth(1)).toHaveAttribute('href', '../locavern/');
+  await expect(links.nth(2)).toHaveAttribute('href', './');
+  await expect(links.nth(2)).toHaveAttribute('aria-current', 'page');
+  await expect(apps.locator('[aria-current="page"]')).toHaveCount(1);
+  // The top bar still ends with the preferences button.
+  await expect(
+    page.locator('.cv-topbar > :last-child').getByRole('button', { name: 'Préférences' }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('below 1024 px the sidebar is a drawer: the menu button opens it, Escape closes it', async ({
   page,
 }) => {
