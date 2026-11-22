@@ -83,7 +83,7 @@ Follow-ups that came out of this step are listed in [To do](todo.md).
 Three more apps are coming (steps 8 to 10). What every app copies today moves to shared code
 first, so that the new apps start from it instead of adding three more copies.
 
-- [ ] **CSS reset in Covenant.** Each app resets on its own (`html, body { margin: 0 }`,
+- [x] **CSS reset in Covenant.** Each app resets on its own (`html, body { margin: 0 }`,
       `.ch-title-reset`, repeated `margin: 0`), and Locavern forgot it (fixed in `2ad3c67`).
       Make the change in the `covenant-design-system` skill, then sync the package:
   - a minimal modern reset in Covenant's base, inside `@layer cv-reset`: it beats the browser's
