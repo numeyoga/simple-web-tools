@@ -5,10 +5,15 @@ import {
   BUILD_ID_PLACEHOLDER,
   cachePrefix,
   isAppCache,
+  carriedOverUrls,
   isHandledRequest,
+  isOnDemandUrl,
   isTrustedClientMessage,
+  onDemandHrefs,
+  parseManifest,
   precacheUrls,
   shellCacheName,
+  splitShellUrls,
   staleCaches,
 } from '../src/index.js';
 
@@ -107,6 +112,97 @@ describe('precacheUrls', () => {
       'assets/favicon.svg',
     ]);
     expect(urls).toEqual(['./', './assets/favicon.svg']);
+  });
+});
+
+describe('on-demand files', () => {
+  const base = 'https://me.example/slides/';
+  const files = [
+    'index.html',
+    'assets/index-a1.js',
+    'assets/mermaid.core-b2.js',
+    'assets/cytoscape-c3.js',
+    'sw.js',
+    'assets/mermaid.core-b2.js.map',
+  ];
+  const isMermaid = (/** @type {string} */ path) => /^assets\/(mermaid|cytoscape)/.test(path);
+
+  test('splitShellUrls without a rule is exactly precacheUrls', () => {
+    expect(splitShellUrls(files)).toEqual({ precache: precacheUrls(files), onDemand: [] });
+  });
+
+  test('splitShellUrls leaves the matching files out of the precache, with the same filters', () => {
+    expect(splitShellUrls(files, isMermaid)).toEqual({
+      precache: ['./', './assets/index-a1.js', './index.html'],
+      onDemand: ['./assets/cytoscape-c3.js', './assets/mermaid.core-b2.js'],
+    });
+  });
+
+  test('the start URL is never on demand', () => {
+    expect(splitShellUrls(['index.html'], () => true)).toEqual({
+      precache: ['./'],
+      onDemand: ['./index.html'],
+    });
+  });
+
+  describe('parseManifest', () => {
+    test('a plain array is the precache of an app with nothing on demand', () => {
+      expect(parseManifest(['./', './sw.js', './index.html'])).toEqual({
+        precache: ['./', './index.html'],
+        onDemand: [],
+      });
+    });
+
+    test('an object has both lists', () => {
+      expect(parseManifest({ precache: ['./'], onDemand: ['./b.js', './a.js', './b.js'] })).toEqual(
+        { precache: ['./'], onDemand: ['./a.js', './b.js'] },
+      );
+    });
+
+    test.each([null, 'x', 3, {}, { precache: [] }, { precache: ['./'], onDemand: [1] }, [1]])(
+      'refuses %j',
+      (data) => {
+        expect(() => parseManifest(data)).toThrow('precache manifest: unexpected format');
+      },
+    );
+  });
+
+  describe('isOnDemandUrl', () => {
+    const hrefs = onDemandHrefs(['./assets/a.js', './assets/b.js'], base);
+
+    test('resolves the manifest URLs against the scope', () => {
+      expect([...hrefs]).toEqual([`${base}assets/a.js`, `${base}assets/b.js`]);
+    });
+
+    test('is true for a listed file, whatever its query or fragment', () => {
+      expect(isOnDemandUrl(`${base}assets/a.js`, hrefs)).toBe(true);
+      expect(isOnDemandUrl(`${base}assets/a.js?v=2#x`, hrefs)).toBe(true);
+    });
+
+    test('is false for anything else: a precached file, another app, another origin, junk', () => {
+      expect(isOnDemandUrl(`${base}assets/index-a1.js`, hrefs)).toBe(false);
+      expect(isOnDemandUrl('https://me.example/chrono/assets/a.js', hrefs)).toBe(false);
+      expect(isOnDemandUrl('https://cdn.example/slides/assets/a.js', hrefs)).toBe(false);
+      expect(isOnDemandUrl('not a url', hrefs)).toBe(false);
+    });
+  });
+
+  describe('carriedOverUrls', () => {
+    const hrefs = onDemandHrefs(['./assets/a.js', './assets/b.js'], base);
+
+    test('keeps the entries that are still on demand, and only those', () => {
+      const cached = [
+        `${base}index.html`,
+        `${base}assets/a.js`,
+        `${base}assets/gone.js`,
+        `${base}assets/b.js`,
+      ];
+      expect(carriedOverUrls(cached, hrefs)).toEqual([`${base}assets/a.js`, `${base}assets/b.js`]);
+    });
+
+    test('keeps nothing when the new build has nothing on demand', () => {
+      expect(carriedOverUrls([`${base}assets/a.js`], onDemandHrefs([], base))).toEqual([]);
+    });
   });
 });
 

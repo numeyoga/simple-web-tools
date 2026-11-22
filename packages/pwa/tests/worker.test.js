@@ -28,8 +28,15 @@ function fakeCacheStorage(/** @type {Record<string, string[]>} */ initial = {}) 
       }),
       match: async (/** @type {Request | string} */ request) => {
         const url = new URL(typeof request === 'string' ? request : request.url, SCOPE).href;
-        return entries.get(url);
+        return entries.get(url)?.clone();
       },
+      put: vi.fn(
+        async (/** @type {Request | string} */ request, /** @type {Response} */ response) => {
+          const url = new URL(typeof request === 'string' ? request : request.url, SCOPE).href;
+          entries.set(url, response);
+        },
+      ),
+      keys: async () => [...entries.keys()].map((url) => new Request(url)),
     };
   };
   return {
@@ -174,6 +181,167 @@ describe('registerShellWorker', () => {
       'workbox-precache',
     ]);
     expect(scope.clients.claim).toHaveBeenCalledTimes(1);
+  });
+
+  describe('on-demand files', () => {
+    const MANIFEST = JSON.stringify({
+      precache: ['./', './index.html'],
+      onDemand: ['./assets/lazy-a.js', './assets/lazy-b.js'],
+    });
+
+    /** Installs a worker of the build `buildId` whose manifest lists on-demand files. */
+    async function installed(/** @type {string} */ buildId, { active = false } = {}) {
+      fetchMock.mockResolvedValueOnce(new Response(MANIFEST));
+      const worker = fakeScope({ active });
+      registerShellWorker({ appId: 'slides', buildId, scope: worker.scope });
+      await worker.lifecycle('install');
+      return worker;
+    }
+
+    /** The URLs held by a cache, without the scope. */
+    async function held(/** @type {string} */ name) {
+      const cache = await caches.open(name);
+      return (await cache.keys()).map((request) => request.url.replace(SCOPE, './')).sort();
+    }
+
+    it('install caches the precache only, and keeps the manifest for later', async () => {
+      await installed('abc');
+
+      expect(await held('slides-shell-abc')).toEqual([
+        './',
+        './index.html',
+        './precache-manifest.json',
+      ]);
+    });
+
+    it('install keeps no manifest for an app with nothing on demand', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(['./', './index.html'])));
+      const { scope, lifecycle } = fakeScope();
+      registerShellWorker({ appId: 'chrono', buildId: 'abc', scope });
+
+      await lifecycle('install');
+
+      expect(await held('chrono-shell-abc')).toEqual(['./', './index.html']);
+    });
+
+    it('fetches an on-demand file once, stores it, then serves it with no network', async () => {
+      const { fetchEvent } = await installed('abc');
+      fetchMock.mockResolvedValueOnce(new Response('lazy a'));
+
+      const first = await fetchEvent(new Request(`${SCOPE}assets/lazy-a.js`));
+      expect(await first?.text()).toBe('lazy a');
+      expect(await held('slides-shell-abc')).toContain('./assets/lazy-a.js');
+
+      fetchMock.mockRejectedValue(new TypeError('offline'));
+      const second = await fetchEvent(new Request(`${SCOPE}assets/lazy-a.js`));
+      expect(await second?.text()).toBe('lazy a');
+    });
+
+    it('knows its on-demand files again when the worker was stopped (no memory, only the cache)', async () => {
+      await installed('abc');
+      const restarted = fakeScope({ active: true });
+      registerShellWorker({ appId: 'slides', buildId: 'abc', scope: restarted.scope });
+      fetchMock.mockResolvedValueOnce(new Response('lazy b'));
+
+      await restarted.fetchEvent(new Request(`${SCOPE}assets/lazy-b.js`));
+
+      expect(await held('slides-shell-abc')).toContain('./assets/lazy-b.js');
+    });
+
+    it('does not store a file that is not on the list, nor a failed answer', async () => {
+      const { fetchEvent } = await installed('abc');
+      fetchMock.mockResolvedValueOnce(new Response('other'));
+      await fetchEvent(new Request(`${SCOPE}assets/other.js`));
+      fetchMock.mockResolvedValueOnce(new Response('gone', { status: 404 }));
+      const missing = await fetchEvent(new Request(`${SCOPE}assets/lazy-b.js`));
+
+      expect(missing?.status).toBe(404);
+      expect(await held('slides-shell-abc')).toEqual([
+        './',
+        './index.html',
+        './precache-manifest.json',
+      ]);
+    });
+
+    it('answers the page even when the cache refuses the file', async () => {
+      const { fetchEvent } = await installed('abc');
+      const cache = await caches.open('slides-shell-abc');
+      cache.put.mockRejectedValue(new Error('quota'));
+      caches.open.mockResolvedValue(cache);
+      fetchMock.mockResolvedValueOnce(new Response('lazy a'));
+
+      const response = await fetchEvent(new Request(`${SCOPE}assets/lazy-a.js`));
+
+      expect(await response?.text()).toBe('lazy a');
+    });
+
+    it('offline, an on-demand file never used is a 503, like any other file', async () => {
+      const { fetchEvent } = await installed('abc');
+      fetchMock.mockRejectedValue(new TypeError('offline'));
+
+      const response = await fetchEvent(new Request(`${SCOPE}assets/lazy-a.js`));
+
+      expect(response?.status).toBe(503);
+    });
+
+    it('an update copies the on-demand entries still on demand, then deletes the old cache', async () => {
+      caches = fakeCacheStorage({
+        'slides-shell-old': ['./index.html', './assets/lazy-a.js', './assets/dropped.js'],
+        'chrono-shell-old': ['./assets/lazy-a.js'],
+      });
+      vi.stubGlobal('caches', caches);
+      const update = await installed('new', { active: true });
+
+      await update.lifecycle('activate');
+
+      expect(await held('slides-shell-new')).toEqual([
+        './',
+        './assets/lazy-a.js',
+        './index.html',
+        './precache-manifest.json',
+      ]);
+      expect([...caches.stores.keys()].sort()).toEqual(['chrono-shell-old', 'slides-shell-new']);
+      const { fetchEvent } = update;
+      fetchMock.mockRejectedValue(new TypeError('offline'));
+      const response = await fetchEvent(new Request(`${SCOPE}assets/lazy-a.js`));
+      expect(await response?.text()).toBe('cached ./assets/lazy-a.js');
+    });
+
+    it('an update keeps what it already has, and still deletes the old cache if a copy fails', async () => {
+      caches = fakeCacheStorage({
+        'slides-shell-old': ['./assets/lazy-a.js', './assets/lazy-b.js'],
+      });
+      vi.stubGlobal('caches', caches);
+      const update = await installed('new', { active: true });
+      const fresh = await caches.open('slides-shell-new');
+      await fresh.put('./assets/lazy-a.js', new Response('fresh a'));
+      fresh.put.mockClear();
+      const old = await caches.open('slides-shell-old');
+      old.keys = async () => {
+        throw new Error('broken');
+      };
+      caches.open.mockImplementation(async (/** @type {string} */ name) =>
+        name === 'slides-shell-old' ? old : fresh,
+      );
+
+      await update.lifecycle('activate');
+
+      expect(fresh.put).not.toHaveBeenCalled();
+      expect(caches.delete).toHaveBeenCalledWith('slides-shell-old');
+    });
+
+    it('an update of an app with nothing on demand copies nothing', async () => {
+      caches = fakeCacheStorage({ 'chrono-shell-old': ['./assets/x.js'] });
+      vi.stubGlobal('caches', caches);
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(['./'])));
+      const { scope, lifecycle } = fakeScope({ active: true });
+      registerShellWorker({ appId: 'chrono', buildId: 'new', scope });
+      await lifecycle('install');
+
+      await lifecycle('activate');
+
+      expect(await held('chrono-shell-new')).toEqual(['./']);
+    });
   });
 
   describe('message', () => {

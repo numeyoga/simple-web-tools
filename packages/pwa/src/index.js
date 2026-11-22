@@ -77,6 +77,99 @@ export function precacheUrls(files) {
 }
 
 /**
+ * The shell's files in two lists: the URLs to precache at install, and the URLs left to be cached
+ * the first time they are used (`isOnDemand` returns true for their path, relative to the app,
+ * `assets/mermaid.core-1a2b.js`). Same filters as `precacheUrls`, which `precache` equals when
+ * nothing is on demand; the start URL `./` is never on demand.
+ * @param {readonly string[]} files paths relative to the output folder, `/` separated
+ * @param {(path: string) => boolean} [isOnDemand]
+ * @returns {{ precache: string[], onDemand: string[] }}
+ */
+export function splitShellUrls(files, isOnDemand = () => false) {
+  /** @type {string[]} */
+  const precache = [];
+  /** @type {string[]} */
+  const onDemand = [];
+  for (const url of precacheUrls(files)) {
+    (url !== './' && isOnDemand(url.slice(2)) ? onDemand : precache).push(url);
+  }
+  return { precache, onDemand };
+}
+
+/**
+ * The content of `precache-manifest.json`, which has two shapes: a plain array of URLs (an app
+ * with nothing on demand) or `{ precache, onDemand }`. The worker and the manifest of one build
+ * ship together, so only this build's worker has to read it.
+ * @param {unknown} data the parsed JSON
+ * @returns {{ precache: string[], onDemand: string[] }}
+ */
+export function parseManifest(data) {
+  const isUrlList = (/** @type {unknown} */ value) =>
+    Array.isArray(value) && value.every((item) => typeof item === 'string');
+  if (isUrlList(data))
+    return { precache: precacheUrls(/** @type {string[]} */ (data)), onDemand: [] };
+  const lists = /** @type {{ precache?: unknown, onDemand?: unknown } | null} */ (data);
+  if (
+    lists &&
+    typeof lists === 'object' &&
+    isUrlList(lists.precache) &&
+    isUrlList(lists.onDemand)
+  ) {
+    return {
+      precache: precacheUrls(/** @type {string[]} */ (lists.precache)),
+      onDemand: [...new Set(/** @type {string[]} */ (lists.onDemand))].sort(),
+    };
+  }
+  throw new Error('precache manifest: unexpected format');
+}
+
+/**
+ * The absolute addresses of the on-demand files, to look a request up in.
+ * @param {readonly string[]} onDemand the manifest's URLs (`./assets/x.js`)
+ * @param {string} base the worker scope, `https://host/slides/`
+ * @returns {Set<string>}
+ */
+export function onDemandHrefs(onDemand, base) {
+  return new Set(onDemand.map((url) => new URL(url, base).href));
+}
+
+/** @param {string} url without its query and fragment */
+function withoutSearch(url) {
+  const parsed = new URL(url);
+  parsed.search = '';
+  parsed.hash = '';
+  return parsed.href;
+}
+
+/**
+ * Whether an address is one of the on-demand files: served cache first, and cached when it was
+ * fetched. Anything else is left to the network (or to the precache), so a same-origin GET can
+ * never fill the cache just because it was asked for.
+ * @param {string} url the request URL
+ * @param {ReadonlySet<string>} hrefs the result of `onDemandHrefs`
+ */
+export function isOnDemandUrl(url, hrefs) {
+  try {
+    return hrefs.has(withoutSearch(url));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Which entries of an older shell cache a new build keeps: those that are still on demand in the
+ * new build. A hashed file name is its content, so the same name is the same file and need not be
+ * downloaded again. Everything else (the old precache, files the new build dropped) is left to
+ * be deleted with the old cache.
+ * @param {readonly string[]} cachedUrls the request URLs of the old cache
+ * @param {ReadonlySet<string>} hrefs the new build's `onDemandHrefs`
+ * @returns {string[]}
+ */
+export function carriedOverUrls(cachedUrls, hrefs) {
+  return cachedUrls.filter((url) => isOnDemandUrl(url, hrefs));
+}
+
+/**
  * Whether the worker answers a request itself: a same-origin GET. Anything else (another origin,
  * a POST) goes straight to the network, untouched.
  * @param {{ method: string, url: string }} request
