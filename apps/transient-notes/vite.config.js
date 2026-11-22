@@ -1,8 +1,5 @@
-import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { pwaPlugin } from '@simple-web-tools/pwa/vite';
 import { defineConfig } from 'vite';
-import { precacheUrls } from './src/core/pwa.js';
 
 // Strict Content Security Policy (decision 0004): nothing is allowed unless it is listed.
 // - script-src 'self': the bundle and theme-init.js, never inline script or handlers.
@@ -33,63 +30,13 @@ const PROD_CSP = [
   "form-action 'none'",
 ].join('; ');
 
-/** @param {string} dir @returns {string[]} files of the folder, `/` separated, relative to it */
-function listFiles(dir) {
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => relative(dir, join(entry.parentPath, entry.name)).split(sep).join('/'))
-    .sort();
-}
-
-/**
- * Production only: injects the CSP into index.html, then, once the whole output (public files
- * included) is on disk, writes `precache-manifest.json` and stamps `sw.js` with a build id that
- * hashes every precached file, so the worker changes whenever the shell does.
- * @returns {import('vite').Plugin}
- */
-function productionPlugin() {
-  let outDir = '';
-  return {
-    name: 'transient-notes-csp-and-precache',
-    apply: 'build',
-    enforce: 'post',
-    configResolved(config) {
-      outDir = join(config.root, config.build.outDir);
-    },
-    transformIndexHtml(html) {
-      const tag = `<meta http-equiv="Content-Security-Policy" content="${PROD_CSP}" />`;
-      return html.replace(/(<meta\s+charset=["']utf-8["']\s*\/?>)/i, `$1\n    ${tag}`);
-    },
-    closeBundle() {
-      const urls = precacheUrls(listFiles(outDir));
-      const hash = createHash('sha256');
-      for (const url of urls) {
-        hash.update(url);
-        if (url !== './') hash.update(readFileSync(join(outDir, url)));
-      }
-      const buildId = hash.digest('hex').slice(0, 10);
-      writeFileSync(join(outDir, 'precache-manifest.json'), `${JSON.stringify(urls, null, 2)}\n`);
-      const worker = join(outDir, 'sw.js');
-      writeFileSync(worker, readFileSync(worker, 'utf8').replaceAll('__BUILD_ID__', buildId));
-    },
-  };
-}
-
 export default defineConfig({
   base: './',
-  plugins: [productionPlugin()],
+  plugins: [pwaPlugin({ appId: 'transient-notes', csp: PROD_CSP })],
   build: {
     target: 'esnext',
     outDir: 'dist',
     assetsInlineLimit: 0,
-    rollupOptions: {
-      // The service worker is a second entry, emitted as `sw.js` (not hashed, not in a folder:
-      // its URL fixes its scope). Nothing else imports its code, so it has no import left.
-      input: { index: 'index.html', sw: 'src/sw/sw.js' },
-      output: {
-        entryFileNames: (chunk) => (chunk.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js'),
-      },
-    },
   },
   server: {
     headers: { 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff' },

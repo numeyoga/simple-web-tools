@@ -3,7 +3,7 @@
 // starts with the app name. The names are checked where they are made, and where they are used.
 import { lockChannelName, writeLockName } from '@simple-web-tools/storage';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { shellCacheName } from '../../src/core/pwa.js';
+import { shellCacheName } from '@simple-web-tools/pwa';
 import { createAppStore } from '../../src/adapters/store.js';
 import { getRegistry } from '../../src/adapters/workspaces.js';
 import { createLocalePreference } from '@simple-web-tools/i18n';
@@ -57,7 +57,7 @@ describe('the names built by the app', () => {
     ['single-key shortcuts', singleKeyShortcutsKey(), 'transient-notes-single-key-shortcuts'],
     ['language', localeKey(), 'transient-notes-locale'],
     ['folded categories', collapsedCategoriesKey('work'), 'transient-notes-collapsed-work'],
-    ['shell cache', shellCacheName('abc123'), 'transient-notes-shell-abc123'],
+    ['shell cache', shellCacheName('transient-notes', 'abc123'), 'transient-notes-shell-abc123'],
   ])('%s is %s', (_what, actual, expected) => {
     expect(actual).toBe(expected);
     expect(prefixed(actual)).toBe(true);

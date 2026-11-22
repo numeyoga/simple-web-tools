@@ -10,7 +10,7 @@
 //   BroadcastChannel transient-notes-sync-<id>         a workspace was written
 //   localStorage    transient-notes-workspaces, -workspace-active (registry of the storage
 //                   package), -theme, -text-size, -single-key-shortcuts, -locale (i18n package)
-//   Cache Storage   transient-notes-shell-<build id>   the offline shell (src/core/pwa.js)
+//   Cache Storage   transient-notes-shell-<build id>   the offline shell (@simple-web-tools/pwa)
 
 import {
   lockChannelName,

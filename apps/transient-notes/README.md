@@ -121,10 +121,12 @@ another app or from a newer version is refused. Restoring replaces the workspace
 
 - `src/core/`: pure logic, no DOM, no storage, no clock (decision 0004). The model and the
   sanitizing, `reduce(state, command)` returning the new state and the effects to run, selectors
-  (the selection, search, sort), export to text and Markdown, the backup rules, preferences and
-  the rules of the offline shell. Time is passed in as an argument; ids come from an adapter.
+  (the selection, search, sort), export to text and Markdown, the backup rules and preferences.
+  Time is passed in as an argument; ids come from an adapter.
 - `src/adapters/`: IndexedDB, the single-writer store, workspaces, the backup file and downloads,
-  i18n, preferences, the service worker registration and its update.
+  i18n, preferences. The offline shell (cache rules, worker, registration and update) is the
+  shared [`@simple-web-tools/pwa`](../../packages/pwa/README.md) package; `src/sw/sw.js` is one call
+  to it.
 - `src/adapters/dom/`: the views, built with `createElement` and `append`, never `innerHTML`
   (a title or a folder name is only ever a text node), and the Covenant helpers. Tooltips are
   lifted into the top layer (`tooltip.js`) so that the sidebar's scrolling area does not cut them
@@ -158,8 +160,10 @@ No inline script or handler, no `'unsafe-inline'`, no CDN, no request to another
 - **Manifest**: `public/manifest.webmanifest` (name "Transient Notes", `start_url` and `scope`
   `./`, icons generated from the favicon).
 - **Service worker** (`src/sw/sw.js`, built to `sw.js` at the root of the app): registered with
-  the scope `./`, so under `/transient-notes/` on Pages it only controls that path. At build time
-  a plugin writes `precache-manifest.json` (every file of the output except the worker, source
+  the scope `./`, so under `/transient-notes/` on Pages it only controls that path. The rules, the
+  worker and the build plugin are the shared [`@simple-web-tools/pwa`](../../packages/pwa/README.md)
+  package; the app only gives it its id (`transient-notes`) and its policy. At build time the plugin
+  writes `precache-manifest.json` (every file of the output except the worker, source
   maps and legacy font formats, the lazy editor chunk included) and stamps the worker with a
   hash of those files. The cache is named `transient-notes-shell-<hash>`; on activation the
   worker deletes the `transient-notes-` caches that are not its own, never another app's. Files
