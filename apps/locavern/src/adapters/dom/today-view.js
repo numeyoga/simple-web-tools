@@ -83,12 +83,10 @@ export function renderTodayView({
   const titleGroup = document.createElement('div');
   const titleEl = document.createElement('h2');
   titleEl.className = 'cv-heading-2';
-  titleEl.style.margin = '0';
   titleEl.textContent = t('common.today');
 
   const subtitle = document.createElement('p');
   subtitle.className = 'cv-caption';
-  subtitle.style.margin = '0';
   subtitle.textContent = format.formatFullDate(summary.todayIso);
   titleGroup.append(titleEl, subtitle);
 

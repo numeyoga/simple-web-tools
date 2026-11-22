@@ -106,7 +106,6 @@ export function wireTrashModal({ store }) {
 
     const retentionInfo = document.createElement('p');
     retentionInfo.className = 'cv-caption';
-    retentionInfo.style.margin = '0';
     retentionInfo.textContent = t('trash.retention', { count: retentionDays });
 
     const toolbarActions = document.createElement('div');
@@ -158,6 +157,7 @@ export function wireTrashModal({ store }) {
       emptyIcon.setAttribute('aria-hidden', 'true');
       const emptyTitle = document.createElement('p');
       emptyTitle.className = 'cv-h4';
+      // Inside `.cv-empty`, which gives its sentences a margin: the gap here is the flex gap.
       emptyTitle.style.margin = '0';
       emptyTitle.textContent = t('trash.isEmpty');
       const emptyDesc = document.createElement('p');

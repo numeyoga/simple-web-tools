@@ -95,7 +95,6 @@ export function createLinkEditor({
   const terminalHint = document.createElement('p');
   terminalHint.id = `${idPrefix}-terminal-hint`;
   terminalHint.className = 'cv-hint';
-  terminalHint.style.margin = '0';
   terminalHint.textContent = t('links.terminalHint');
   terminalHint.hidden = !terminalLocked;
 

@@ -115,7 +115,6 @@ export function wireStatusModal({ store }) {
 
     const intro = document.createElement('p');
     intro.className = 'cv-hint';
-    intro.style.margin = '0';
     intro.textContent = t('statuses.intro');
 
     const listGroup = document.createElement('div');
@@ -126,7 +125,6 @@ export function wireStatusModal({ store }) {
     if (draftStatuses.length === 0) {
       const emptyHint = document.createElement('p');
       emptyHint.className = 'cv-caption';
-      emptyHint.style.margin = '0';
       emptyHint.textContent = t('statuses.empty');
       listGroup.append(emptyHint);
     }
