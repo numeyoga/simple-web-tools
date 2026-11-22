@@ -173,22 +173,34 @@ slides read from a local folder (`slides.md` and its images), with a presenter w
 print view. Its parser and state are already pure and its identifiers are English, so this
 is a port rather than a rewrite. It stores nothing.
 
-- [ ] `apps/slides` (name "Slides"): parser, frontmatter, directives and store move to
+- [x] `apps/slides` (name "Slides"): parser, frontmatter, directives and store move to
       `src/core`; the folder reader, timers and views to `src/adapters`. The app chrome uses
       Covenant; the slide themes stay the app's own CSS, built on Covenant tokens.
-- [ ] Runtime dependencies justified in the README (decision 0003): `marked`, `yaml`,
+- [x] Runtime dependencies justified in the README (decision 0003): `marked`, `yaml`,
       `highlight.js` (core and the registered grammars only) and `mermaid`.
-- [ ] **Mermaid on demand**: a lazy chunk, loaded only when a slide has a diagram and
+- [x] **Mermaid on demand**: a lazy chunk, loaded only when a slide has a diagram and
       precached for offline use. Its SVG carries inline styles, so `style-src` allows
       `'unsafe-inline'` in this app only, with the reason in the README.
-- [ ] **Sanitize the slide HTML**: raw HTML in `slides.md` reaches `innerHTML` today
+- [x] **Sanitize the slide HTML**: raw HTML in `slides.md` reaches `innerHTML` today
       (`<img onerror>` would run). The rendered HTML goes through a sanitizer before it is
       inserted; `script-src 'self'` stays the second line of defence. Remote images are
       blocked by the CSP: document it and show a placeholder.
-- [ ] The `BroadcastChannel` is named with the app prefix; French strings move to catalogs.
-- [ ] Vitest for the core (the existing 19 tests, plus store, keyboard map, timers);
+- [x] The `BroadcastChannel` is named with the app prefix; French strings move to catalogs.
+- [x] Vitest for the core (the existing 19 tests, plus store, keyboard map, timers);
       Playwright: load a folder, navigate, presenter sync, print; axe on the chrome.
-- [ ] Docs, registered in `packages/suite`.
+- [x] Docs, registered in `packages/suite`.
+
+Decisions taken in this step, to confirm with the maintainer: Mermaid is 12.3.0 and DOMPurify is
+3.4.17, both pinned, instead of Mermaid 11.15.0 (every 11.x release still pulls a KaTeX with an
+advisory; 12.3.0 does not, and `npm run audit` is clean); images are `blob:` URLs, so
+`img-src 'self' blob:`, and a remote, embedded (`data:`) or missing image gets a placeholder with
+its reason; `style-src 'self' 'unsafe-inline'` in this app only, for Mermaid's SVG; the example
+presentation is bundled in English and French and follows the interface language; the letter and
+digit shortcuts can be turned off (WCAG 2.1.4) and Ctrl, Alt and Meta combinations are left to the
+browser, which the original did not do; a `---` inside a fenced code block no longer cuts a slide;
+the presenter and main windows share a validated message protocol, and the presenter sanitizes
+again what it receives; the browser tests exercise a dropped folder only as far as `drop` events
+can be built (a real folder drop cannot).
 
 ## 11. Retire the old sites
 

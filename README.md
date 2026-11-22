@@ -16,6 +16,7 @@ Small, focused web apps that run entirely in your browser.
 | [Transient Notes](apps/transient-notes/) | Notes sorted with the PARA method: folders, rich text, images, search, workspaces. | Rewritten (English and French) |
 | [Favoris](apps/favoris/)                 | Bookmarks in colour groups: workspaces, drag and drop, search, JSON backup.        | Rewritten (English and French) |
 | [Dashboard](apps/dashboard/)             | The links of your applications, built from templates, per environment.             | Rewritten (English and French) |
+| [Slides](apps/slides/)                   | Markdown presentations from a folder: presenter window, overview, print, diagrams. | Ported (English and French)    |
 
 The apps are published together on GitHub Pages, one sub-path per app.
 
