@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 // The catalogs of the interface (decision 0002): French matches English, every key the code
 // asks for exists, every key is used, and the plural messages pick the right form.
+import { UI_KEYS } from '@simple-web-tools/dom/ui';
 import {
   NO_DIFFERENCES,
   compareCatalogs,
@@ -70,8 +71,13 @@ describe('the keys used in src', () => {
     expect([...new Set(keys)].filter((key) => !known.has(key))).toEqual([]);
   });
 
+  test('every key the shared builders ask for exists (UI_KEYS of @simple-web-tools/dom)', () => {
+    expect(UI_KEYS.filter((key) => !known.has(key))).toEqual([]);
+  });
+
   test('every key of the English catalog is used', () => {
-    const used = new Set(keys);
+    // The shared builders (a modal, a confirmation, the toasts) use the UI_KEYS themselves.
+    const used = new Set([...keys, ...UI_KEYS]);
     expect([...known].filter((key) => !used.has(key))).toEqual([]);
   });
 });

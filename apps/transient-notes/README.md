@@ -127,10 +127,11 @@ another app or from a newer version is refused. Restoring replaces the workspace
   i18n, preferences. The offline shell (cache rules, worker, registration and update) is the
   shared [`@simple-web-tools/pwa`](../../packages/pwa/README.md) package; `src/sw/sw.js` is one call
   to it.
-- `src/adapters/dom/`: the views, built with `createElement` and `append`, never `innerHTML`
-  (a title or a folder name is only ever a text node), and the Covenant helpers. Tooltips are
-  lifted into the top layer (`tooltip.js`) so that the sidebar's scrolling area does not cut them
-  off.
+- `src/adapters/dom/`: the views, built with `el()` and `append`, never `innerHTML` (a title or a
+  folder name is only ever a text node). The builder and the Covenant helpers (`ui.js`, `lib.js`)
+  come from the shared [`@simple-web-tools/dom`](../../packages/dom/README.md) package, set up with
+  this app's prefix (`tn`) and translator. Tooltips are Covenant's: they open in the top layer, so
+  that the sidebar's scrolling area does not cut them off.
 - `src/i18n/`: the English (reference) and French catalogs; every UI string goes through them
   (decision 0002), which `tests/unit/no-hardcoded-strings.test.js` enforces.
 

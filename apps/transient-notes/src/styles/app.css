@@ -409,19 +409,6 @@
   min-height: 0;
 }
 
-/* A tooltip in the top layer (adapters/dom/tooltip.js): fixed, placed from the rect of its
-   trigger, so no scrolling or clipping ancestor (the sidebar) cuts it off. The popover's own
-   user-agent box (inset, margin, border) is reset; Covenant keeps the look. */
-.cv-tooltip[popover] {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  border: 0;
-  transform: none;
-  overflow: visible;
-  pointer-events: auto;
-}
-
 @media (max-width: 767px) {
   .tn-notes {
     grid-template-columns: minmax(0, 1fr);

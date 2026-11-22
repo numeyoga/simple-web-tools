@@ -17,7 +17,14 @@ const views = /** @type {Record<string, string>} */ (
  * Keep it short: a new view string belongs in the catalogs.
  * @type {{ file: string, text: string, why: string }[]}
  */
-const ALLOWED = [];
+/** @type {{ file: string, text: string, why: string }[]} */
+const ALLOWED = [
+  {
+    file: 'ui.js',
+    text: 'tn',
+    why: "the app's class prefix, given to the shared builders",
+  },
+];
 
 /** @param {string} code @param {string} [file] @param {typeof ALLOWED} [allow] */
 const found = (code, file = 'View.js', allow = ALLOWED) =>
