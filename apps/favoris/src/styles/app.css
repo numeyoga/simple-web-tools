@@ -1,0 +1,457 @@
+/* =============================================================================
+   Favoris: app styles, loaded after @simple-web-tools/covenant (tokens, components, fonts).
+   Layout glue and the few app-level pieces that Covenant has no component for. Rules:
+   semantic roles only (no hex, no primitive scale token), every size in rem, hover and press
+   are instant (motion belongs to overlays and toasts, and Covenant provides it).
+   A value that a view computes at run time is written through the CSSOM (`el()` with a `style`
+   object, a number being px at the standard scale, written in rem): the CSP forbids a `style`
+   attribute in markup.
+   ============================================================================= */
+
+/* --- Layout: flex, grid and spacing ------------------------------------- */
+.fv-row {
+  display: flex;
+  flex-direction: row;
+}
+.fv-stack {
+  display: flex;
+  flex-direction: column;
+}
+.fv-center {
+  align-items: center;
+}
+.fv-baseline {
+  align-items: baseline;
+}
+.fv-align-end {
+  align-items: flex-end;
+}
+.fv-between {
+  justify-content: space-between;
+}
+.fv-wrap {
+  flex-wrap: wrap;
+}
+.fv-grow {
+  min-width: 0;
+  flex: 1;
+}
+.fv-self-start {
+  align-self: flex-start;
+}
+.fv-shrink-0 {
+  flex-shrink: 0;
+}
+.fv-end {
+  margin-left: auto;
+}
+.fv-push {
+  margin-right: auto;
+}
+.fv-fill {
+  align-self: stretch;
+  flex: 1;
+}
+
+.fv-gap-1 {
+  gap: var(--cv-space-1);
+}
+.fv-gap-2 {
+  gap: var(--cv-space-2);
+}
+.fv-gap-3 {
+  gap: var(--cv-space-3);
+}
+.fv-gap-4 {
+  gap: var(--cv-space-4);
+}
+.fv-gap-5 {
+  gap: var(--cv-space-5);
+}
+.fv-gap-6 {
+  gap: var(--cv-space-6);
+}
+.fv-gap-7 {
+  gap: var(--cv-space-7);
+}
+
+.fv-mt-auto {
+  margin-top: auto;
+}
+.fv-mt-5 {
+  margin-top: var(--cv-space-5);
+}
+.fv-mb-4 {
+  margin-bottom: var(--cv-space-4);
+}
+.fv-mt-1 {
+  margin-top: var(--cv-space-1);
+}
+.fv-mt-2 {
+  margin-top: var(--cv-space-2);
+}
+.fv-mt-3 {
+  margin-top: var(--cv-space-3);
+}
+.fv-mt-4 {
+  margin-top: var(--cv-space-4);
+}
+
+/* --- Typography ---------------------------------------------------------- */
+.fv-meta {
+  font-size: var(--cv-text-xs);
+  line-height: 1.3;
+  color: var(--cv-fg-muted);
+}
+.fv-subtle {
+  font-size: var(--cv-text-xs);
+  line-height: 1.3;
+  color: var(--cv-fg-subtle);
+}
+.fv-strong {
+  font-weight: var(--cv-weight-medium);
+}
+.fv-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fv-accent-text {
+  color: var(--cv-fg-accent);
+}
+.fv-danger-text {
+  color: var(--cv-fg-danger);
+}
+.fv-warning-text {
+  color: var(--cv-fg-warning);
+}
+
+/* --- Messages -------------------------------------------------------------- */
+.fv-loading {
+  padding: var(--cv-space-9);
+}
+.fv-error-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+  max-width: 35rem;
+  margin: var(--cv-space-9) auto 0;
+  font-size: var(--cv-text-md);
+}
+.fv-icon-xl {
+  font-size: 1.75rem;
+}
+
+/* --- Page: the Covenant shell (cv-shell) provides the grid, the sidebar and the top bar ---- */
+.fv-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-6);
+}
+
+.fv-block {
+  padding: var(--cv-space-4);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+.fv-block--selected {
+  border-color: var(--cv-border-selected);
+  background: var(--cv-bg-accent-subtle);
+}
+.fv-block--dashed {
+  border-style: dashed;
+  border-color: var(--cv-border-strong);
+  background: var(--cv-surface-2);
+}
+
+/* --- Sidebar: navigation only (brand, workspace, the groups of the board) --- */
+.fv-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-3);
+  font: var(--cv-weight-semibold) var(--cv-text-md) / 1 var(--cv-font-sans);
+}
+.fv-sidebar-workspace {
+  padding-bottom: var(--cv-space-4);
+}
+.fv-nav-btn {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.fv-nav-count {
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-xs);
+}
+.fv-workspace {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* --- Preferences: the list of shortcuts ------------------------------------- */
+.fv-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-2);
+  padding: var(--cv-space-3) var(--cv-space-4);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface-2);
+  list-style: none;
+}
+
+.fv-group-nav {
+  margin-top: var(--cv-space-4);
+}
+.fv-group-nav ul {
+  padding: 0;
+  list-style: none;
+}
+
+/* --- Main region: the toolbar and the board ---------------------------------- */
+.cv-shell__content.fv-main {
+  max-width: none;
+  flex: 1;
+}
+.fv-main > .cv-alert {
+  margin-bottom: var(--cv-space-2);
+}
+.fv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--cv-space-3);
+}
+.fv-toolbar > .fv-grow {
+  flex: 1 1 14rem;
+}
+.fv-toolbar .fv-meta {
+  align-self: center;
+}
+.fv-board {
+  min-width: 0;
+}
+.fv-board:focus {
+  outline: none;
+}
+.fv-center-x {
+  justify-content: center;
+}
+
+/* --- Cards: one per group. The colour is the Covenant category (`data-cat`); the stripe and the
+   dot only ever sit next to the name of the group. ---------------------------------------- */
+.fv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: var(--cv-space-5);
+  align-items: start;
+}
+.fv-card {
+  min-width: 0;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+.fv-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-2);
+  padding: var(--cv-space-2) var(--cv-space-2) var(--cv-space-2) var(--cv-space-4);
+}
+.fv-card__title {
+  flex: 1;
+  min-width: 0;
+  font: var(--cv-weight-semibold) var(--cv-text-md) / 1.3 var(--cv-font-sans);
+}
+.fv-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cv-space-1);
+  flex: none;
+}
+.fv-fold {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-2);
+  width: 100%;
+  min-height: 1.75rem;
+  padding: var(--cv-space-1) var(--cv-space-2);
+  border: 0;
+  border-radius: var(--cv-radius-sm);
+  background: transparent;
+  color: var(--cv-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fv-fold:hover {
+  background: var(--cv-surface-2);
+}
+.fv-fold[aria-expanded='false'] .fv-fold__caret {
+  transform: rotate(-90deg);
+}
+.fv-fold .cv-cat-name {
+  flex: 1;
+}
+.fv-star {
+  display: inline-flex;
+  color: var(--cv-fg-accent);
+}
+.fv-links {
+  padding: 0 0 var(--cv-space-2);
+  list-style: none;
+}
+.fv-links__empty {
+  padding: var(--cv-space-2) var(--cv-space-4);
+}
+.fv-link {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-2);
+  min-height: 2rem;
+  padding: var(--cv-space-1) var(--cv-space-2) var(--cv-space-1) var(--cv-space-4);
+}
+.fv-link:hover {
+  background: var(--cv-surface-2);
+}
+.fv-link__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cv-fg);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+a.fv-link__name:hover,
+a.fv-link__name:focus-visible {
+  text-decoration: underline;
+}
+.fv-link__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cv-space-1);
+  flex: none;
+}
+
+/* The icon of a link: the initial on the colour of the group, or the site's own icon on top of it. */
+.fv-site-icon {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  overflow: hidden;
+  border-radius: var(--cv-radius-sm);
+  background: var(--cv-cat-fill);
+  color: var(--cv-fg-on-cat);
+  font-size: var(--cv-text-xs);
+  font-weight: var(--cv-weight-semibold);
+  line-height: 1;
+}
+.fv-site-icon--loaded {
+  background: transparent;
+  color: transparent;
+}
+.fv-site-icon__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Edit mode: the drag handles and the drop marks. */
+.fv-grip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  color: var(--cv-fg-muted);
+  cursor: grab;
+}
+.fv-dragging {
+  outline: 2px dashed var(--cv-border-strong);
+  outline-offset: -2px;
+}
+.fv-drop-before {
+  box-shadow: inset 0 2px 0 0 var(--cv-border-selected);
+}
+.fv-drop-after {
+  box-shadow: inset 0 -2px 0 0 var(--cv-border-selected);
+}
+.fv-drop-into {
+  background: var(--cv-bg-accent-subtle);
+}
+.fv-drop-target {
+  outline: 2px solid var(--cv-border-selected);
+}
+
+/* --- The colour picker: 16 swatches, a radio group ------------------------------------ */
+.fv-swatches {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fv-swatches__name {
+  color: var(--cv-fg-muted);
+  font-weight: var(--cv-weight-regular);
+}
+.fv-swatches__list {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: var(--cv-space-2);
+  margin-top: var(--cv-space-2);
+}
+.fv-swatch {
+  position: relative;
+  display: block;
+}
+.fv-swatch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.fv-swatch__dot {
+  display: grid;
+  place-items: center;
+  height: 2rem;
+  border: 2px solid transparent;
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-cat-fill);
+  color: var(--cv-fg-on-cat);
+}
+.fv-swatch__dot i {
+  visibility: hidden;
+}
+.fv-swatch input:checked + .fv-swatch__dot {
+  border-color: var(--cv-fg);
+}
+.fv-swatch input:checked + .fv-swatch__dot i {
+  visibility: visible;
+}
+.fv-swatch input:focus-visible + .fv-swatch__dot {
+  outline: 2px solid var(--cv-border-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .fv-swatches__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  /* Icon-only buttons on a small screen: the aria-label carries the name. */
+  .cv-topbar .fv-btn-label {
+    display: none;
+  }
+}
