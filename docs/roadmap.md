@@ -104,7 +104,7 @@ first, so that the new apps start from it instead of adding three more copies.
       into Transient Notes, become a package with the no-`innerHTML` rule they enforce.
 - [ ] **Tooltip fix in Covenant** (from [To do](todo.md)): `liftTooltip` and `placeTooltip`
       go to the skill, then the package, then the three apps.
-- [ ] **Opt-in third-party requests**: a decision record (0008) for features that contact a
+- [x] **Opt-in third-party requests**: [decision 0008](decisions/0008-opt-in-third-party-requests.md), for features that contact a
       third party only after the person turns them on, off by default, with the host named
       in the setting and allowed by the app's CSP only. Favoris' site icons are the first
       case (step 8); a future sync would be the next.
