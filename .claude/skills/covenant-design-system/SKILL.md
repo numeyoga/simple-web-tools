@@ -51,7 +51,7 @@ Local adaptation of the published skill, to merge back if it proves useful:
    Set `<html lang="…" data-theme="light|dark">`. New pages start from `templates/page.html`.
 3. **Pick components** from the index below and open each one's reference. Copy its **Anatomy** markup verbatim; change only text, `id`s (keep them unique and keep every `for`, `aria-controls`, `aria-labelledby` and `aria-describedby` pointing at the right `id`) and data.
 4. **Compose** with semantic tokens only. Layout glue may use `display`, `gap` and `grid`, with `var(--cv-space-*)` values. Any colour, radius, shadow or size is a semantic `var(--cv-*)` token that follows the theme.
-5. **Behaviour** comes from `covenant.js`: it starts by itself; call `Covenant.init(element)` after inserting markup; `Covenant.toast({ status, title, text })`, `Covenant.openDialog(id)`, `Covenant.closeDialog(id)`, `Covenant.setCategory(element, n | hex)`. Listen to `cv:change` (combobox) and `cv:command` (command menu).
+5. **Behaviour** comes from `covenant.js`: it starts by itself; call `Covenant.init(element)` after inserting markup; `Covenant.toast({ status, title, text })`, `Covenant.openDialog(id)`, `Covenant.closeDialog(id)`, `Covenant.setCategory(element, n | hex)`, `Covenant.setTooltip(trigger, text)`, `Covenant.hideTooltips()`. Listen to `cv:change` (combobox) and `cv:command` (command menu).
 6. **Verify** with `references/checklist.md` plus the checklist of every component used, in both themes. When you can run a browser, run axe-core (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa` tags) in light and dark, tab through every control, open and close every overlay with the keyboard, and check a 320 px wide window. Report what you checked and what you could not.
 7. **Stop and ask** when a design needs something no component or token covers. Never invent a token, a colour, a component or a variant; propose a deliberate extension instead.
 
@@ -95,7 +95,7 @@ Local adaptation of the published skill, to merge back if it proves useful:
 - `EmptyState` — An empty state explains why a view has no content and offers the next action.
 - `Skeleton` — Skeletons hold the place of content while it loads; they are static blocks in `cv-surface-3`, with no shimmer.
 - `Toast` — Toasts confirm the result of an action, bottom-right, on a raised surface; errors and warnings stay until dismissed.
-- `Tooltip` — A tooltip names an icon-only control or adds a short hint; it shows on hover and focus, stays while hovered and closes with Escape.
+- `Tooltip` — A tooltip names an icon-only control or adds a short hint; it shows on hover and focus in the top layer, on the side with room, stays while hovered and closes with Escape. Wrapped or set with `data-cv-tooltip`.
 
 **Overlays**
 - `CommandMenu` — The command menu opens with ⌘K or Ctrl+K and runs a command by name; it is a modal `<dialog>` holding a combobox with an always-visible list.

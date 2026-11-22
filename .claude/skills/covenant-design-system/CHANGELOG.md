@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-22 (2) — tooltips in the top layer, on the side with room, without a wrapper
+
+Requested by the three applications: Transient Notes lifted Covenant's tooltip into the top layer by script (its sidebar and its drawers cut the absolute tooltip off), Locavern wrote a second tooltip of its own (`data-lc-tooltip`, `interestfor`, 600 lines), and Chrono lived with the clipping. Both scripts move into `covenant.js`. Nothing was renamed or removed: the wrapper markup, `cv-tooltip--bottom` and the `aria-describedby` link work as before. No colour or token changed.
+
+### Changed: the tooltip of `covenant.js`
+- **Top layer.** A wired tooltip is a `popover="manual"` element placed with `position: fixed` from the rect of its trigger, so a scrolling or clipping ancestor no longer cuts it off. Without the Popover API it is still fixed-positioned, only not in the top layer.
+- **The side with room.** Centred on the trigger, above it, below it when there is no room above (or the other way round with `cv-tooltip--bottom`), then the side with more room, and clamped inside the window. Pure and exposed as `Covenant.placeTooltip`.
+- **Escape** closes the tooltip first and not the dialog or menu around it (the matching `cancel` event is swallowed for 400 ms); a second Escape closes the dialog. Before, both closed.
+- **Hover and focus.** A click or a press on the trigger hides the tooltip; keyboard focus opens it, a click-focus does not; it does not open while the trigger's menu is open; it is not shown for a touch; it hides when the trigger scrolls out of view. One tooltip at a time.
+- **CSS**: `.cv-tooltip[data-cv-placed]` resets the popover's own box and wraps text longer than 18rem (`white-space: normal`; it was `nowrap`).
+
+### Added: the attribute form
+- `data-cv-tooltip="text"` on any trigger: `Covenant.init` creates the tooltip right after it, so no wrapper changes the layout (a topbar, a toolbar, a grid). It opens after 300 ms of hover, to avoid flashes across a toolbar (the wrapper form still opens at once). `data-cv-tooltip-side="bottom"` asks for the side below.
+- `Covenant.setTooltip(trigger, text)` sets or changes the text of a trigger (an empty text removes it) and `Covenant.hideTooltips()` hides the tooltip being shown. `Covenant.init(container)` wires the triggers of a container once mounted and updates the text of those already wired (a language change).
+- ARIA: no link when the text is the trigger's own name (no duplicate announcement), `aria-labelledby` when the trigger has no name, `aria-describedby` otherwise.
+- **Component page** `Tooltip` rewritten for both forms, the keyboard and pointer rules and the new API; `SKILL.md` lists the two functions.
+
 ## 2026-11-22 — a reset in `@layer cv-reset`, and `.cv-prose`
 
 Requested by the three applications, which each reset the browser's margins on their own (`html, body { margin: 0 }`, a `margin: 0` per heading or paragraph) and sometimes forgot to. Nothing was renamed or removed. No colour, token or component markup changed.

@@ -4,7 +4,7 @@
    popover attribute for menus, native inputs for dates. This script only adds
    what the platform does not provide. Load once; it initialises itself and
    exposes window.Covenant = { init, toast, setTextSize, getTextSize, openDialog, closeDialog,
-   categoryColors, setCategory }. */
+   categoryColors, setCategory, setTooltip, hideTooltips, placeTooltip }. */
 (function () {
   'use strict';
   if (window.Covenant && window.Covenant.__loaded) return;
@@ -14,22 +14,27 @@
   function nextId(prefix) { uid += 1; return prefix + '-' + uid; }
   function each(root, sel, fn) { Array.prototype.forEach.call(root.querySelectorAll(sel), fn); }
   function once(el, key) { if (el.dataset[key]) return false; el.dataset[key] = '1'; return true; }
+  /* Focus that Covenant moves itself (into a dialog that opens, back to the opener of a dialog or a
+     menu that closes) does not open the tooltip of the control that receives it. */
+  var tipQuiet = false;
+  function quietFocus(el) { tipQuiet = true; try { el.focus(); } finally { tipQuiet = false; } }
 
   /* ---------- Dialogs: modal, drawer, command menu ---------- */
   var openers = new WeakMap();
   function openDialog(dialog, opener) {
     if (!dialog || dialog.open) return;
     openers.set(dialog, opener || document.activeElement);
-    dialog.showModal();
+    tipQuiet = true; /* showModal() focuses the first control itself */
+    try { dialog.showModal(); } finally { tipQuiet = false; }
     var auto = dialog.querySelector('[autofocus]') || dialog.querySelector(FOCUSABLE);
-    if (auto) auto.focus();
+    if (auto) quietFocus(auto);
   }
   function closeDialog(dialog, value) { if (dialog && dialog.open) dialog.close(value); }
   function initDialog(dialog) {
     if (!once(dialog, 'cvDialog')) return;
     dialog.addEventListener('close', function () {
       var opener = openers.get(dialog);
-      if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus();
+      if (opener && typeof opener.focus === 'function' && document.contains(opener)) quietFocus(opener);
     });
     dialog.addEventListener('click', function (e) {
       if (e.target === dialog) closeDialog(dialog); /* backdrop click */
@@ -58,7 +63,7 @@
         var items = menuItems(menu);
         if (items[0]) items[0].focus();
       } else if (invoker && (menu.contains(document.activeElement) || document.activeElement === document.body)) {
-        invoker.focus();
+        quietFocus(invoker);
       }
     });
     menu.addEventListener('keydown', function (e) {
@@ -75,29 +80,244 @@
     });
   }
 
-  /* ---------- Tooltip (WCAG 1.4.13: dismissable, hoverable, persistent) ---------- */
-  var shownTips = [];
+  /* ---------- Tooltip (WCAG 1.4.13: dismissable, hoverable, persistent) ----------
+     Two forms, one behaviour:
+       wrapper    <span class="cv-tooltip-wrap"> trigger + <span class="cv-tooltip" role="tooltip">
+       attribute  data-cv-tooltip="text" on the trigger (or Covenant.setTooltip(trigger, text)):
+                  Covenant creates the tooltip right after the trigger, so no wrapper changes the layout.
+     The tooltip is placed with position: fixed from the rect of its trigger, centred, above it or
+     below it, on the side that has room, and sits in the top layer (popover="manual") when the
+     browser has the Popover API: no scrolling or clipping ancestor (a sidebar, a transformed
+     drawer) cuts it off. One tooltip is shown at a time. It opens on keyboard focus, and on hover
+     (at once in the wrapper form, after 300 ms in the attribute form), stays while the pointer is
+     over the trigger or the tooltip, and closes on Escape (without closing the dialog or the menu
+     around it), on a click, when the trigger is scrolled out of view or when its menu is open. */
+  var TIP_GAP = 8;          /* between trigger and tooltip, px at the standard text scale */
+  var TIP_MARGIN = 4;       /* smallest distance kept from the edge of the window */
+  var TIP_SHOW_DELAY = 300; /* hover delay of the attribute form */
+  var TIP_HIDE_DELAY = 150;
+  var tipPopover = typeof HTMLElement !== 'undefined' && typeof HTMLElement.prototype.showPopover === 'function';
+  var tipOpen = null;       /* the entry of the tooltip being shown */
+  var tipByTrigger = new WeakMap(); /* attribute form: trigger -> entry */
+  var tipLinks = new WeakMap();     /* attribute form: trigger -> the ARIA links added to it */
+  var tipPointerType = '', tipSuppressCancelUntil = 0;
+
+  /* Where a box of `size` goes against `anchor` in a window of `viewport`: centred on the anchor and
+     clamped horizontally, above or below it. The preferred side ('top' or 'bottom') is kept when the
+     box fits there, else the other side is used when it fits, else the side with more room. */
+  function placeTooltip(anchor, size, viewport, prefer, gap) {
+    if (gap == null) gap = TIP_GAP;
+    var above = anchor.top - gap - size.height;
+    var below = anchor.bottom + gap;
+    var fitsAbove = above >= TIP_MARGIN;
+    var fitsBelow = below + size.height <= viewport.height - TIP_MARGIN;
+    var side = prefer === 'bottom' ? 'bottom' : 'top';
+    if (side === 'top' && !fitsAbove && fitsBelow) side = 'bottom';
+    else if (side === 'bottom' && !fitsBelow && fitsAbove) side = 'top';
+    else if (!fitsAbove && !fitsBelow) side = anchor.top > viewport.height - anchor.bottom ? 'top' : 'bottom';
+    var centre = (anchor.left + anchor.right) / 2 - size.width / 2;
+    var left = Math.max(TIP_MARGIN, Math.min(centre, viewport.width - size.width - TIP_MARGIN));
+    return { left: left, top: side === 'top' ? above : below, side: side };
+  }
+  function tipText(value) { return String(value == null ? '' : value).replace(/\s+/g, ' ').trim(); }
+  function tipPlace(entry) {
+    var tip = entry.tip;
+    /* Measured from the corner: the box must not wrap because of where it was left. */
+    tip.style.left = '0px'; tip.style.top = '0px';
+    var rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    var bottom = tip.classList.contains('cv-tooltip--bottom') || entry.trigger.getAttribute('data-cv-tooltip-side') === 'bottom';
+    var p = placeTooltip(entry.zone.getBoundingClientRect(), { width: tip.offsetWidth, height: tip.offsetHeight },
+      { width: window.innerWidth, height: window.innerHeight }, bottom ? 'bottom' : 'top', TIP_GAP * rem / 16);
+    tip.style.left = p.left + 'px';
+    tip.style.top = p.top + 'px';
+  }
+  function tipClear(entry) {
+    clearTimeout(entry.showTimer); clearTimeout(entry.hideTimer);
+    entry.showTimer = entry.hideTimer = null;
+  }
+  function tipHide(entry) {
+    tipClear(entry);
+    entry.tip.hidden = true;
+    try { if (entry.tip.matches(':popover-open')) entry.tip.hidePopover(); } catch (e) { /* already closed */ }
+    if (tipOpen === entry) tipOpen = null;
+  }
+  function tipShow(entry) {
+    var trigger = entry.trigger, tip = entry.tip;
+    if (!trigger.isConnected || !tip.isConnected || !tipText(tip.textContent)) return;
+    if (trigger.getAttribute('aria-expanded') === 'true') return; /* its menu is open: do not cover it */
+    if (entry.attr && (trigger.disabled || trigger.getAttribute('aria-disabled') === 'true')) return;
+    if (tipOpen && tipOpen !== entry) tipHide(tipOpen);
+    tipClear(entry);
+    tip.hidden = false;
+    if (tipPopover && !tip.matches(':popover-open')) {
+      try { tip.showPopover(); } catch (e) { /* not in a document that can show it */ }
+    }
+    tipOpen = entry;
+    tipPlace(entry);
+  }
+  /* The tooltip being shown, if it is still in the page. */
+  function tipCurrent() {
+    if (tipOpen && (tipOpen.tip.hidden || !tipOpen.tip.isConnected || !tipOpen.trigger.isConnected)) {
+      if (tipOpen.tip.isConnected) tipHide(tipOpen); else tipOpen = null;
+    }
+    return tipOpen;
+  }
+  function tipScheduleShow(entry, delay) {
+    clearTimeout(entry.hideTimer); clearTimeout(entry.showTimer);
+    if (!delay) { tipShow(entry); return; }
+    entry.showTimer = setTimeout(function () { entry.showTimer = null; if (entry.zone.matches(':hover')) tipShow(entry); }, delay);
+  }
+  function tipScheduleHide(entry) {
+    clearTimeout(entry.showTimer); clearTimeout(entry.hideTimer);
+    entry.hideTimer = setTimeout(function () {
+      entry.hideTimer = null;
+      var focused = document.activeElement === entry.trigger && !entry.dismissed.focus;
+      if (!entry.zone.matches(':hover') && !entry.tip.matches(':hover') && !focused) tipHide(entry);
+    }, TIP_HIDE_DELAY);
+  }
+  function tipWire(trigger, tip, zone, attr) {
+    var entry = { trigger: trigger, tip: tip, zone: zone, attr: attr, dismissed: { hover: false, focus: false }, showTimer: null, hideTimer: null };
+    if (!tip.id) tip.id = nextId('cv-tip');
+    tip.hidden = true;
+    tip.setAttribute('data-cv-placed', '');
+    if (tipPopover) tip.setAttribute('popover', 'manual');
+    zone.addEventListener('mouseenter', function () {
+      if (tipPointerType === 'touch' || entry.dismissed.hover) return;
+      tipScheduleShow(entry, attr ? TIP_SHOW_DELAY : 0);
+    });
+    zone.addEventListener('mouseleave', function () { entry.dismissed.hover = false; tipScheduleHide(entry); });
+    tip.addEventListener('mouseenter', function () { clearTimeout(entry.hideTimer); });
+    tip.addEventListener('mouseleave', function () { tipScheduleHide(entry); });
+    trigger.addEventListener('focusin', function () {
+      if (!entry.dismissed.focus && !tipQuiet) tipScheduleShow(entry, 0);
+    });
+    trigger.addEventListener('focusout', function () { entry.dismissed.focus = false; tipScheduleHide(entry); });
+    trigger.addEventListener('pointerdown', function () { entry.dismissed.hover = entry.dismissed.focus = true; tipHide(entry); });
+    trigger.addEventListener('click', function () { tipHide(entry); });
+    return entry;
+  }
   function initTooltip(wrap) {
-    if (!once(wrap, 'cvTooltip')) return;
+    if (!once(wrap, 'cvTipWired')) return; /* not 'cvTooltip': data-cv-tooltip is the attribute form */
     var tip = wrap.querySelector('[role="tooltip"]');
     var trigger = wrap.querySelector(FOCUSABLE);
     if (!tip || !trigger) return;
     if (!tip.id) tip.id = nextId('cv-tip');
     var described = (trigger.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
     if (described.indexOf(tip.id) < 0) { described.push(tip.id); trigger.setAttribute('aria-describedby', described.join(' ')); }
-    tip.hidden = true;
-    var hideTimer = null;
-    function show() { clearTimeout(hideTimer); tip.hidden = false; if (shownTips.indexOf(tip) < 0) shownTips.push(tip); }
-    function hide() { tip.hidden = true; shownTips = shownTips.filter(function (t) { return t !== tip; }); }
-    function hideSoon() { clearTimeout(hideTimer); hideTimer = setTimeout(function () { if (!wrap.contains(document.activeElement) && !wrap.matches(':hover')) hide(); }, 120); }
-    wrap.addEventListener('mouseenter', show);
-    wrap.addEventListener('mouseleave', hideSoon);
-    trigger.addEventListener('focus', show);
-    trigger.addEventListener('blur', hideSoon);
+    tipWire(trigger, tip, wrap, false);
   }
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && shownTips.length) { shownTips.slice().forEach(function (t) { t.hidden = true; }); shownTips = []; }
-  });
+  function tipAccessibleName(trigger, ignoreId) {
+    var labelledBy = trigger.getAttribute('aria-labelledby');
+    if (labelledBy) {
+      var named = tipText(labelledBy.split(/\s+/).filter(function (id) { return id && id !== ignoreId; }).map(function (id) {
+        var node = document.getElementById(id); return node ? node.textContent : '';
+      }).join(' '));
+      if (named) return named;
+    }
+    var label = tipText(trigger.getAttribute('aria-label'));
+    if (label) return label;
+    function visible(node) {
+      if (node.nodeType === 3) return node.textContent || '';
+      if (node.nodeType !== 1 || node.getAttribute('aria-hidden') === 'true' || node.hasAttribute('hidden')) return '';
+      if (node.tagName === 'IMG') return node.getAttribute('alt') || '';
+      return Array.prototype.map.call(node.childNodes, visible).join('');
+    }
+    return tipText(visible(trigger)) || tipText(trigger.getAttribute('title'));
+  }
+  /* The attribute form links the tooltip to its trigger without a duplicate announcement: nothing
+     when the text is the trigger's own name, aria-labelledby when the trigger has no name,
+     aria-describedby otherwise. The links it adds are the only ones it removes. */
+  function tipLink(trigger, tip) {
+    var owned = tipLinks.get(trigger) || {};
+    if (owned.described) {
+      var rest = (trigger.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (id) { return id && id !== owned.described; });
+      if (rest.length) trigger.setAttribute('aria-describedby', rest.join(' ')); else trigger.removeAttribute('aria-describedby');
+    }
+    if (owned.labelled && trigger.getAttribute('aria-labelledby') === owned.labelled) trigger.removeAttribute('aria-labelledby');
+    owned = {};
+    tipLinks.set(trigger, owned);
+    var text = tipText(tip.textContent);
+    if (!text) return;
+    var name = tipAccessibleName(trigger, tip.id);
+    if (name && name.toLowerCase() === text.toLowerCase()) return;
+    if (!name) {
+      if (!trigger.hasAttribute('aria-labelledby')) { trigger.setAttribute('aria-labelledby', tip.id); owned.labelled = tip.id; }
+      return;
+    }
+    var ids = (trigger.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+    if (ids.indexOf(tip.id) < 0) { ids.push(tip.id); trigger.setAttribute('aria-describedby', ids.join(' ')); owned.described = tip.id; }
+  }
+  function initTooltipTrigger(trigger) {
+    if (!trigger.isConnected) return;
+    var text = tipText(trigger.getAttribute('data-cv-tooltip'));
+    var entry = tipByTrigger.get(trigger);
+    if (!entry) {
+      if (!text) return;
+      var tip = document.createElement('div');
+      tip.className = 'cv-tooltip';
+      tip.setAttribute('role', 'tooltip');
+      tip.id = nextId('cv-tip');
+      /* After the trigger; after its menu when it opens one (the menu stays the next sibling); after the
+         button around it when it is a decorative icon (a div is not valid inside a button). */
+      var menuId = trigger.getAttribute('popovertarget') || trigger.getAttribute('commandfor');
+      var next = trigger.nextElementSibling;
+      if (menuId && next && next.id === menuId) next.after(tip);
+      else {
+        var host = trigger.parentElement && trigger.parentElement.closest('button');
+        (host || trigger).after(tip);
+      }
+      entry = tipWire(trigger, tip, trigger, true);
+      tipByTrigger.set(trigger, entry);
+    }
+    if (tipText(entry.tip.textContent) !== text) entry.tip.textContent = text;
+    tipLink(trigger, entry.tip);
+  }
+  /* Gives `trigger` a tooltip (attribute form), or changes its text; an empty text removes it. The
+     tooltip is wired at once when the trigger is in the document, else by Covenant.init(container). */
+  function setTooltip(trigger, text) {
+    if (!trigger) return;
+    var clean = tipText(text);
+    if (clean) { trigger.setAttribute('data-cv-tooltip', clean); trigger.removeAttribute('title'); }
+    else trigger.removeAttribute('data-cv-tooltip');
+    var entry = tipByTrigger.get(trigger);
+    if (!clean && entry) tipHide(entry);
+    initTooltipTrigger(trigger);
+  }
+  /* Hides the tooltip being shown (a view changes, a menu or a dialog opens). */
+  function hideTooltips() { if (tipOpen) tipHide(tipOpen); }
+  function tipEscape() {
+    var entry = tipCurrent();
+    if (!entry) return false;
+    if (entry.zone.matches(':hover')) entry.dismissed.hover = true;
+    if (document.activeElement === entry.trigger) entry.dismissed.focus = true;
+    tipHide(entry);
+    return true;
+  }
+  /* Capture phase: Escape closes the tooltip first, and the dialog or menu behind it stays open. */
+  window.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && tipEscape()) { tipSuppressCancelUntil = Date.now() + 400; e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  window.addEventListener('keyup', function (e) {
+    if (e.key === 'Escape' && Date.now() <= tipSuppressCancelUntil) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  window.addEventListener('cancel', function (e) {
+    if (!(e.target instanceof HTMLDialogElement)) return;
+    if (Date.now() <= tipSuppressCancelUntil || tipEscape()) { tipSuppressCancelUntil = 0; e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+  window.addEventListener('pointerover', function (e) { tipPointerType = e.pointerType; }, true);
+  window.addEventListener('pointerdown', function (e) {
+    tipPointerType = e.pointerType;
+    var entry = tipCurrent();
+    if (entry && !entry.tip.contains(e.target) && !entry.trigger.contains(e.target)) tipHide(entry);
+  }, true);
+  window.addEventListener('scroll', function () {
+    var entry = tipCurrent();
+    if (!entry) return;
+    var r = entry.zone.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) tipHide(entry);
+    else tipPlace(entry);
+  }, true);
+  window.addEventListener('resize', function () { var entry = tipCurrent(); if (entry) tipPlace(entry); });
 
   /* ---------- Tabs (automatic activation, roving tabindex) ---------- */
   function initTabs(root) {
@@ -324,6 +544,7 @@
     each(root, 'dialog.cv-modal, dialog.cv-drawer, dialog.cv-cmd', initDialog);
     each(root, '.cv-menu[popover]', initMenu);
     each(root, '.cv-tooltip-wrap', initTooltip);
+    each(root, '[data-cv-tooltip]', initTooltipTrigger);
     each(root, '.cv-tabs', initTabs);
     each(root, '.cv-combobox', initCombobox);
     each(root, '[data-cv-text-size-control]', initTextSizeControl);
@@ -430,7 +651,10 @@
     openDialog: function (id) { var d = typeof id === 'string' ? document.getElementById(id) : id; if (d) { initDialog(d); openDialog(d); } },
     closeDialog: function (id) { var d = typeof id === 'string' ? document.getElementById(id) : id; closeDialog(d); },
     categoryColors: categoryColors,
-    setCategory: setCategory
+    setCategory: setCategory,
+    setTooltip: setTooltip,
+    hideTooltips: hideTooltips,
+    placeTooltip: placeTooltip
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { init(document); });
