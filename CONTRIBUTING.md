@@ -24,6 +24,9 @@ New code follows the reference architecture described in
 - Types are written in JSDoc and checked by `tsc --checkJs --strict`.
 - ESLint, Prettier and `jsconfig` settings live in [`packages/config`](packages/config/README.md);
   an app extends them instead of copying them.
+- **Adding an app.** Register it in [`packages/suite`](packages/suite/README.md) (`src/apps.js`):
+  its sidebar brand and the links between apps come from there, and a test fails when `apps/`
+  and the registry differ.
 
 ## Translations
 

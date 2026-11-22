@@ -27,7 +27,8 @@
     "@simple-web-tools/dates": "*",
     "@simple-web-tools/i18n": "*",
     "@simple-web-tools/rich-text": "*",
-    "@simple-web-tools/storage": "*"
+    "@simple-web-tools/storage": "*",
+    "@simple-web-tools/suite": "*"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

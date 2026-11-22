@@ -1,0 +1,13 @@
+/* Sidebar brand and app switcher. Covenant tokens only: load Covenant first. */
+
+/* Same size as `.cv-sidebar__brand svg` in Covenant. */
+.swt-brand__icon {
+  font-size: 1.5rem;
+  color: var(--cv-brand-accent);
+}
+
+/* `.cv-sidebar` is a flex column: the auto margin pins the group to the bottom. */
+.swt-switcher {
+  margin-top: auto;
+  padding-top: var(--cv-space-4);
+}
