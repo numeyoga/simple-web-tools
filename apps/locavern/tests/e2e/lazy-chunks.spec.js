@@ -207,7 +207,8 @@ test.describe('Lazy chunks: rich-text editor and whiteboard', () => {
       const manifest = /** @type {string[]} */ (
         await (await fetch('./precache-manifest.json')).json()
       );
-      const cache = await caches.open('locavern-shell-v5');
+      const name = (await caches.keys()).find((key) => key.startsWith('locavern-shell-'));
+      const cache = await caches.open(name ?? '');
       const keys = (await cache.keys()).map((request) => new URL(request.url).pathname);
       return {
         chunks: manifest.filter((entry) => /rich-text-tiptap-|whiteboard-view-/.test(entry)),

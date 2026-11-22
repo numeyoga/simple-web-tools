@@ -120,6 +120,22 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     });
   });
 
+  test('la coque occupe exactement la fenêtre : la page elle-même ne défile pas', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    await expect(page.locator('.cv-shell')).toBeVisible();
+    // La marge de 8px du navigateur sur body ajoutait 16px à une coque haute de 100dvh.
+    const metrics = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollHeight,
+      client: document.documentElement.clientHeight,
+      shellTop: document.querySelector('.cv-shell')?.getBoundingClientRect().top,
+    }));
+    expect(metrics.shellTop).toBe(0);
+    expect(metrics.scroll).toBe(metrics.client);
+  });
+
   test('la barre latérale affiche la marque en premier et le sélecteur d’applications en dernier', async ({
     page,
   }) => {
