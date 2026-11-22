@@ -125,16 +125,13 @@ img.ProseMirror-separator {
   min-height: 7.5rem;
 }
 
-.lc-editor__surface .ProseMirror > * + * {
-  margin-top: var(--cv-space-3);
-}
-
+/* The vertical rhythm (gaps between blocks, list indent, heading margins) is Covenant's `.cv-prose`,
+   which the editor puts on `.ProseMirror`; the headings here only differ by weight and leading. */
 .lc-editor__surface .ProseMirror h1,
 .lc-editor__surface .ProseMirror h2,
 .lc-editor__surface .ProseMirror h3 {
   font-weight: var(--cv-weight-semibold);
   line-height: var(--cv-leading-snug);
-  margin-bottom: var(--cv-space-2);
 }
 
 .lc-editor__surface .ProseMirror a {
