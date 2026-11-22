@@ -25,6 +25,7 @@
   "dependencies": {
     "@simple-web-tools/covenant": "*",
     "@simple-web-tools/dates": "*",
+    "@simple-web-tools/dom": "*",
     "@simple-web-tools/i18n": "*",
     "@simple-web-tools/rich-text": "*",
     "@simple-web-tools/storage": "*",
