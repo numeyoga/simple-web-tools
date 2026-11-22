@@ -1,0 +1,30 @@
+// Types of the Covenant primitives (ui.js). Those of the element builder and of the component
+// builders are `@simple-web-tools/dom`'s, re-exported so that the views import them from here.
+
+export type {
+  Child,
+  Props,
+  Style,
+  DomEvent,
+  Field,
+  ButtonOptions,
+  IconButtonOptions,
+  IconButtonElement,
+  InputOptions,
+  SelectOption,
+  SelectOptions,
+  CheckboxOptions,
+  SegmentedOptions,
+  BadgeOptions,
+  MenuItem,
+  MenuOptions,
+  MenuHost,
+  ModalOptions,
+  ModalHandle,
+  ConfirmOptions,
+  ToastOptions,
+  ToastHost,
+  TargetEvent,
+  TargetKeyEvent,
+  TargetMouseEvent,
+} from '@simple-web-tools/dom';

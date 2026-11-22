@@ -1,0 +1,325 @@
+/* =============================================================================
+   Slides: app styles, loaded after @simple-web-tools/covenant (tokens, components, fonts).
+   Layout glue and the few app-level pieces that Covenant has no component for: the home screen,
+   the control bar, the overview, the presenter window. The slides themselves are in slide.css and
+   the print document in print.css. Rules: semantic roles only (no hex, no primitive scale token),
+   every size in rem, hover and press are instant (motion belongs to overlays and toasts, and
+   Covenant provides it). The CSP forbids a `style` attribute in markup: a value computed at run
+   time goes through the CSSOM.
+   ============================================================================= */
+
+/* --- Layout: flex and spacing ---------------------------------------------------------- */
+.sl-row {
+  display: flex;
+  flex-direction: row;
+}
+.sl-stack {
+  display: flex;
+  flex-direction: column;
+}
+.sl-wrap {
+  flex-wrap: wrap;
+}
+.sl-center-x {
+  justify-content: center;
+}
+.sl-gap-3 {
+  gap: var(--cv-space-3);
+}
+.sl-gap-5 {
+  gap: var(--cv-space-5);
+}
+.sl-meta {
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-sm);
+}
+.sl-card {
+  padding: var(--cv-space-5);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+
+/* --- Home -------------------------------------------------------------------------------- */
+.cv-shell__content.sl-main {
+  display: flex;
+  max-width: 72rem;
+  flex-direction: column;
+  gap: var(--cv-space-6);
+}
+.sl-folder-input {
+  display: none;
+}
+.sl-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cv-space-4);
+  padding: var(--cv-space-8) var(--cv-space-5);
+  border: 1px dashed var(--cv-border-strong);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface-2);
+  text-align: center;
+}
+.sl-dropzone--over {
+  border-color: var(--cv-border-selected);
+  background: var(--cv-bg-accent-subtle);
+}
+.sl-dropzone__icon {
+  color: var(--cv-fg-muted);
+  font-size: 2rem;
+}
+.sl-dropzone__text {
+  max-width: 36rem;
+  color: var(--cv-fg-muted);
+}
+.sl-status {
+  min-height: 1.5em;
+}
+.sl-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--cv-space-5);
+}
+.sl-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-2);
+  padding: 0;
+  list-style: none;
+}
+.sl-shortcuts__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cv-space-3);
+}
+.sl-shortcuts__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cv-space-2);
+}
+
+/* --- The presentation screen: stage and control bar --------------------------------------- */
+.sl-present {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  flex-direction: column;
+  background: var(--cv-bg);
+}
+.sl-stage {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  padding: var(--cv-space-4);
+  container-type: size;
+  container-name: stage;
+}
+.sl-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cv-space-2) var(--cv-space-5);
+  padding: var(--cv-space-3) var(--cv-space-5);
+  border-top: 1px solid var(--cv-border);
+  background: var(--cv-surface);
+}
+.sl-nav__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cv-space-2);
+}
+.sl-nav__group--position {
+  min-width: 0;
+  flex: 1 1 24rem;
+  flex-wrap: nowrap;
+}
+.sl-nav__slider {
+  min-width: 4rem;
+  flex: 1;
+  accent-color: var(--cv-accent-fill);
+  cursor: pointer;
+}
+.sl-nav__counter {
+  min-width: 5.5ch;
+  color: var(--cv-fg-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.sl-nav__goto {
+  width: 4.5rem;
+}
+
+/* --- The overview (a Covenant modal, widened) ---------------------------------------------- */
+.cv-modal.sl-overview {
+  width: min(70rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+}
+.sl-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--cv-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sl-overview__item {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  gap: var(--cv-space-2);
+  padding: var(--cv-space-4);
+  border: 1px solid var(--cv-border-strong);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+  color: var(--cv-fg);
+  cursor: pointer;
+  text-align: left;
+}
+.sl-overview__item:hover {
+  border-color: var(--cv-border-selected);
+}
+.sl-overview__item[aria-current='true'] {
+  border-color: var(--cv-border-selected);
+  background: var(--cv-bg-accent-subtle);
+  box-shadow: 0 0 0 1px var(--cv-border-selected);
+}
+.sl-overview__number {
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-xs);
+}
+.sl-overview__title {
+  font-weight: var(--cv-weight-semibold);
+}
+.sl-overview__description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-sm);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* --- The presenter window ----------------------------------------------------------------- */
+.sl-presenter {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  flex-direction: column;
+  background: var(--cv-bg);
+}
+.sl-presenter__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cv-space-2) var(--cv-space-6);
+  padding: var(--cv-space-3) var(--cv-space-5);
+  border-bottom: 1px solid var(--cv-border);
+  background: var(--cv-surface);
+}
+.sl-presenter__heading {
+  font: var(--cv-weight-semibold) var(--cv-text-md) / 1.2 var(--cv-font-sans);
+}
+.sl-presenter__timer {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-2);
+}
+.sl-presenter__time {
+  font-size: var(--cv-text-xl);
+}
+.sl-presenter[data-running='true'] [data-testid='timer-total'] {
+  color: var(--cv-fg-accent);
+}
+.sl-presenter__counter {
+  margin-left: auto;
+  color: var(--cv-fg-muted);
+}
+.sl-presenter__main {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.sl-presenter__waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cv-space-4);
+  margin: auto;
+  padding: var(--cv-space-6);
+  max-width: 32rem;
+  text-align: center;
+}
+.sl-presenter__grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.6fr) minmax(16rem, 1fr);
+  gap: var(--cv-space-4);
+  padding: var(--cv-space-4);
+}
+.sl-presenter__current {
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-bg);
+}
+.sl-presenter__current .sl-slide {
+  width: 100%;
+  height: 100%;
+}
+.sl-presenter__side {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+}
+.sl-presenter__next-number {
+  color: var(--cv-fg-muted);
+}
+.sl-presenter__next-title {
+  font-weight: var(--cv-weight-semibold);
+}
+.sl-presenter__notes {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+.sl-presenter__notes-public {
+  margin-top: var(--cv-space-5);
+  padding-top: var(--cv-space-4);
+  border-top: 1px solid var(--cv-border);
+}
+@media (max-width: 56rem) {
+  .sl-presenter {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .sl-presenter__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sl-presenter__current {
+    height: 60dvh;
+  }
+}
+
+@media (max-width: 40rem) {
+  .sl-nav {
+    padding: var(--cv-space-3);
+  }
+  .sl-stage {
+    padding: var(--cv-space-2);
+  }
+}
