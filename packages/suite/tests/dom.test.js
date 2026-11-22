@@ -78,6 +78,7 @@ describe('createAppSwitcher', () => {
       '../chrono/',
       './',
       '../transient-notes/',
+      '../favoris/',
     ]);
   });
 

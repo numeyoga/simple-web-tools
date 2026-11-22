@@ -4,7 +4,7 @@ import { fromPackage, fs } from './support/node-fs.js';
 
 describe('APPS', () => {
   it('lists the apps in a fixed order', () => {
-    expect(APPS.map((app) => app.id)).toEqual(['chrono', 'locavern', 'transient-notes']);
+    expect(APPS.map((app) => app.id)).toEqual(['chrono', 'locavern', 'transient-notes', 'favoris']);
   });
 
   it('has unique ids, names and complete entries', () => {
