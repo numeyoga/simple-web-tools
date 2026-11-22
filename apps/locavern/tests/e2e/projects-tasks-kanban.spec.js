@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', () => {
   test('cycle complet projets, tâches, vue liste, Kanban D&D + clavier et axe-core', async ({
@@ -142,7 +143,7 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     // Accessibilité WCAG 2.2 AA en clair et sombre sur Kanban
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoA11yViolations(page);
 
@@ -246,7 +247,7 @@ test.describe('Projets, Tâches (Liste & Kanban) et accessibilité (Étape 4)', 
     // Vérifier WCAG 2.2 AA en thème clair et sombre + reflow 320 px sur la liste avec badges d'alerte
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoA11yViolations(page);
 

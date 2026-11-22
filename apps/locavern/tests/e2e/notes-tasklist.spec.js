@@ -1,5 +1,6 @@
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { test, expect } from '@playwright/test';
+import { setTheme } from './support/shell.js';
 
 test.describe('Notes — alignement des listes de contrôle Tiptap', () => {
   test('aligne les cases à cocher avec la première ligne du texte et respecte Covenant / WCAG 2.2 AA', async ({
@@ -111,7 +112,7 @@ test.describe('Notes — alignement des listes de contrôle Tiptap', () => {
 
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await expectNoA11yViolations(page);

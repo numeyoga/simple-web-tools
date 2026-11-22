@@ -17,26 +17,8 @@
       <a class="cv-skip-link" href="#shell-main" data-i18n="shell.skipLink"></a>
 
       <nav class="cv-sidebar" id="shell-nav" data-i18n-attrs="aria-label:shell.mainNav">
-        <div class="cv-sidebar__brand">
-          <svg viewBox="0 0 40 40" fill="none" aria-hidden="true">
-            <g transform="translate(2,2)">
-              <path
-                d="M 18 4 A 14 14 0 1 0 18 32"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-              />
-              <path
-                d="M 18 10 A 8 8 0 1 1 18 26"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-              />
-              <circle cx="18" cy="18" r="2" fill="var(--cv-brand-accent)" />
-            </g>
-          </svg>
-          <span data-i18n="app.name"></span>
-        </div>
+        <!-- Replaced at startup by the suite's brand (adapters/dom/app-shell.js, mountSuiteChrome). -->
+        <div class="cv-sidebar__brand" id="shell-brand"></div>
 
         <ul>
           <li>
@@ -110,21 +92,6 @@
             </button>
           </li>
         </ul>
-
-        <div class="cv-overline cv-sidebar__group" data-i18n="shell.navPreferences"></div>
-        <ul>
-          <li>
-            <button
-              type="button"
-              class="cv-nav-item lc-nav-btn"
-              id="nav-preferences-btn"
-              data-cv-open="modal-preferences"
-            >
-              <i class="ph ph-sliders-horizontal cv-icon" aria-hidden="true"></i>
-              <span data-i18n="shell.navDisplay"></span>
-            </button>
-          </li>
-        </ul>
       </nav>
 
       <div class="cv-shell__scrim"></div>
@@ -156,25 +123,14 @@
             <kbd class="cv-kbd">Ctrl+K</kbd>
           </button>
 
-          <label class="cv-check cv-switch lc-theme-switch" for="theme-switch">
-            <input
-              type="checkbox"
-              role="switch"
-              id="theme-switch"
-              data-i18n-attrs="aria-label:shell.darkTheme"
-            />
-            <span class="lc-theme-switch__label" data-i18n="shell.dark"></span>
-          </label>
-
           <button
             type="button"
-            class="cv-btn cv-btn--sm"
-            id="topbar-backup-btn"
-            data-cv-open="modal-backup"
-            data-i18n-attrs="aria-label:shell.backupLabel;data-lc-tooltip:shell.backupLabel"
+            class="cv-btn cv-btn--ghost cv-btn--icon"
+            id="topbar-preferences-btn"
+            data-cv-open="modal-preferences"
+            data-i18n-attrs="aria-label:shell.preferences;data-lc-tooltip:shell.preferences"
           >
-            <i class="ph ph-export cv-icon" aria-hidden="true"></i>
-            <span class="lc-topbar-btn-label" data-i18n="shell.backUp"></span>
+            <i class="ph ph-gear cv-icon" aria-hidden="true"></i>
           </button>
         </header>
 
@@ -515,6 +471,29 @@
             </select>
           </span>
           <span class="cv-hint" id="pref-language-hint" data-i18n="prefs.languageHint"></span>
+        </div>
+
+        <div class="cv-field">
+          <span class="cv-label" aria-hidden="true" data-i18n="prefs.theme"></span>
+          <fieldset class="cv-segmented" data-theme-control aria-describedby="pref-theme-hint">
+            <legend data-i18n="prefs.theme"></legend>
+            <label
+              ><input type="radio" name="theme" value="system" checked /><span
+                data-i18n="prefs.themeSystem"
+              ></span
+            ></label>
+            <label
+              ><input type="radio" name="theme" value="light" /><span
+                data-i18n="prefs.themeLight"
+              ></span
+            ></label>
+            <label
+              ><input type="radio" name="theme" value="dark" /><span
+                data-i18n="prefs.themeDark"
+              ></span
+            ></label>
+          </fieldset>
+          <span class="cv-hint" id="pref-theme-hint" data-i18n="prefs.themeHint"></span>
         </div>
 
         <div class="cv-field">

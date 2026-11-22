@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openBackup } from './support/shell.js';
 
 test('enregistre une archive et les images dans le dossier choisi, puis permet de le retirer', async ({
   page,
@@ -26,7 +27,7 @@ test('enregistre une archive et les images dans le dossier choisi, puis permet d
   let downloads = 0;
   page.on('download', () => downloads++);
   await page.goto('/');
-  await page.locator('#topbar-backup-btn').click();
+  await openBackup(page);
   await page.locator('#btn-choose-export-directory').click();
   await expect(page.locator('#export-directory-status')).toContainText('Sauvegardes test');
   await page.locator('#btn-export-archive').click();
@@ -53,7 +54,7 @@ test('enregistre une archive et les images dans le dossier choisi, puis permet d
     .toMatch(/\.png$/);
   expect(downloads).toBe(0);
 
-  await page.locator('#topbar-backup-btn').click();
+  await openBackup(page);
   await page.locator('#btn-forget-export-directory').click();
   await expect(page.locator('#export-directory-status')).toContainText('Aucun dossier choisi');
   const download = page.waitForEvent('download');
@@ -68,7 +69,7 @@ test('explique le téléchargement de repli lorsque le dossier est indisponible'
     Object.defineProperty(window, 'showDirectoryPicker', { value: undefined });
   });
   await page.goto('/');
-  await page.locator('#topbar-backup-btn').click();
+  await openBackup(page);
   await expect(page.locator('#export-directory-status')).toContainText('téléchargement classique');
   await expect(page.locator('#btn-choose-export-directory')).toHaveCount(0);
 });

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Durée paramétrable des notifications toast', () => {
   test('valide, persiste, ferme automatiquement les toasts info/succès et préserve les alertes', async ({
@@ -20,8 +21,8 @@ test.describe('Durée paramétrable des notifications toast', () => {
 
     await page.goto('/');
 
-    // 1. Vérifier la valeur par défaut (6 s) et la validation d’erreur dans Préférences d’affichage
-    await page.locator('#nav-preferences-btn').click();
+    // 1. Vérifier la valeur par défaut (6 s) et la validation d’erreur dans Préférences
+    await page.locator('#topbar-preferences-btn').click();
     await expect(page.locator('#modal-preferences')).toBeVisible();
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
 
@@ -42,10 +43,10 @@ test.describe('Durée paramétrable des notifications toast', () => {
     // Vérifier aussi en thème sombre et à 320 px
     await page.locator('#modal-preferences [data-cv-close]').first().click();
     // La fermeture réinitialise le brouillon invalide à la valeur persistée (6)
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-    await page.locator('#nav-preferences-btn').click();
+    await page.locator('#topbar-preferences-btn').click();
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
     await expect(durationInput).toHaveValue('6');
     await expect(durationError).toBeHidden();
@@ -68,7 +69,7 @@ test.describe('Durée paramétrable des notifications toast', () => {
     await page.locator('#modal-preferences [data-cv-close]').first().click();
 
     await page.reload();
-    await page.locator('#nav-preferences-btn').click();
+    await page.locator('#topbar-preferences-btn').click();
     await expect(durationInput).toHaveValue('1');
     await page.locator('#modal-preferences [data-cv-close]').first().click();
 
@@ -108,7 +109,7 @@ test.describe('Durée paramétrable des notifications toast', () => {
     await focusToast.locator('[data-cv-dismiss]').focus();
     await page.waitForTimeout(1300);
     await expect(focusToast).toBeVisible();
-    await page.locator('#topbar-backup-btn').focus();
+    await page.locator('#topbar-preferences-btn').focus();
     await expect(focusToast).toHaveCount(0, { timeout: 2500 });
 
     // 6. Un toast warning/danger reste affiché au-delà du délai (WCAG 2.2.1) jusqu’à fermeture manuelle

@@ -1,6 +1,7 @@
 /** @import { ActiveView, InputPresentation } from '../../types.d.ts' */
 /** @import { CommandPaletteItem } from './command-palette.js' */
 
+import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { DEFAULT_TOAST_DURATION_SECONDS, normalizeToastDurationSeconds } from '../../core/model.js';
 import { wireCommandPalette } from './command-palette.js';
 import { hideAllTooltips, initTooltips, setTooltip } from './tooltip.js';
@@ -38,8 +39,8 @@ function getSystemScheme() {
 }
 
 /**
- * Apply resolved color scheme to DOM and switch control.
- * @param {'light' | 'dark' | null} override
+ * Apply resolved color scheme to the DOM and to the theme control of the preferences.
+ * @param {'light' | 'dark' | null} override `null` follows the OS.
  */
 function applyScheme(override) {
   const resolved = override ?? getSystemScheme();
@@ -48,34 +49,45 @@ function applyScheme(override) {
     meta.setAttribute('content', override ?? 'light dark');
   }
   document.documentElement.dataset.theme = resolved;
-  const sw = /** @type {HTMLInputElement | null} */ (document.getElementById('theme-switch'));
-  if (sw) {
-    sw.checked = resolved === 'dark';
+  const choice = override ?? 'system';
+  for (const radio of document.querySelectorAll('input[name="theme"]')) {
+    if (radio instanceof HTMLInputElement) {
+      radio.checked = radio.value === choice;
+    }
   }
 }
 
 /**
- * Toggle between light and dark schemes following two-state system-aware persistence.
+ * Store and apply a color scheme. `null` is the system choice: the storage key is removed, so
+ * the theme follows the OS (also before the first paint, see public/theme-init.js).
+ * @param {'light' | 'dark' | null} override
+ */
+export function setColorScheme(override) {
+  try {
+    if (override === null) {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    } else {
+      localStorage.setItem(THEME_STORAGE_KEY, override);
+    }
+  } catch {
+    // Ignore storage access errors in restricted contexts: the choice applies for this session.
+  }
+  applyScheme(override);
+}
+
+/**
+ * Switch between light and dark (command palette). Landing on the OS scheme goes back to the
+ * system choice instead of storing it.
  */
 export function toggleColorScheme() {
   const current = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   const target = current === 'dark' ? 'light' : 'dark';
-  const system = getSystemScheme();
-  try {
-    if (target === system) {
-      localStorage.removeItem(THEME_STORAGE_KEY);
-      applyScheme(null);
-    } else {
-      localStorage.setItem(THEME_STORAGE_KEY, target);
-      applyScheme(target);
-    }
-  } catch {
-    applyScheme(target);
-  }
+  setColorScheme(target === getSystemScheme() ? null : target);
 }
 
 /**
- * Initialize light/dark theme toggle and cross-tab / OS listeners.
+ * Initialize the theme control of the preferences (System / Light / Dark radios named `theme`)
+ * and the cross-tab / OS listeners.
  */
 export function initThemeControl() {
   /** @type {'light' | 'dark' | null} */
@@ -88,8 +100,12 @@ export function initThemeControl() {
   }
   applyScheme(stored);
 
-  const sw = /** @type {HTMLInputElement | null} */ (document.getElementById('theme-switch'));
-  sw?.addEventListener('change', () => toggleColorScheme());
+  for (const radio of document.querySelectorAll('input[name="theme"]')) {
+    radio.addEventListener('change', () => {
+      if (!(radio instanceof HTMLInputElement) || !radio.checked) return;
+      setColorScheme(radio.value === 'light' || radio.value === 'dark' ? radio.value : null);
+    });
+  }
 
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     try {
@@ -106,6 +122,21 @@ export function initThemeControl() {
       applyScheme(next);
     }
   });
+}
+
+/**
+ * Put the suite's brand and app switcher in the static sidebar: the brand replaces the empty
+ * `#shell-brand` placeholder (same slot, so the nav does not shift), the switcher is the last
+ * child of `#shell-nav`.
+ */
+export function mountSuiteChrome() {
+  const nav = document.getElementById('shell-nav');
+  if (!nav) return;
+  const placeholder = document.getElementById('shell-brand');
+  const brand = createAppBrand('locavern');
+  if (placeholder) placeholder.replaceWith(brand);
+  else nav.prepend(brand);
+  nav.append(createAppSwitcher('locavern', { label: t('shell.apps') }));
 }
 
 /**
@@ -529,20 +560,30 @@ export function wireAppShell({ onSelectView, onCommand, getCommandItems }) {
   initThemeControl();
   initTextSizeControl();
 
+  // Below 1024 px the sidebar is a drawer: it closes once a choice is made in it.
+  const closeNavDrawer = () => {
+    const shell = document.querySelector('.cv-shell');
+    if (shell?.hasAttribute('data-nav-open')) {
+      shell.removeAttribute('data-nav-open');
+      const toggle = shell.querySelector('[data-cv-nav-toggle]');
+      toggle?.setAttribute('aria-expanded', 'false');
+    }
+  };
+
   document.querySelectorAll('[data-nav-view]').forEach((link) => {
     link.addEventListener('click', (event) => {
       event.preventDefault();
       const target = /** @type {ActiveView | null} */ (link.getAttribute('data-nav-view'));
       if (target) {
         onSelectView(target);
-        const shell = document.querySelector('.cv-shell');
-        if (shell?.hasAttribute('data-nav-open')) {
-          shell.removeAttribute('data-nav-open');
-          const toggle = shell.querySelector('[data-cv-nav-toggle]');
-          toggle?.setAttribute('aria-expanded', 'false');
-        }
+        closeNavDrawer();
       }
     });
+  });
+
+  // The buttons of the "Data" group open a dialog over the page.
+  document.querySelectorAll('#shell-nav .lc-nav-btn').forEach((button) => {
+    button.addEventListener('click', closeNavDrawer);
   });
 
   wireCommandPalette({ getDynamicItems: getCommandItems });

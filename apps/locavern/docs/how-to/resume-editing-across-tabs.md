@@ -15,7 +15,7 @@ In a read-only tab:
 - You can view **Today**, **Projects**, filter and sort **Tasks** (List and Kanban), browse the
   **Calendar**, read your **Notes**, inspect your **Whiteboards**, browse the **Archive** and view
   the contents of the **Trash**.
-- You can export your data locally: ZIP backup (**Back up** > **Export ZIP archive**), `.ics`
+- You can export your data locally: ZIP backup (**Backups** > **Export ZIP archive**), `.ics`
   calendar, Markdown note, `.svg` or `.png` image.
 - Creating, editing, moving, archiving and unarchiving, deleting, restoring from the trash,
   importing a ZIP and erasing local data are disabled.

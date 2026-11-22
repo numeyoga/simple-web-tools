@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 // A calendar card shows its priority by an icon next to the title (a shape, so the colour is not
 // the only cue), with a tooltip for the pointer; the word stays in the card's accessible name.
@@ -86,7 +87,7 @@ for (const mode of ['week', 'month']) {
     await page.keyboard.press('Escape');
 
     for (const theme of ['light', 'dark']) {
-      if (theme === 'dark') await page.locator('#theme-switch').click();
+      if (theme === 'dark') await setTheme(page, 'dark');
       await expectNoA11yViolations(page);
     }
   });

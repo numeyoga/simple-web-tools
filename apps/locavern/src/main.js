@@ -1,4 +1,5 @@
 import '@simple-web-tools/covenant';
+import '@simple-web-tools/suite/suite.css';
 import '@simple-web-tools/rich-text/editor.css';
 import './styles/app.css';
 
@@ -44,6 +45,7 @@ import { translateStaticMarkup } from './adapters/dom/static-text.js';
 import { hideAllTooltips, initTooltips } from './adapters/dom/tooltip.js';
 import {
   initCovenant,
+  mountSuiteChrome,
   notify,
   openDialogById,
   renderReadOnlyBanner,
@@ -89,6 +91,7 @@ function withDefaultStatuses(payload) {
 
 async function bootstrap() {
   translateStaticMarkup();
+  mountSuiteChrome();
   const viewContainer = document.getElementById('app-view');
   if (!viewContainer) return;
   const rootView = viewContainer;

@@ -24,7 +24,7 @@ whiteboards**).
 - **Create a whiteboard**: click **New whiteboard** (or **Create a whiteboard** when the list is
   empty, or run **Create a whiteboard** from `Ctrl+K`), type the **Whiteboard title** and optionally
   choose the **Project**, then click **Create whiteboard**. The window opens as a modal or a side
-  drawer depending on the **Input style per screen** setting in the display preferences.
+  drawer depending on the **Input style per screen** setting in the preferences.
 - **Rename and attach to a project**: edit **Whiteboard title** and **Project** directly in the
   whiteboard header, or click **Open the editor** to edit them in the configured input window.
 - **Filter and search**: use the drop-down at the top left (**All whiteboards**, **No project** or

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Modèles locaux réutilisables (checklists, trames de notes, canevas) & WCAG 2.2 AA', () => {
   test('cycle complet : modèles intégrés, création personnalisée, persistance IndexedDB, suppression et axe-core', async ({
@@ -130,7 +131,7 @@ test.describe('Modèles locaux réutilisables (checklists, trames de notes, cane
     // Audit axe-core clair + sombre + reflow 320 px
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoA11yViolations(page);
 

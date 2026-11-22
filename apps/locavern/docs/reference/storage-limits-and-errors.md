@@ -21,7 +21,7 @@ repository are published on the same origin, so **every storage name of Locavern
 - **`IndexedDB` database `locavern-db`, version `4`**, with eight object stores. The database is
   opened through the shared `@simple-web-tools/storage` package, and its names are frozen because
   existing users' data lives under them:
-  - `meta`: key `preferences` (display preferences, active view, List/Kanban mode, current
+  - `meta`: key `preferences` (preferences, active view, List/Kanban mode, current
     selections, notification duration, trash retention, Kanban columns with `isInitial` /
     `isTerminal` roles) and key `lastBackupAt` (ISO timestamp of the last ZIP backup saved);
   - `projects`: projects (including `archived` / `archivedAt`);
@@ -34,8 +34,7 @@ repository are published on the same origin, so **every storage name of Locavern
   - `trash`: the local trash (`TrashItem`: a snapshot of the deleted item, its deletion date and
     its expiry date);
   - `templates`: custom local templates (`LocalTemplate` for a checklist, a note or a whiteboard).
-- **`localStorage`**: `locavern-color-scheme` (`light` or `dark`, removed when the choice matches
-  the system theme), `locavern-text-size` (`standard`, `comfortable` or `large`, removed for
+- **`localStorage`**: `locavern-color-scheme` (`light` or `dark`, removed for `System`), `locavern-text-size` (`standard`, `comfortable` or `large`, removed for
   `Automatic`) and `locavern-locale` (`en` or `fr`, removed for `Automatic`).
 - **Multi-tab lock**: the Web Lock `locavern-write-lock` and the `BroadcastChannel`
   `locavern-lock-channel`.
@@ -108,7 +107,7 @@ Crypto API (`crypto.subtle`), then packed into a ZIP envelope (`level: 0`):
     entities and the `assetIds`.
   - Not carried by the `v2` archive schema (`src/core/schema.js`), so they stay local to this
     device's `IndexedDB` / `localStorage`: the content of the trash (`trash`), custom templates
-    (`templates`), the other display preferences, and the `localStorage` settings.
+    (`templates`), the other preferences, and the `localStorage` settings.
 
 | Item                                               | Value or verified constraint                                                                                            |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -155,8 +154,8 @@ Crypto API (`crypto.subtle`), then packed into a ZIP envelope (`level: 0`):
 | Task form                | `Enter a task title.`                                                                                                                        | Submitting with an empty title, or one made only of spaces                                       |
 | Note form                | `Enter a note title.`                                                                                                                        | Submitting the note input window with an empty title                                             |
 | Whiteboard form          | `Enter a whiteboard title.`                                                                                                                  | Submitting the whiteboard input window with an empty title                                       |
-| Display preferences      | `Invalid duration: the value is out of range or not a whole number. Enter a whole number between 1 and 60 seconds.`                          | Value outside `[1; 60]` or not a whole number in the notification duration field                 |
-| Display preferences      | `Invalid delay: enter a whole number between 1 and 365 days.`                                                                                | Value outside `[1; 365]` or not a whole number in the trash retention field                      |
+| Preferences              | `Invalid duration: the value is out of range or not a whole number. Enter a whole number between 1 and 60 seconds.`                          | Value outside `[1; 60]` or not a whole number in the notification duration field                 |
+| Preferences              | `Invalid delay: enter a whole number between 1 and 365 days.`                                                                                | Value outside `[1; 365]` or not a whole number in the trash retention field                      |
 
 ### Multi-tab lock, trash and persistence
 

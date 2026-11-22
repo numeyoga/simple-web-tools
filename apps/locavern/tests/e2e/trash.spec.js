@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Corbeille locale et rétention configurable (Todo 20)', () => {
   test('conserve les éléments supprimés, configure la rétention, restaure et purge définitivement, WCAG 2.2 AA', async ({
@@ -8,7 +9,7 @@ test.describe('Corbeille locale et rétention configurable (Todo 20)', () => {
     await page.goto('/');
 
     // Configurer la rétention de la corbeille dans les préférences (14 jours)
-    await page.locator('#nav-preferences-btn').click();
+    await page.locator('#topbar-preferences-btn').click();
     await expect(page.locator('#modal-preferences')).toHaveAttribute('open', '');
     await page.locator('#pref-trash-retention').fill('14');
     await page.locator('#pref-trash-retention').blur();
@@ -69,7 +70,7 @@ test.describe('Corbeille locale et rétention configurable (Todo 20)', () => {
     await expect(page.getByText('Aucun projet pour le moment')).toBeVisible();
     await expect(page.locator('#nav-trash-count')).toHaveText('1');
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await page.locator('#nav-trash-btn').click();
     await expect(page.locator('#modal-trash')).toHaveCSS('opacity', '1');
     await expect(page.locator('#modal-trash-body')).toContainText('Projet Archive Corbeille');

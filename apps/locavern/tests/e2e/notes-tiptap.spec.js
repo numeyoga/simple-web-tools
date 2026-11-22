@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openBackup } from './support/shell.js';
 
 const TINY_PNG_PATH = new URL('./fixtures/tiny.png', import.meta.url).pathname;
 
@@ -72,7 +73,7 @@ test.describe('Notes enrichies Tiptap & images locales (Étape 5)', () => {
     );
 
     // Vérifier conservation de l’image dans l’export -> reset -> import
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#btn-export-archive').click();
     const download = await downloadPromise;
@@ -82,7 +83,7 @@ test.describe('Notes enrichies Tiptap & images locales (Étape 5)', () => {
     await page.locator('#modal-confirm').getByRole('button', { name: 'Effacer tout' }).click();
     await expect(page.getByText('Aucune note disponible')).toBeVisible();
 
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     await page.locator('#input-import-archive').setInputFiles(/** @type {string} */ (zipPath));
     await expect(page.locator('#import-archive-panel')).toBeVisible();
     await page.locator('input[name="import-mode"][value="replace"]').check();

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 /** @param {number} deltaDays */
 function formatIsoOffset(deltaDays) {
@@ -84,7 +85,7 @@ test.describe('Vue d’accueil Aujourd’hui', () => {
     // Axe-core clair & sombre + reflow 320 px
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });

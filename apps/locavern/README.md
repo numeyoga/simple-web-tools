@@ -3,11 +3,12 @@
 Local-first personal productivity app in vanilla JavaScript (ES modules, Vite): no runtime
 framework. Projects, tasks, Kanban, calendar, rich-text notes and an SVG whiteboard, all in the
 browser. The interface is available in English and French (it follows the browser, and can be chosen
-in the display preferences). Nothing is sent to a server.
+in the preferences). Nothing is sent to a server.
 
 The runtime dependencies are the monorepo packages `@simple-web-tools/covenant` (design system,
-bundled fonts and icons), `storage`, `dates`, `i18n` and `rich-text` (the Tiptap editor of notes and
-task descriptions, which carries the Tiptap dependencies: see
+bundled fonts and icons), `storage`, `dates`, `i18n`, `suite` (the brand and the links to the
+sibling apps, at the top and the bottom of the sidebar) and `rich-text` (the Tiptap editor of notes
+and task descriptions, which carries the Tiptap dependencies: see
 [its README](../../packages/rich-text/README.md)), plus two third-party libraries, each with a reason
 ([decision 0003](../../docs/decisions/0003-no-runtime-framework.md)):
 

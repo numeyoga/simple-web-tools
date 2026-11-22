@@ -26,7 +26,7 @@ Open the **Projects** view from the side navigation: only active projects are li
 
 - **Create a project**: click **New project**, enter a name (required) and an optional
   description, then click **Create project**. The window opens as a modal or a side drawer
-  depending on the **Input style per screen** setting in the display preferences.
+  depending on the **Input style per screen** setting in the preferences.
 - **Edit a project**: on the project card, click **Edit**, change the name or description, then
   click **Save**.
 - **Open the items of a project**: click **Open tasks**, **Open notes** or **Open whiteboards** on
@@ -57,7 +57,7 @@ Every task belongs to an existing project.
 - **Full creation or edit**:
   1. In the **Tasks** view, select a project in the drop-down (or keep **All projects**), then
      click **New task**, or the **+** button at the top of a Kanban column to prefill its status.
-     The form opens as a side drawer or a modal depending on the display preferences.
+     The form opens as a side drawer or a modal depending on the preferences.
   2. Fill in **Title** (required), **Project**, **Status** (one of the configured statuses or
      **No status**; an **Initial** or **Final** badge shows its role), **Priority**, **Due date and
      time** (the time is optional, `HH:MM`) and, if needed, **Recurrence** (**Daily**, **Weekly**
@@ -81,7 +81,7 @@ By default the Kanban board has three columns: **To do** (**Initial** role), **I
 workflow:
 
 1. In the header of the **Tasks** view click **Statuses** (or **Configure the Kanban columns**; you
-   can also use **Configure the Kanban statuses** in the display preferences or in the `Ctrl+K`
+   can also use **Configure the Kanban statuses** in the preferences or in the `Ctrl+K`
    palette).
 2. In the **Kanban statuses** window:
    - **Rename a status**: edit its label in the list.
@@ -145,4 +145,4 @@ Press `Ctrl+K` (`Cmd+K` on macOS), or click **Search or run a command** in the t
 command palette. Type one or more words (case and accent insensitive) to filter the action
 commands and your active projects, tasks, notes, whiteboards and tags, then press `Enter` to
 switch view (including **Archive**), open an item directly or run an action (including **Trash**,
-**Backups**, the display preferences or the light/dark theme).
+**Backups**, the preferences or the light/dark theme).

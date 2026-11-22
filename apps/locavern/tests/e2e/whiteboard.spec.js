@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 const TINY_PNG_PATH = new URL('./fixtures/tiny.png', import.meta.url).pathname;
 
@@ -208,7 +209,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     await expectNoA11yViolations(page);
 
     // Basculer en thème sombre et vérifier axe-core
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoA11yViolations(page);
 
@@ -588,7 +589,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     await expect(maxBtn).toBeFocused();
 
     // Basculer en thème sombre, rouvrir et auditer axe-core + reflow 320 px
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await maxBtn.click();
     await expect(maxDialog).toBeVisible();
@@ -630,7 +631,7 @@ test.describe('Tableaux blancs SVG, persistance IndexedDB & accessibilité WCAG 
     page,
   }) => {
     await page.goto('/');
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await page.locator('[data-nav-view="whiteboards"]').click();
