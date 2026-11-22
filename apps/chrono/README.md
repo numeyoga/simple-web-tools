@@ -183,10 +183,9 @@ src/
     workspaces.js     workspace API (WORKSPACES), JSON import, download
     backup.js         export and import: package envelope, version 1 files
     i18n.js           the translator and the choice of language
-    pwa.js, sw-update.js  service worker registration and update detection
     ids.js            id generator
     dom/              views and interface primitives
-  sw/sw.js            the service worker (built to dist/sw.js)
+  sw/sw.js            the service worker: one call to @simple-web-tools/pwa (built to dist/sw.js)
 tests/
   unit/               Vitest
   e2e/                Playwright
@@ -214,7 +213,6 @@ writes. A rule that changes nothing returns the object it received.
 | `import-export.js`        | Import validation, recognition and wrapping of version 1 files.                               |
 | `report.js`               | Weekly report aggregation and CSV text.                                                       |
 | `preferences.js`          | Rules on the preferences (single-key shortcuts).                                              |
-| `pwa.js`                  | Cache name, precache list, which caches an update may delete.                                 |
 
 **`src/adapters`**: `createStore()` holds the state (`projects`, `todos`, `sessions`,
 `attendance`) and exposes `actions`. Each action calls a `core` rule with the current time and a
@@ -253,7 +251,9 @@ headers should send the same policy.
 - **Manifest**: `public/manifest.webmanifest` (name "Chrono", `start_url` and `scope` `./`, icons
   generated from `favicon.svg`).
 - **Service worker** (`src/sw/sw.js`, built to `sw.js` at the root of the app): registered with
-  the scope `./`, so under `/chrono/` on Pages it only controls `/chrono/`. At build time a plugin
+  the scope `./`, so under `/chrono/` on Pages it only controls `/chrono/`. The rules, the worker
+  and the build plugin are the shared [`@simple-web-tools/pwa`](../../packages/pwa/README.md)
+  package; the app only gives it its id (`chrono`) and its policy. At build time the plugin
   writes `precache-manifest.json` (every file of the output except the worker, source maps and
   legacy font formats) and stamps the worker with a hash of those files. The cache is named
   `chrono-shell-<hash>`; a new build gets a new name, and on activation the worker deletes the

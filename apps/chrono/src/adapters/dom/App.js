@@ -1,6 +1,7 @@
 // Main shell (the AppShell of the Covenant skill): skip link, sidebar (brand, workspace, the four
 // sections, app switcher), sticky top bar (page title, presence and timers summary, preferences)
 // and the main region that swaps the views. Below 1024 px the sidebar is an off-canvas drawer.
+import { registerServiceWorker } from '@simple-web-tools/pwa/update';
 import { findApp } from '@simple-web-tools/suite';
 import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { StorageError } from '../idb.js';
@@ -12,7 +13,6 @@ import {
   watchPreferences,
 } from '../preferences.js';
 import { WORKSPACES } from '../workspaces.js';
-import { registerServiceWorker } from '../pwa.js';
 import { setDefaultWorkspaceLabel } from '../workspace-list.js';
 import { createTopbarStatus } from './AttendanceWidget.js';
 import { openPreferences } from './Preferences.js';
@@ -444,7 +444,8 @@ export function start(rootEl) {
   }).observe(document.body, { childList: true, subtree: true });
 
   // A new version waits in the background: the toast stays until the person reloads or dismisses it.
-  registerServiceWorker({
+  void registerServiceWorker({
+    enabled: import.meta.env.PROD,
     onUpdateReady(applyUpdate) {
       toasts.push({
         variant: 'info',
