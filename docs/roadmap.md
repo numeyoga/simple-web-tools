@@ -96,7 +96,7 @@ first, so that the new apps start from it instead of adding three more copies.
   - the apps drop their own reset rules and use `.cv-prose` where they show user content;
   - safety net: screenshots of the main views of the three apps, both themes, 1280 and 390 px,
     taken before and compared after; any difference is explained or fixed.
-- [ ] **`packages/pwa`**: the offline shell rules (`src/core/pwa.js`), the worker source and
+- [x] **`packages/pwa`**: the offline shell rules (`src/core/pwa.js`), the worker source and
       the Vite plugin (CSP meta tag, `precache-manifest.json`, build id stamp) are three
       copies today. One package, parameterised by the app id and its CSP; the three apps use
       it with no change in behaviour (same cache names, same tests passing).
