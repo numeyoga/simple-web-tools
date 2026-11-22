@@ -4,8 +4,7 @@
 // the sidebar is an off-canvas drawer, which the skill's own script opens and closes.
 import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { MAIN_FILE } from '../../core/folder.js';
-import { openPreferences } from './Preferences.js';
-import { shortcutsList } from './Preferences.js';
+import { openPreferences, shortcutsList } from './Preferences.js';
 import * as UI from './ui.js';
 
 const { el, icon, t, tNodes } = UI;
