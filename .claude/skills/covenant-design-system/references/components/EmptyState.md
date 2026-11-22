@@ -13,7 +13,7 @@ An empty state explains why a view has no content and offers the next action.
 
 ## Classes and states
 
-- `cv-empty`: dashed `cv-border-strong`, centred. `cv-empty__icon`: 44 px tile in `cv-surface-2`, 8 px radius.
+- `cv-empty`: dashed `cv-border-strong`, centred. Its sentences (`p`) keep a `1em` vertical margin on top of the flex gap, the browser's own margin that the reset removed; set `margin: 0` on one to close the gap. `cv-empty__icon`: 44 px tile in `cv-surface-2`, 8 px radius.
 
 ## Accessibility and keyboard
 

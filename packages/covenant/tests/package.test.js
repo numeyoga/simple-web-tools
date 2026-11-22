@@ -50,3 +50,31 @@ describe('no third-party request (decision 0003)', () => {
     }
   });
 });
+
+describe('reset and prose', () => {
+  const css = readFileSync(join(root, 'src/covenant.css'), 'utf8');
+  const layer = /@layer cv-reset \{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+
+  it('resets the browser margins inside @layer cv-reset, so that unlayered rules still win', () => {
+    expect(layer).toMatch(/body \{ margin: 0; \}/);
+    expect(layer).toMatch(
+      /h1, h2, h3, h4, h5, h6, p, ul, ol, figure, blockquote, dl, dd \{ margin: 0; \}/,
+    );
+    expect(layer).toMatch(/img, picture, video, canvas \{ display: block; max-width: 100%; \}/);
+    expect(layer).toMatch(/text-wrap: balance/);
+  });
+
+  it('leaves inline svg and list markers alone', () => {
+    expect(layer).not.toMatch(/svg/);
+    expect(layer).not.toMatch(/list-style/);
+  });
+
+  it('keeps .cv-prose outside the layer, with zero specificity', () => {
+    expect(layer).not.toMatch(/cv-prose/);
+    const rules = css
+      .split('\n')
+      .filter((line) => line.includes('.cv-prose') && line.includes('{'));
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) expect(rule).toMatch(/^:where\(\.cv-prose\)/);
+  });
+});
