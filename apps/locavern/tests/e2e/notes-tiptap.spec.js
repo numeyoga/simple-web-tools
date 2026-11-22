@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { openBackup } from './support/shell.js';
 
 const TINY_PNG_PATH = new URL('./fixtures/tiny.png', import.meta.url).pathname;
@@ -77,7 +78,7 @@ test.describe('Notes enrichies Tiptap & images locales (Étape 5)', () => {
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#btn-export-archive').click();
     const download = await downloadPromise;
-    const zipPath = await download.path();
+    const zipPath = await saveDownload(download);
 
     await page.locator('#btn-reset-all-data').click();
     await page.locator('#modal-confirm').getByRole('button', { name: 'Effacer tout' }).click();
