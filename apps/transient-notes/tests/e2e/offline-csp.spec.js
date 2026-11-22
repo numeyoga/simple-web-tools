@@ -3,6 +3,7 @@
 // 127.0.0.1 (see playwright.config.js).
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import {
   createNote,
@@ -159,7 +160,9 @@ test.describe('strict Content Security Policy', () => {
     await waitForWrite(page, 'notes', 'title', '');
     const jsonDownload = page.waitForEvent('download');
     await workspaces.getByRole('button', { name: 'Export JSON' }).click();
-    const json = JSON.parse((await readFile(await (await jsonDownload).path())).toString('utf8'));
+    const json = JSON.parse(
+      (await readFile(await saveDownload(await jsonDownload))).toString('utf8'),
+    );
     expect(json).toMatchObject({ app: 'transient-notes', format: 'transient-notes-workspace' });
     await page.keyboard.press('Escape');
 

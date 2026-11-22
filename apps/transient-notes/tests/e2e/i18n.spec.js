@@ -4,6 +4,7 @@
 import { readFile } from 'node:fs/promises';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import {
   PNG_BASE64,
   createNote,
@@ -142,7 +143,7 @@ test.describe('browser in English (en-US)', () => {
     const pending = page.waitForEvent('download');
     await page.getByRole('menuitem', { name: 'All notes as text (.txt)' }).click();
     const file = await pending;
-    const text = (await readFile(await file.path())).toString('utf8');
+    const text = (await readFile(await saveDownload(file))).toString('utf8');
 
     expect(file.suggestedFilename()).toBe('transient-notes-default-2026-11-18.txt');
     const lines = text.split('\n');
@@ -154,7 +155,7 @@ test.describe('browser in English (en-US)', () => {
     await page.getByRole('button', { name: 'Export note', exact: true }).click();
     const pendingMd = page.waitForEvent('download');
     await page.getByRole('menuitem', { name: 'As Markdown (.md)' }).click();
-    const markdown = (await readFile(await (await pendingMd).path())).toString('utf8');
+    const markdown = (await readFile(await saveDownload(await pendingMd))).toString('utf8');
     expect(markdown).toMatch(/^# Plan\n\nFirst line/);
     expect(markdown).toContain('![photo.png](local-asset://');
   });
