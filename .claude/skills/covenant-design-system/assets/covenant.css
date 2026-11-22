@@ -66,6 +66,37 @@
    Base
    ----------------------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
+
+/* Reset: a minimal modern one, in its own cascade layer. It beats the browser's styles but loses
+   to every unlayered rule, so no component or application rule changes with it. Lists keep their
+   markers (user content needs them) and inline svg is left alone (icons, logos). The vertical
+   rhythm of user content comes back with .cv-prose, below. */
+@layer cv-reset {
+  body { margin: 0; }
+  h1, h2, h3, h4, h5, h6, p, ul, ol, figure, blockquote, dl, dd { margin: 0; }
+  img, picture, video, canvas { display: block; max-width: 100%; }
+  h1, h2, h3, h4, h5, h6, p { overflow-wrap: break-word; }
+  h1, h2, h3, h4, h5, h6 { text-wrap: balance; }
+}
+
+/* Prose: the vertical rhythm of user content (notes, rich-text surface, Markdown preview, slides),
+   which the reset takes away from the browser. Every selector is wrapped in :where(), so the
+   specificity is zero and any rule of a component or an application still wins. It keeps the
+   browser's flow margins (1em around blocks, the heading steps, 2.5rem of list indent) and sets the
+   gap between siblings and under headings with the space tokens. Apply it to the element that
+   holds the blocks. */
+:where(.cv-prose) :where(p, ul, ol, blockquote, pre, figure, dl) { margin-block: 1em; }
+:where(.cv-prose) :where(ul, ol) :where(ul, ol) { margin-block: 0; }
+:where(.cv-prose) :where(ul, ol) { padding-inline-start: var(--cv-space-9); }
+:where(.cv-prose) :where(blockquote, dd) { margin-inline-start: var(--cv-space-9); }
+:where(.cv-prose) :where(blockquote) { margin-inline-end: var(--cv-space-9); }
+:where(.cv-prose) :where(h1) { margin-block: 0.67em var(--cv-space-2); }
+:where(.cv-prose) :where(h2) { margin-block: 0.83em var(--cv-space-2); }
+:where(.cv-prose) :where(h3) { margin-block: 1em var(--cv-space-2); }
+:where(.cv-prose) :where(h4) { margin-block: 1.33em var(--cv-space-2); }
+:where(.cv-prose) :where(h5) { margin-block: 1.67em var(--cv-space-2); }
+:where(.cv-prose) :where(h6) { margin-block: 2.33em var(--cv-space-2); }
+:where(.cv-prose) > :where(* + *) { margin-top: var(--cv-space-3); }
 /* -----------------------------------------------------------------------------
    Text scale. Every size is in rem, so the whole interface follows:
    - the browser's default font size (the user's own setting);
@@ -449,6 +480,8 @@ input.cv-input[type="date"], input.cv-input[type="time"], input.cv-input[type="d
   border-radius: var(--cv-radius-md); background: var(--cv-surface-2); color: var(--cv-fg-muted); font-size: 1.375rem;
 }
 .cv-empty__title { font: var(--cv-weight-semibold) var(--cv-text-md)/1.4 var(--cv-font-sans); color: var(--cv-fg); }
+/* The sentences keep the browser's 1em margin, which the reset removed, so the empty state does not move. */
+.cv-empty > p { margin-block: 1em; }
 
 /* -----------------------------------------------------------------------------
    Card

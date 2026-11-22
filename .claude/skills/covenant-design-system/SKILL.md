@@ -58,6 +58,7 @@ Local adaptation of the published skill, to merge back if it proves useful:
 ## Firm rules
 
 - Vanilla Web only. Do not add React, Vue, Tailwind or any UI library. If the host project already uses a framework, render the same Covenant markup and classes in its templates.
+- No reset of your own: Covenant resets margins, images and heading wrapping in `@layer cv-reset`. Do not write `html, body { margin: 0 }` or `margin: 0` on headings, paragraphs or lists; show user content inside `.cv-prose` (see `references/foundations.md`, "Reset and prose").
 - Native HTML first: `<button>`, `<a href>`, `<input>`, `<select>`, `<dialog>`, `popover`, `<fieldset>`/`<legend>`, `<table>`.
 - Everything follows the theme. Use semantic tokens only (`--cv-bg`, `--cv-surface*`, `--cv-fg*`, `--cv-border*`, `--cv-<status>-surface|border`, `--cv-*-fill*`, `--cv-brand-*`). Never use a primitive scale token (`--cv-neutral-*`, `--cv-accent-<n>`, `--cv-<status>-<n>`), a hex, `rgb()` or named colour in component CSS or markup: `grep -nE "var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)"` must return nothing. A missing role is a gap to report, not a primitive to borrow.
 - One accent, orange. Text never sits on `--cv-brand-accent`; fills behind text use `--cv-accent-fill` with `--cv-fg-on-accent`. Destructive fills use `--cv-danger-fill` with `--cv-fg-on-danger`. Invalid fields use `--cv-border-danger`, selection `--cv-border-selected`, inverse bubbles `--cv-surface-inverse` with `--cv-fg-inverse`. On `--cv-surface-3` only `--cv-fg` and `--cv-fg-muted`.

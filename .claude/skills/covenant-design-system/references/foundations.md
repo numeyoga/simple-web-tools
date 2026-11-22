@@ -197,6 +197,11 @@ A 4 px base scale (0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80 px at standard
 - Controls use `min-height`, never a fixed height, so 200 % zoom (1.4.4) and text-spacing overrides (1.4.12) never clip text.
 - Every page starts with a skip link to `<main>` and keeps the sidebar order identical.
 
+### Reset and prose
+- **Reset.** `covenant.css` starts with a minimal modern reset in its own cascade layer, `@layer cv-reset`: `body` margin 0; margin 0 on `h1`–`h6`, `p`, `ul`, `ol`, `figure`, `blockquote`, `dl`, `dd`; `img`, `picture`, `video` and `canvas` as `display: block; max-width: 100%`; `overflow-wrap: break-word` on paragraphs and headings; `text-wrap: balance` on headings. Inline `svg` is left alone (icons, logos) and lists keep their markers. The layer beats the browser's styles but loses to every unlayered rule, so a component or an application rule never needs `!important` against it. An application does not reset on its own (`html, body { margin: 0 }`, a `margin: 0` on a heading or a paragraph): the browser's margins are already gone. Space blocks with `gap` or an explicit token margin.
+- **`.cv-prose`.** User content (notes, a rich-text surface, a Markdown preview, slides) needs the vertical rhythm the reset removed. Put `class="cv-prose"` on the element that holds the blocks: `1em` around `p`, `ul`, `ol`, `blockquote`, `pre`, `figure` and `dl`; nested lists tight; `2.5rem` of list indent (`--cv-space-9`); heading steps of the browser (`0.67em` for `h1` to `2.33em` for `h6`) above and `--cv-space-2` below; `--cv-space-3` between siblings (`> * + *`). Every selector is wrapped in `:where()`, so the specificity is zero: a component or an application rule that sets a margin or a padding on a block of the content still wins (the task list of the rich-text editor does).
+- A Covenant component that used to rely on the browser's margin states its own (`.cv-empty > p`, `1em`).
+
 ### Imagery
 The chrome carries no imagery. When user-uploaded images appear (attachments, avatars):
 - Avatars are circles at 24 / 32 / 40 px. Fallback is initials in `--cv-fg` on `--cv-surface-3`.

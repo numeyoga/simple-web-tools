@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-22 — a reset in `@layer cv-reset`, and `.cv-prose`
+
+Requested by the three applications, which each reset the browser's margins on their own (`html, body { margin: 0 }`, a `margin: 0` per heading or paragraph) and sometimes forgot to. Nothing was renamed or removed. No colour, token or component markup changed.
+
+### Added: `@layer cv-reset`
+- **CSS** in `covenant.css` Base, right after the `box-sizing` rule: `body` margin 0; margin 0 on `h1`–`h6`, `p`, `ul`, `ol`, `figure`, `blockquote`, `dl`, `dd`; `img, picture, video, canvas` as `display: block; max-width: 100%`; `overflow-wrap: break-word` on `p` and headings; `text-wrap: balance` on headings.
+- **Left alone on purpose:** inline `svg` (icons and logos are sized by their own rules), `list-style` (user content needs its bullets and numbers), and the `margin: 0` of existing components (harmless, they stay).
+- **Why a layer:** a layered rule beats the browser's styles but loses to every unlayered rule, so no component or application rule changes with it.
+- **Visible effects, all intended:** the browser's margins on headings, paragraphs and lists in application markup are gone (an application that relied on them states its own spacing); headings wrap balanced, so a two-line heading breaks in the middle instead of leaving a short last line.
+
+### Added: `.cv-prose`
+- The vertical rhythm of user content, which the reset takes away: `1em` around `p`, `ul`, `ol`, `blockquote`, `pre`, `figure`, `dl`; nested lists with no margin; list indent `--cv-space-9`; headings with the browser's steps above and `--cv-space-2` below; `--cv-space-3` between siblings. All the selectors are in `:where()` (zero specificity). It reproduces the rhythm of the rich-text editor of the applications as it was before the reset, pixel for pixel. Documented in `references/foundations.md` ("Reset and prose") and in the firm rules of `SKILL.md`.
+
+### Corrected
+- **EmptyState**: `.cv-empty > p { margin-block: 1em }`. The sentences of an empty state got their space from the browser's paragraph margin, on top of the flex gap; the reset would have closed it, so the component now states it and does not move.
+
 ## 2026-11-19 (3) — category colours, muted text on the inverse surface, corrections
 
 Requested by two applications being converted to Covenant. Nothing was renamed or removed; everything below is an addition, except the two corrections.
