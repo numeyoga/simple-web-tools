@@ -41,6 +41,12 @@ Options: `port` (4173), `host` (`127.0.0.1`, a secure context for Service Worker
 `fullyParallel`, `list` reporter, `trace: 'on-first-retry'`; on CI (`CI` set): `forbidOnly`,
 one retry, one worker, and no reuse of a running server.
 
+With `PLAYWRIGHT_WS_ENDPOINT` set (for example `ws://127.0.0.1:3000/`, a shared
+`playwright run-server`), the tests run in that remote browser and its loopback requests are
+tunnelled back to the local preview server. `download.path()` is not available remotely, so
+use `saveDownload(download)` (same module): it saves the download in the test output folder
+with `saveAs()` and returns the local path.
+
 ## axe preset
 
 ```js
