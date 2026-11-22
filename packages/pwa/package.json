@@ -1,0 +1,32 @@
+{
+  "name": "@simple-web-tools/pwa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The offline shell of the Simple Web Tools apps: cache rules, service worker, update flow and the Vite plugin that builds them",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/pwa"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./worker": "./src/worker.js",
+    "./update": "./src/update.js",
+    "./vite": "./src/vite.js"
+  },
+  "scripts": {
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@simple-web-tools/config": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}
