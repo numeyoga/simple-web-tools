@@ -112,7 +112,8 @@ graph LR
 
 If a diagram cannot be drawn (a typo in its code, for instance), the slide shows a message and keeps
 the code, and the other diagrams are still drawn. The first diagram of a session loads the drawing
-library, which takes a moment the first time; once the app is installed it works offline.
+library, which takes a moment the first time. Offline, diagrams work once a presentation with a
+diagram has been shown online on this browser (see [offline](privacy-and-offline.md#offline)).
 
 ## Images
 

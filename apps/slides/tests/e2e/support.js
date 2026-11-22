@@ -146,3 +146,42 @@ export async function watchPage(page) {
   });
   return { violations, errors, external };
 }
+
+/**
+ * Waits until the service worker has installed and controls the page, and returns the build's
+ * manifest: the URLs it precaches and the ones it leaves on demand.
+ * @param {Page} page
+ * @returns {Promise<{ precache: string[], onDemand: string[] }>}
+ */
+export async function waitForShell(page) {
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise((resolve) =>
+        navigator.serviceWorker.addEventListener('controllerchange', () => resolve(undefined), {
+          once: true,
+        }),
+      );
+    }
+  });
+  const manifest = JSON.parse(
+    (await (await page.request.get('/precache-manifest.json')).body()).toString('utf8'),
+  );
+  // Two shapes, as `@simple-web-tools/pwa` writes them: Slides has files on demand.
+  expect(Array.isArray(manifest.precache)).toBe(true);
+  expect(Array.isArray(manifest.onDemand)).toBe(true);
+  return manifest;
+}
+
+/**
+ * The paths held by the app's shell cache (`/index.html`).
+ * @param {Page} page
+ * @returns {Promise<string[]>}
+ */
+export async function cachedPaths(page) {
+  return page.evaluate(async () => {
+    const names = (await caches.keys()).filter((name) => name.startsWith('slides-shell-'));
+    const cache = await caches.open(names[0] ?? '');
+    return (await cache.keys()).map((request) => new URL(request.url).pathname);
+  });
+}

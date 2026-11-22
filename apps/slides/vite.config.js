@@ -38,7 +38,15 @@ const PROD_CSP = [
 
 export default defineConfig({
   base: './',
-  plugins: [pwaPlugin({ appId: 'slides', csp: PROD_CSP })],
+  plugins: [
+    pwaPlugin({
+      appId: 'slides',
+      csp: PROD_CSP,
+      // Mermaid and what only it loads (about ninety chunks, 5 MB) are cached the first time a
+      // diagram is shown, not at install: most talks have none.
+      onDemandModules: [/[\\/]node_modules[\\/]mermaid[\\/]/],
+    }),
+  ],
   build: {
     target: 'esnext',
     outDir: 'dist',

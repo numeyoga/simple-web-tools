@@ -1,7 +1,15 @@
 // Mermaid diagrams: drawn on demand from a lazy chunk, with `securityLevel: 'strict'`, under a policy
 // that has 'unsafe-inline' for styles and no 'unsafe-eval'.
 import { expect, test } from '@playwright/test';
-import { chooseFolder, expectSlide, loadExample, slide, watchPage } from './support.js';
+import {
+  cachedPaths,
+  chooseFolder,
+  expectSlide,
+  loadExample,
+  slide,
+  waitForShell,
+  watchPage,
+} from './support.js';
 
 test.use({ reducedMotion: 'reduce' });
 
@@ -103,46 +111,87 @@ test('a diagram written in the slide HTML cannot run script: labels are cleaned 
   expect(violations.filter((v) => /script-src/.test(v))).toEqual([]);
 });
 
-test('the lazy chunks are in the offline manifest, and a diagram is drawn with no network', async ({
+test('Mermaid is cached on first use, not at install, and a diagram is then drawn with no network', async ({
+  context,
+  page,
+}) => {
+  /** @type {string[]} */
+  const requested = [];
+  page.on('request', (request) => requested.push(new URL(request.url()).pathname));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const manifest = await waitForShell(page);
+
+  // The build leaves Mermaid out of the precache, and lists it as on demand.
+  const isMermaid = (/** @type {string} */ path) =>
+    /\/(mermaid\.core|[a-zA-Z]+Diagram)-/.test(path);
+  expect(manifest.precache.filter(isMermaid)).toEqual([]);
+  expect(manifest.precache.some((path) => /\/(cytoscape|katex|dagre|elk|d3-)/.test(path))).toBe(
+    false,
+  );
+  expect(manifest.onDemand.some((path) => /\/mermaid\.core-[^/]+\.js$/.test(path))).toBe(true);
+  expect(
+    manifest.onDemand.filter((path) => /Diagram-[^/]+\.js$/.test(path)).length,
+  ).toBeGreaterThan(10);
+  const onDemand = new Set(manifest.onDemand.map((url) => `/${url.slice(2)}`));
+
+  // After install: the shell is there (and the manifest, which tells the worker the list), no chunk of Mermaid.
+  const atInstall = await cachedPaths(page);
+  expect(atInstall.filter((path) => onDemand.has(path))).toEqual([]);
+  expect(atInstall.sort()).toEqual(
+    [...manifest.precache.map((url) => `/${url.slice(2)}`), '/precache-manifest.json'].sort(),
+  );
+
+  // Showing the example's diagram fetches the chunks it needs, and caches exactly those.
+  await loadExample(page);
+  await page.keyboard.press('4');
+  await page.keyboard.press('Enter');
+  await expectSlide(page, 4);
+  await expect(slide(page).locator('pre.mermaid svg')).toBeVisible();
+  // The chunks it asked for are the chunks it cached, exactly (some load a little after the drawing).
+  const usedChunks = () => [...new Set(requested.filter((path) => onDemand.has(path)))].sort();
+  expect(usedChunks().some((path) => path.includes('mermaid.core'))).toBe(true);
+  await expect
+    .poll(async () => {
+      const cachedChunks = (await cachedPaths(page)).filter((path) => onDemand.has(path)).sort();
+      return JSON.stringify(cachedChunks) === JSON.stringify(usedChunks());
+    })
+    .toBe(true);
+  const used = usedChunks();
+  expect(used.length).toBeGreaterThan(2);
+  // Not the whole library: the diagram types that were not drawn stay unfetched.
+  expect(used.length).toBeLessThan(onDemand.size / 2);
+
+  // Offline, a reload and the same diagram: drawn from the cache.
+  await context.setOffline(true);
+  await page.reload();
+  await loadExample(page);
+  await page.keyboard.press('4');
+  await page.keyboard.press('Enter');
+  await expectSlide(page, 4);
+  await expect(slide(page).locator('pre.mermaid[data-drawn] svg')).toBeVisible();
+  await context.setOffline(false);
+});
+
+test('offline before any diagram was shown, the diagram keeps its code with a message, and is drawn once back online', async ({
   context,
   page,
 }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) {
-      await new Promise((resolve) =>
-        navigator.serviceWorker.addEventListener('controllerchange', () => resolve(undefined), {
-          once: true,
-        }),
-      );
-    }
-  });
-
-  const manifest = /** @type {string[]} */ (
-    JSON.parse((await (await page.request.get('/precache-manifest.json')).body()).toString('utf8'))
-  );
-  expect(manifest.some((path) => /\/mermaid\.core-[^/]+\.js$/.test(path))).toBe(true);
-  expect(manifest.filter((path) => /Diagram-[^/]+\.js$/.test(path)).length).toBeGreaterThan(10);
-  const cached = await page.evaluate(async () => {
-    const [name] = await caches.keys();
-    const cache = await caches.open(name ?? '');
-    return (await cache.keys()).map((r) => new URL(r.url).pathname);
-  });
-  expect(cached.length).toBe(manifest.length);
-
-  await context.setOffline(true);
-  await page.reload();
+  await waitForShell(page);
   await loadExample(page);
-  await page.keyboard.press('End');
-  await page.keyboard.press('Home');
-  await page.keyboard.press('3');
+  await context.setOffline(true);
+  await page.keyboard.press('4');
   await page.keyboard.press('Enter');
-  await page.keyboard.press('ArrowRight');
   await expectSlide(page, 4);
-  await expect(slide(page).locator('pre.mermaid svg')).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Ce diagramme n’a pas pu être dessiné');
+  await expect(slide(page).locator('pre.mermaid svg')).toHaveCount(0);
+
   await context.setOffline(false);
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowRight');
+  await expect(slide(page).locator('pre.mermaid[data-drawn] svg')).toBeVisible();
 });
 
 test('the example folder is the same path as a chosen folder: the diagram of a fixture is drawn too', async ({
