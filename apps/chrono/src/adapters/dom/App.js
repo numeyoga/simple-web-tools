@@ -379,7 +379,7 @@ export function start(rootEl) {
           el(
             'span',
             { class: 'ch-brand' },
-            icon(findApp(APP_ID).icon, { weight: 'bold', className: 'ch-brand-icon' }),
+            icon(findApp(APP_ID).icon, { weight: 'bold', className: 'swt-brand__icon' }),
             t('app.name'),
           ),
         ),
