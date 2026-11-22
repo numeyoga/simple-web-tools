@@ -285,9 +285,6 @@ body {
   gap: var(--cv-space-3);
   font: var(--cv-weight-semibold) var(--cv-text-md) / 1 var(--cv-font-sans);
 }
-.ch-brand-icon {
-  color: var(--cv-brand-accent);
-}
 .ch-sidebar-workspace {
   padding-bottom: var(--cv-space-4);
 }
