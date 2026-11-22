@@ -112,21 +112,15 @@ Google sees the domains of the links. Only while it is on does each link load
 query or fragment. This follows
 [decision 0008](../../docs/decisions/0008-opt-in-third-party-requests.md):
 
-- `https://www.google.com` is allowed in `img-src` only, in the CSP, and nowhere else;
+- `https://www.google.com` and the hosts its service redirects to, `https://t0.gstatic.com` to
+  `https://t3.gstatic.com` (a CSP is checked again after each redirect), are allowed in
+  `img-src` only, in the CSP, and nowhere else;
 - turning the preference off removes the images at once, and nothing more is requested;
 - an icon that fails to load leaves the initial in place; the images carry
   `referrerpolicy="no-referrer"` and an empty `alt`;
 - end-to-end tests assert that no request leaves the origin with the preference off, and that
   icons ask `www.google.com` once per link with it on (the requests are intercepted, the network
   is never reached).
-
-**Known limit, to decide with the maintainer.** Google's service answers with a `301` redirect
-to `https://t<n>.gstatic.com/faviconV2?...`, and a Content Security Policy is checked again after
-each redirect. With `img-src 'self' https://www.google.com` only, a browser refuses that last
-hop (checked with an intercepted `301`: a `securitypolicyviolation` for `img-src`), so the real
-service's icons would not display and the link keeps its initial. Making them display needs
-`https://t0.gstatic.com` to `https://t3.gstatic.com` in `img-src` (still the same third party and
-the same directive); it was left out because the brief for this step was to widen nothing else.
 
 ## Architecture
 

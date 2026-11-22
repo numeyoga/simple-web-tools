@@ -6,13 +6,11 @@ import { defineConfig } from 'vite';
 // - style-src 'self': Vite's extracted stylesheet. No 'unsafe-inline': the app and Covenant only
 //   set styles through the CSSOM (`element.style.x = ...`), which a CSP allows; there is no
 //   `style` attribute in markup and no <style> element.
-// - img-src 'self' https://www.google.com: the favicon and the manifest icons, and, only while the
-//   person turns on "Load site icons from Google" in the preferences, the icon of each link. This
-//   is the only third-party host of the app and it is allowed in `img-src` and nowhere else
-//   (decision 0008). Known limit, to decide with the maintainer: the service answers with a
-//   redirect to `t<n>.gstatic.com`, and a CSP is checked again after a redirect, so a browser
-//   refuses that last hop under this policy (the link then keeps its coloured initial). See the
-//   README, "Site icons".
+// - img-src 'self' + Google's favicon service: the favicon and the manifest icons, and, only while
+//   the person turns on "Load site icons from Google" in the preferences, the icon of each link.
+//   The service answers `www.google.com/s2/favicons` with a redirect to `t0`-`t3.gstatic.com`, and
+//   a CSP is checked again after each redirect, so those four hosts are listed too. Google is the
+//   only third party of the app and it is allowed in `img-src` and nowhere else (decision 0008).
 // - font-src 'self': IBM Plex and Phosphor, bundled by @simple-web-tools/covenant.
 // - connect-src 'self': the page fetches nothing (the worker reads its own manifest).
 // - worker-src 'self' and manifest-src 'self': sw.js and manifest.webmanifest.
@@ -22,7 +20,7 @@ const PROD_CSP = [
   "default-src 'none'",
   "script-src 'self'",
   "style-src 'self'",
-  "img-src 'self' https://www.google.com",
+  "img-src 'self' https://www.google.com https://t0.gstatic.com https://t1.gstatic.com https://t2.gstatic.com https://t3.gstatic.com",
   "font-src 'self'",
   "connect-src 'self'",
   "worker-src 'self'",
