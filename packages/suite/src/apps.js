@@ -18,6 +18,7 @@ export const APPS = Object.freeze([
   Object.freeze({ id: 'chrono', name: 'Chrono', icon: 'timer' }),
   Object.freeze({ id: 'locavern', name: 'Locavern', icon: 'kanban' }),
   Object.freeze({ id: 'transient-notes', name: 'Transient Notes', icon: 'note-pencil' }),
+  Object.freeze({ id: 'favoris', name: 'Favoris', icon: 'bookmarks-simple' }),
 ]);
 
 /**

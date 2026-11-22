@@ -149,12 +149,12 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expect(brand.locator('svg')).toHaveCount(0);
     await expect(nav.locator(':scope > :first-child')).toHaveClass(/cv-sidebar__brand/);
 
-    // Le sélecteur est le dernier enfant : les trois applications, Locavern étant la courante.
+    // Le sélecteur est le dernier enfant : les quatre applications, Locavern étant la courante.
     await expect(nav.locator(':scope > :last-child')).toHaveClass(/swt-switcher/);
     const switcher = nav.getByRole('list', { name: 'Applications' });
     const links = switcher.getByRole('link');
-    await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes']);
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes', 'Favoris']);
+    await expect(links).toHaveCount(4);
     await expect(links.nth(0)).toHaveAttribute('href', '../chrono/');
     await expect(links.nth(1)).toHaveAttribute('href', './');
     await expect(links.nth(2)).toHaveAttribute('href', '../transient-notes/');
@@ -162,6 +162,8 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expect(links.nth(1)).toHaveAttribute('aria-current', 'page');
     await expect(links.nth(0)).not.toHaveAttribute('aria-current', 'page');
     await expect(links.nth(2)).not.toHaveAttribute('aria-current', 'page');
+    await expect(links.nth(3)).toHaveAttribute('href', '../favoris/');
+    await expect(links.nth(3)).not.toHaveAttribute('aria-current', 'page');
 
     // Les préférences et le thème n’ont plus d’entrée dans la barre latérale.
     await expect(page.locator('#nav-preferences-btn')).toHaveCount(0);
