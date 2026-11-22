@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / modale)', () => {
   test('configure chaque écran dans les préférences, persiste au rechargement et respecte WCAG 2.2 AA', async ({
@@ -20,8 +21,8 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
 
     await page.goto('/');
 
-    // 1. Vérifier les valeurs par défaut dans Préférences d’affichage
-    await page.locator('#nav-preferences-btn').click();
+    // 1. Vérifier les valeurs par défaut dans Préférences
+    await page.locator('#topbar-preferences-btn').click();
     await expect(page.locator('#modal-preferences')).toBeVisible();
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
     await expect(
@@ -141,7 +142,7 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
     await expect(page.locator('#app-view .ProseMirror')).toContainText('Corps initial');
 
     // Basculer Notes en tiroir latéral puis éditer
-    await page.locator('#nav-preferences-btn').click();
+    await page.locator('#topbar-preferences-btn').click();
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
     await page.locator('input[name="input-presentation-notes"][value="drawer"]').check();
     await expect(page.locator('html')).not.toHaveAttribute('data-persisting', 'true');
@@ -169,9 +170,9 @@ test.describe('Paramétrage du visuel de saisie par écran (tiroir latéral / mo
     await expect(page.locator('#whiteboard-title-input')).toHaveValue('Tableau tiroir');
 
     // Basculer Tableaux blancs en modale puis éditer en thème sombre
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await page.locator('#nav-preferences-btn').click();
+    await page.locator('#topbar-preferences-btn').click();
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
     await page.locator('input[name="input-presentation-whiteboards"][value="modal"]').check();
     await expect(page.locator('html')).not.toHaveAttribute('data-persisting', 'true');

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Statuts initiaux/terminaux, garde de liens et archivage complet', () => {
   test('identifie statuts initiaux/terminaux et empêche les nouveaux liens avec un statut terminal', async ({
@@ -171,7 +172,7 @@ test.describe('Statuts initiaux/terminaux, garde de liens et archivage complet',
     // WCAG 2.2 AA en thème clair et sombre + reflow 320 px sur Archives
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expectNoA11yViolations(page);
 
     await page.setViewportSize({ width: 320, height: 640 });

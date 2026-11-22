@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 // Covenant colour rules the axe audit does not measure (WCAG 1.4.11 non-text contrast): the
 // whiteboard artwork and the calendar stripes, in both themes, and the colours an exported
@@ -66,7 +67,7 @@ const installMeasure = () => {
 
 /** @param {import('@playwright/test').Page} page */
 async function setDark(page) {
-  await page.locator('#theme-switch').click();
+  await setTheme(page, 'dark');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.evaluate(installMeasure);
 }
@@ -287,7 +288,7 @@ test.describe('Covenant colours: whiteboard artwork, calendar stripes and export
     await expect(page.locator('.lc-cal-legend')).toContainText('Créneau 18h–7h');
 
     for (const theme of ['light', 'dark']) {
-      if (theme === 'dark') await page.locator('#theme-switch').click();
+      if (theme === 'dark') await setTheme(page, 'dark');
       await page.evaluate(installMeasure);
       const measures = await page.evaluate(() => {
         const { rgba, bgOf, ratio } = /** @type {any} */ (window).__measure;

@@ -45,11 +45,6 @@ dialog::backdrop {
   cursor: pointer;
 }
 
-.lc-theme-switch {
-  white-space: nowrap;
-  gap: var(--cv-space-2);
-}
-
 .lc-modal--wide {
   width: min(36.25rem, calc(100vw - 2 * var(--cv-space-5)));
 }
@@ -985,11 +980,6 @@ dialog::backdrop {
 }
 
 @media (max-width: 767px) {
-  .lc-theme-switch__label,
-  .lc-topbar-btn-label {
-    display: none;
-  }
-
   .lc-filters .cv-field {
     max-width: none;
   }

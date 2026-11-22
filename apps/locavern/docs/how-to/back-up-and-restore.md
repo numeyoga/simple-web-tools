@@ -18,8 +18,9 @@ For the technical details of the ZIP format, the exact scope of archives and err
 
 ## Check the storage status and request persistence
 
-Click **Back up** in the top bar (or **Backups** in the side menu; French: **Sauvegarder** and
-**Sauvegardes**) to open the **Backups and storage** window.
+Click **Backups** in the side menu (French: **Sauvegardes**), under **Data**, to open the
+**Backups and storage** window. On narrow screens, open the side menu first with the menu button of
+the top bar. The `Ctrl+K` command palette also has an `Open backups` command.
 
 The **Local storage status** section shows the number of projects, tasks, notes, whiteboards and
 local images stored, the space used, the quota estimated by your browser and the **Last ZIP
@@ -48,7 +49,7 @@ support this feature keep the regular download.
 
 ## Export a ZIP archive (plain or encrypted)
 
-1. Open **Backups and storage** (**Back up**).
+1. Open **Backups and storage** (**Backups** in the side menu).
 2. By default the archive is generated in plain form. To protect its content with a password, tick
    **Protect the archive with a password (AES-GCM)**, then type and confirm the password in
    **Encryption password** and **Confirm password** (the eye button lets you check what you typed).
@@ -103,7 +104,7 @@ local **Trash** instead of being destroyed immediately.
   the window) and confirm. Local images used only by the purged items are then released from
   `IndexedDB`, and internal links pointing to the deleted items are cleaned up.
 - **Adjust the retention period**: click **Set the retention period** in the **Local trash**
-  window (or open **Display** > **Trash retention (days)**) to set a whole number of days from `1`
+  window (or open the **Preferences** gear of the top bar > **Trash retention (days)**) to set a whole number of days from `1`
   to `365` (`30` by default). When the app starts, every item past its expiry is purged
   automatically.
 

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { openBackup, setTheme } from './support/shell.js';
 
 /**
  * Close the toasts left by previous actions: a toast stays 6 s at the bottom right
@@ -196,7 +197,7 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     await expect(rightBtn).toBeFocused();
 
     // Axe-core en thème sombre avec infobulle ouverte
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await rightBtn.focus();
     await expect(page.locator('.lc-tooltip:popover-open')).toBeVisible();
@@ -229,25 +230,20 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     // Aucun bouton avec attribut natif `title` sur la coque de base
     await expect(page.locator('button[title]')).toHaveCount(0);
 
-    // Topbar : recherche (Ctrl+K), sauvegarde, menu mobile à 640 px
+    // Topbar : recherche (Ctrl+K), préférences, menu mobile à 640 px
     await expectTooltipOnHover(
       page,
       page.locator('.cv-search'),
       'Rechercher ou exécuter une commande (Ctrl+K)',
     );
-    await expectTooltipOnHover(
-      page,
-      page.locator('#topbar-backup-btn'),
-      'Sauvegardes et import/export',
-    );
+    await expectTooltipOnHover(page, page.locator('#topbar-preferences-btn'), 'Préférences');
 
     await page.setViewportSize({ width: 640, height: 800 });
     await expectTooltipOnHover(page, page.locator('.cv-shell__menu'), 'Menu de navigation');
     await page.setViewportSize({ width: 1280, height: 800 });
 
     // Modale sauvegarde : bascule mot de passe
-    await page.locator('#topbar-backup-btn').click();
-    await expect(page.locator('#modal-backup')).toBeVisible();
+    await openBackup(page);
     await page.locator('#chk-export-encrypt').check();
     const pwToggle = page.locator('#export-encrypt-fields .lc-password-toggle').first();
     await expectTooltipOnHover(page, pwToggle, 'Afficher le mot de passe');

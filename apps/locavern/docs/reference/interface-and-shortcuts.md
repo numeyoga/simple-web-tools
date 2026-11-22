@@ -3,7 +3,7 @@
 Factual description of Locavern's user interface, fields, defaults and keyboard shortcuts.
 
 The interface is available in English and French. It follows the browser language unless you choose
-a language in the display preferences (**Language / Langue**: `Automatic`, `English`, `Français`);
+a language in the preferences (**Language / Langue**: `Automatic`, `English`, `Français`);
 changing the language reloads the page. This page uses the English labels, which come from the
 English catalog (`src/i18n/en.js`). A few French labels are given in parentheses.
 
@@ -36,19 +36,23 @@ English catalog (`src/i18n/en.js`). A few French labels are given in parentheses
   - `Archive` (French: Archives), with a counter badge that is hidden when nothing is archived;
   - `Data` group: `Backups` (opens **Backups and storage**) and `Trash` (opens **Local trash**, with
     a counter badge hidden when the trash is empty);
-  - `Preferences` group: `Display` (opens **Display preferences**).
+  - the `Apps` group, pinned at the bottom: links to Chrono, Locavern (the current app, marked as
+    the current page) and Transient Notes. It only resolves on the assembled site.
   - On narrow screens (below 1024 px) the `Open the menu` button in the top bar opens and closes the
     side navigation.
+  - The top of the side navigation shows the Locavern logo (a Kanban icon) and name.
 - **Top bar**:
   - the title of the active view;
   - the `Search or run a command` button (`Ctrl+K`), which opens the command palette;
-  - the `Dark` switch, which toggles between the light and dark themes. The choice is kept locally
-    under `locavern-color-scheme`; without it the app follows the system `prefers-color-scheme`;
-  - the `Back up` button, which opens **Backups and storage**.
+  - the `Preferences` gear button (the last control of the bar), which opens the **Display
+    preferences** window.
 - **Service worker update banner**: shown when a new version is installed and waiting: `A new
 version is ready offline. Reload the app to use the updated version.`, with the buttons `Reload`
   and `Later`.
-- **Display preferences window**:
+- **Preferences window**:
+  - `Theme` segmented control: `System` (default: follows the system `prefers-color-scheme`),
+    `Light` and `Dark`. An explicit choice is kept in `localStorage` under `locavern-color-scheme`
+    and synchronized across tabs (`System` removes the key);
   - `Text size` segmented control: `Automatic` (default: scaled by 1.125 from 2000 px and by 1.25
     from 2400 px), `Standard` (1), `Comfortable` (1.125) and `Large` (1.25). An explicit choice is
     kept in `localStorage` under `locavern-text-size` and synchronized across tabs (`Automatic`
@@ -135,7 +139,7 @@ projects` is selected).
 
 ## Kanban statuses window
 
-Reachable from the `Statuses` button of the **Tasks** header, from the display preferences
+Reachable from the `Statuses` button of the **Tasks** header, from the preferences
 (`Configure the Kanban columns`), or from the command palette (`Configure the Kanban statuses`).
 
 | Element                 | Constraint and behavior                                                                                                                                     |
@@ -173,7 +177,7 @@ Footer actions: `Delete` and `Archive` (when editing, outside read-only mode), `
 
 The **Projects** view only shows active projects (archived projects are found and filtered in the
 **Archive** view). The `New project` / `Edit project` input appears as a `Modal` by default, or as a
-`Side drawer`, according to the `Projects` setting in the display preferences.
+`Side drawer`, according to the `Projects` setting in the preferences.
 
 | Element             | Constraint and behavior                                                                                                                            |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -320,7 +324,7 @@ Static commands of the palette (`Ctrl+K` / `Cmd+K`):
 | `Configure the Kanban statuses`       | Opens the **Kanban statuses** window; ignored in read-only mode                            |
 | `Open backups`                        | Opens **Backups and storage**                                                              |
 | `Open the trash`                      | Opens **Local trash**                                                                      |
-| `Open display preferences`            | Opens **Display preferences**                                                              |
+| `Open preferences`                    | Opens **Preferences**                                                                      |
 | `Switch between light and dark theme` | Inverts the active theme and saves the preference                                          |
 
 The palette indexes active projects, tasks, notes and whiteboards (items archived directly or

@@ -1,5 +1,5 @@
 // The translator of the interface: the language is chosen once per page load, from the saved
-// choice (`locavern-locale`, set in the display preferences) or else from `navigator.languages`.
+// choice (`locavern-locale`, set in the preferences) or else from `navigator.languages`.
 // A new choice is saved and the page reloads (the shell and the views are built with the text of
 // one language). The translator's locale is the language plus the user's region when the browser
 // gives one, `en-GB` for instance: the catalog is `en`, the date formats are British. Views get

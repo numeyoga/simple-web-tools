@@ -306,7 +306,7 @@ test.describe('browser in English (en-US)', () => {
     await expectNoA11yViolations(page);
   });
 
-  test('the dialogs: backups, trash, statuses and display preferences', async ({ page }) => {
+  test('the dialogs: backups, trash, statuses and preferences', async ({ page }) => {
     await openApp(page);
 
     // Backups and storage
@@ -362,9 +362,9 @@ test.describe('browser in English (en-US)', () => {
     await expectNoA11yViolations(page);
     await closeDialog(page);
 
-    // Display preferences
+    // Preferences
     await page.getByRole('button', { name: 'Display' }).click();
-    const prefs = page.getByRole('dialog', { name: 'Display preferences' });
+    const prefs = page.getByRole('dialog', { name: 'Preferences' });
     await expect(prefs.getByLabel('Language / Langue')).toHaveValue('auto');
     await expect(prefs.getByRole('radio', { name: 'Comfortable' })).toBeAttached();
     await expect(prefs.getByLabel('Notification duration (seconds)')).toHaveValue('6');
@@ -501,7 +501,7 @@ test.describe('which language the browser gets', () => {
   });
 });
 
-test.describe('choosing the language in the display preferences', () => {
+test.describe('choosing the language in the preferences', () => {
   test.use({ locale: 'en-US' });
 
   test('French is saved as locavern-locale, survives a reload, and automatic removes it', async ({
@@ -512,7 +512,7 @@ test.describe('choosing the language in the display preferences', () => {
     expect(await stored()).toBeNull();
 
     await page.getByRole('button', { name: 'Display' }).click();
-    const prefs = page.getByRole('dialog', { name: 'Display preferences' });
+    const prefs = page.getByRole('dialog', { name: 'Preferences' });
     await prefs.getByLabel('Language / Langue').selectOption('fr');
     await expect(page.locator('#topbar-title')).toHaveText('Tâches');
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
@@ -522,7 +522,7 @@ test.describe('choosing the language in the display preferences', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await expect(page.locator('#topbar-title')).toHaveText('Tâches');
     await page.getByRole('button', { name: 'Affichage' }).click();
-    const again = page.getByRole('dialog', { name: 'Préférences d’affichage' });
+    const again = page.getByRole('dialog', { name: 'Préférences' });
     await expect(again.getByLabel('Langue / Language')).toHaveValue('fr');
 
     await again.getByLabel('Langue / Language').selectOption('auto');

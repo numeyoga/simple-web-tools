@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 test.describe('Tâches récurrentes & génération de l’occurrence suivante', () => {
   test('création, complétion en Liste et Kanban, réinitialisation checklist, persistance IndexedDB et axe-core', async ({
@@ -96,7 +97,7 @@ test.describe('Tâches récurrentes & génération de l’occurrence suivante', 
     // 6. Audit axe-core clair + sombre + reflow 320 px
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoA11yViolations(page);
 

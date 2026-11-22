@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { openBackup } from './support/shell.js';
 
 test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP (Étape 3)', () => {
   test('persiste après rechargement, verrouille le 2e onglet et restaure une archive ZIP', async ({
@@ -34,7 +35,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await expect(page2.getByRole('button', { name: 'Tâche durable', exact: true })).toBeVisible();
 
     // Cycle complet Export ZIP -> Réinitialisation -> Import ZIP + suivi d’ancienneté
-    await page2.locator('#topbar-backup-btn').click();
+    await openBackup(page2);
     await expect(page2.locator('#modal-backup')).toHaveAttribute('open', '');
     await expect(page2.locator('#stat-last-backup-age')).toHaveText('Aucune sauvegarde ZIP');
 
@@ -47,7 +48,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
 
     // L’horodatage de dernière sauvegarde survit au rechargement
     await page2.reload();
-    await page2.locator('#topbar-backup-btn').click();
+    await openBackup(page2);
     await expect(page2.locator('#stat-last-backup-age')).toHaveText('À l’instant');
 
     // Réinitialiser toutes les données locales
@@ -56,7 +57,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await expect(page2.getByText('Créez un premier projet pour commencer')).toBeVisible();
 
     // Importer l’archive ZIP précédemment exportée en mode remplacement
-    await page2.locator('#topbar-backup-btn').click();
+    await openBackup(page2);
     await expect(page2.locator('#stat-last-backup-age')).toHaveText('Aucune sauvegarde ZIP');
     await page2.locator('#input-import-archive').setInputFiles(/** @type {string} */ (zipPath));
     await expect(page2.locator('#import-archive-panel')).toBeVisible();
@@ -93,7 +94,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await page.locator('#task-title-input').fill('Tâche Beta');
     await page.locator('#drawer-task button[type="submit"]').click();
 
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#btn-export-archive').click();
     const download = await downloadPromise;
@@ -109,7 +110,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await page.locator('#modal-project button[type="submit"]').click();
 
     // Ouvrir l’import et sélectionner uniquement "Beta Archive"
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     await page.locator('#input-import-archive').setInputFiles(/** @type {string} */ (zipPath));
     await expect(page.locator('#import-archive-panel')).toBeVisible();
     await page.locator('input[name="import-mode"][value="projects"]').check();
@@ -128,7 +129,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await expect(page.getByRole('heading', { name: 'Alpha Archive' })).toHaveCount(0);
 
     // Fusionner toute l'archive ensuite -> les données existantes restent intactes et Alpha Archive est ajouté
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     await page.locator('#input-import-archive').setInputFiles(/** @type {string} */ (zipPath));
     await expect(page.locator('input[name="import-mode"][value="merge"]')).toBeChecked();
     await page.locator('#btn-confirm-import-archive').click();
@@ -167,7 +168,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     await page.locator('#project-name-input').fill('Projet Picker');
     await page.locator('#modal-project button[type="submit"]').click();
 
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     await page.locator('#btn-export-archive').click();
 
     await expect(page.locator('#stat-last-backup-age')).toHaveText('À l’instant');

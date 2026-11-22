@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { openBackup } from './support/shell.js';
 
 test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', () => {
   test('exporte une archive chiffrée, refuse un mauvais mot de passe puis restaure avec le bon', async ({
@@ -20,7 +21,7 @@ test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', ()
     ).toBeVisible();
 
     // Ouvrir les sauvegardes et activer le chiffrement
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     await expect(page.locator('#modal-backup')).toHaveAttribute('open', '');
     await expect(page.locator('#modal-backup')).toHaveCSS('opacity', '1');
     await page.locator('#chk-export-encrypt').check();
@@ -52,7 +53,7 @@ test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', ()
     await expect(page.getByText('Créez un premier projet pour commencer')).toBeVisible();
 
     // Importer l’archive chiffrée : le formulaire de déverrouillage s’affiche
-    await page.locator('#topbar-backup-btn').click();
+    await openBackup(page);
     await expect(page.locator('#modal-backup')).toHaveCSS('opacity', '1');
     await page
       .locator('#input-import-archive')

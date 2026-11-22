@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { openPreferences, setTheme } from './support/shell.js';
 
 test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
   test('zéro requête externe, thème clair/sombre et 0 violation WCAG 2.2 AA', async ({ page }) => {
@@ -27,7 +28,7 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expectNoA11yViolations(page);
 
     // Basculer en thème sombre
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await expectNoA11yViolations(page);
@@ -45,9 +46,8 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
   }) => {
     await page.goto('/');
 
-    // Ouvrir les préférences d'affichage depuis la barre latérale
-    await page.locator('#nav-preferences-btn').click();
-    await expect(page.locator('#modal-preferences')).toBeVisible();
+    // Ouvrir les préférences d'affichage avec l'engrenage de la barre supérieure
+    await openPreferences(page);
     await expect(page.locator('#modal-preferences')).toHaveCSS('opacity', '1');
     await expect(page.locator('input[name="text-size"][value="auto"]')).toBeChecked();
 
@@ -91,7 +91,7 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     expect(afterReloadFontSize).toBe('20px');
 
     // Rouvrir via la palette de commandes (Ctrl+K) et vérifier en thème sombre
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await page.keyboard.press('Control+k');
     await expect(page.locator('#cmd-menu')).toBeVisible();
@@ -118,6 +118,96 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
       rootFontSize: '20px',
       bodyFontSize: '16.25px',
     });
+  });
+
+  test('la barre latérale affiche la marque en premier et le sélecteur d’applications en dernier', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+
+    const brand = nav.locator('.cv-sidebar__brand');
+    await expect(brand).toHaveText('Locavern');
+    await expect(brand.locator('i.ph-kanban[aria-hidden="true"]')).toHaveCount(1);
+    await expect(brand.locator('svg')).toHaveCount(0);
+    await expect(nav.locator(':scope > :first-child')).toHaveClass(/cv-sidebar__brand/);
+
+    // Le sélecteur est le dernier enfant : les trois applications, Locavern étant la courante.
+    await expect(nav.locator(':scope > :last-child')).toHaveClass(/swt-switcher/);
+    const switcher = nav.getByRole('list', { name: 'Applications' });
+    const links = switcher.getByRole('link');
+    await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes']);
+    await expect(links).toHaveCount(3);
+    await expect(links.nth(0)).toHaveAttribute('href', '../chrono/');
+    await expect(links.nth(1)).toHaveAttribute('href', './');
+    await expect(links.nth(2)).toHaveAttribute('href', '../transient-notes/');
+    await expect(switcher.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(links.nth(1)).toHaveAttribute('aria-current', 'page');
+    await expect(links.nth(0)).not.toHaveAttribute('aria-current', 'page');
+    await expect(links.nth(2)).not.toHaveAttribute('aria-current', 'page');
+
+    // Les préférences et le thème n’ont plus d’entrée dans la barre latérale.
+    await expect(page.locator('#nav-preferences-btn')).toHaveCount(0);
+    await expect(nav.getByRole('button', { name: 'Sauvegardes' })).toBeVisible();
+  });
+
+  test('l’engrenage est le dernier contrôle de la barre supérieure, après la recherche, et ouvre les préférences', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/');
+    const topbar = page.locator('header.cv-topbar');
+
+    await expect(topbar.locator('#theme-switch')).toHaveCount(0);
+    await expect(topbar.locator('#topbar-backup-btn')).toHaveCount(0);
+
+    const gear = topbar.locator(':scope > :last-child');
+    await expect(gear).toHaveAttribute('id', 'topbar-preferences-btn');
+    await expect(gear).toHaveAccessibleName('Préférences');
+    await expect(gear.locator('i.ph-gear')).toHaveCount(1);
+    const search = topbar.locator('.cv-search');
+    await expect(topbar.locator(':scope > :nth-last-child(2)')).toHaveClass(/cv-search/);
+    await expect(search).toBeVisible();
+
+    await gear.click();
+    await expect(page.locator('#modal-preferences')).toBeVisible();
+    // Le thème est le premier choix visuel des préférences, après la langue.
+    await expect(
+      page.locator('#modal-preferences fieldset[data-theme-control] input[type="radio"]'),
+    ).toHaveCount(3);
+    await expect(page.locator('input[name="theme"][value="system"]')).toBeChecked();
+  });
+
+  test('choisir Sombre dans les préférences applique le thème, le conserve au rechargement et reste synchronisé avec la palette', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+    await openPreferences(page);
+    await page.locator('input[name="theme"][value="dark"]').check();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(await page.evaluate(() => localStorage.getItem('locavern-color-scheme'))).toBe('dark');
+    await page.locator('#modal-preferences [data-cv-close]').first().click();
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await openPreferences(page);
+    await expect(page.locator('input[name="theme"][value="dark"]')).toBeChecked();
+
+    // Système : la clé de stockage disparaît et le thème suit l’OS (clair par défaut).
+    await page.locator('input[name="theme"][value="system"]').check();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    expect(await page.evaluate(() => localStorage.getItem('locavern-color-scheme'))).toBeNull();
+
+    // La palette de commandes bascule le thème et le contrôle suit.
+    await page.locator('#modal-preferences [data-cv-close]').first().click();
+    await page.keyboard.press('Control+k');
+    await page.locator('#cmd-list [data-value="action:toggle-theme"]').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await openPreferences(page);
+    await expect(page.locator('input[name="theme"][value="dark"]')).toBeChecked();
   });
 
   test('palette Ctrl+K et recherche plein contenu ouvrent projets, tâches, notes et tableaux blancs', async ({

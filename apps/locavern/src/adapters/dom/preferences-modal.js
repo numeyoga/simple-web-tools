@@ -30,7 +30,7 @@ function parseBoundedIntInput(raw, min, max) {
 }
 
 /**
- * Wire display preferences controls inside #modal-preferences
+ * Wire preferences controls inside #modal-preferences
  * (per-screen input presentation, toast auto-dismiss duration, and trash retention delay).
  * @param {{
  *   store: {

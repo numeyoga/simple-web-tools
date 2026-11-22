@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 /** @param {Date} d */
 function toIsoLocal(d) {
@@ -86,7 +87,7 @@ test.describe('Vue Calendrier mensuelle & hebdomadaire (Todos 5 & 15)', () => {
     await expect(page.locator(`[data-cal-date="${day20Iso}"]`)).toContainText('Livraison Jalons');
 
     // Thème sombre + audit axe-core
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expectNoA11yViolations(page);
 
     // Persistance après rechargement
@@ -192,7 +193,7 @@ test.describe('Vue Calendrier mensuelle & hebdomadaire (Todos 5 & 15)', () => {
     await page.evaluate(() => window.scrollTo(0, 0));
     await expectNoA11yViolations(page);
 
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expectNoA11yViolations(page);
 
     // Persistance après rechargement et vérification reflow 320 px

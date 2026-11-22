@@ -21,7 +21,7 @@ Open the **Notes** view from the side navigation.
 - **Create a note**: click **New note** (or **Create a note** when the list is empty, or run
   **Create a note**... from `Ctrl+K`), fill in **Note title** and optionally **Project** and
   **Content**, then click **Create note**. The window opens as a side drawer or a modal depending on
-  the **Input style per screen** setting in the display preferences.
+  the **Input style per screen** setting in the preferences.
 - **Edit in the built-in workspace or in the input window**: select a note to edit it directly in
   the built-in workspace, or click **Open the editor** in its header to edit it in the configured
   input window.

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
+import { setTheme } from './support/shell.js';
 
 /**
  * Helper: format current month day in YYYY-MM-DD for Calendar tests.
@@ -287,7 +288,7 @@ test.describe('Choix explicite Consultation vs Modification sur tous les éléme
     await expect(page.locator('button[title]')).toHaveCount(0);
 
     // WCAG 2.2 AA en thème sombre + reflow 320 px sur Consultation de tableau blanc
-    await page.locator('#theme-switch').click();
+    await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expectNoA11yViolations(page);
 

@@ -5,7 +5,7 @@ across the Kanban board, write a linked note, sketch a whiteboard and export a Z
 Everything stays stored locally in your browser.
 
 The interface is available in English and French. It follows your browser language and can be
-changed in the **Language** field of the display preferences (**Display**, under **Preferences** in the side navigation; see [Interface, views and shortcuts](../reference/interface-and-shortcuts.md)).
+changed in the **Language** field of the preferences (the gear button at the right end of the top bar; see [Interface, views and shortcuts](../reference/interface-and-shortcuts.md)).
 This tutorial uses the English labels.
 
 ## Contents
@@ -83,7 +83,8 @@ The status at the bottom left says **Saved locally**.
 
 ## 6. Export your first ZIP backup
 
-1. In the top bar, click **Back up**. The **Backups and storage** window opens.
+1. In the side menu, under **Data**, click **Backups**. (On a narrow screen, open the side menu
+   with the menu button of the top bar first.) The **Backups and storage** window opens.
 2. Under **Local storage status**, check the counters: `1` project, `1` task, `1` note and
    `1` whiteboard.
 3. Under **Export an archive**, click **Export ZIP archive**.
