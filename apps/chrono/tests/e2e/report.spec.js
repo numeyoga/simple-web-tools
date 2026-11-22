@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { readFile } from 'node:fs/promises';
 import { createProject, openApp, enterSession } from './support.js';
 
@@ -20,7 +21,7 @@ test('weekly report: totals, then CSV export with a BOM and the ; separator', as
   const download = await downloadEvent;
 
   expect(download.suggestedFilename()).toBe('rapport-2026-11-16.csv');
-  const bytes = await readFile(await download.path());
+  const bytes = await readFile(await saveDownload(download));
   expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // BOM UTF-8
   const rows = bytes.toString('utf8').slice(1).split('\r\n');
   expect(rows[0]).toBe('"Date";"Projet";"Client";"Description";"Début";"Fin";"Durée (h)"');
