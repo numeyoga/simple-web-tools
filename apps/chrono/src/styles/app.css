@@ -276,7 +276,9 @@ body {
   }
 }
 
-/* --- Sidebar: navigation only (brand, workspace, the four sections) --------- */
+/* --- Sidebar: navigation only (brand, workspace, the four sections, app switcher) --- */
+/* The sidebar brand and the switcher are the suite's (suite.css); `.ch-brand` is the brand of the
+   storage error screen, which has no sidebar. */
 .ch-brand {
   display: flex;
   align-items: center;

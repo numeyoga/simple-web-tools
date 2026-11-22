@@ -1,6 +1,8 @@
 // Main shell (the AppShell of the Covenant skill): skip link, sidebar (brand, workspace, the four
-// sections), sticky top bar (page title, presence and timers summary, preferences) and the main
-// region that swaps the views. Below 1024 px the sidebar is an off-canvas drawer.
+// sections, app switcher), sticky top bar (page title, presence and timers summary, preferences)
+// and the main region that swaps the views. Below 1024 px the sidebar is an off-canvas drawer.
+import { findApp } from '@simple-web-tools/suite';
+import { createAppBrand, createAppSwitcher } from '@simple-web-tools/suite/dom';
 import { StorageError } from '../idb.js';
 import { createStore } from '../store.js';
 import { allowsSingleKeyShortcut } from '../../core/preferences.js';
@@ -23,6 +25,9 @@ import * as UI from './ui.js';
 import { openWorkspaceManager } from './WorkspacesView.js';
 
 const { el, icon, t } = UI;
+
+/** Id of this app in the suite registry (`@simple-web-tools/suite`). */
+const APP_ID = 'chrono';
 
 /** @type {{ id: string, icon: string, label: string, factory: import('./types.js').ViewFactory }[]} */
 const SECTIONS = [
@@ -106,19 +111,15 @@ export function start(rootEl) {
     }
   }
 
-  // The sidebar is navigation only: brand, workspace, then the four sections. Its order is the
-  // same on every view. The skill's own script opens and closes it below 1024 px.
+  // The sidebar is navigation only: brand, workspace, the four sections, then the links to the
+  // apps. Its order is the same on every view. The skill's own script opens and closes it below 1024 px.
   const sidebar = el(
     'nav',
     { id: 'shell-nav', 'aria-label': t('shell.navLabel'), class: 'cv-sidebar' },
-    el(
-      'div',
-      { class: 'cv-sidebar__brand' },
-      icon('timer', { weight: 'bold', className: 'ch-brand-icon' }),
-      t('app.name'),
-    ),
+    createAppBrand(APP_ID),
     el('div', { class: 'ch-sidebar-workspace' }, workspaceChip()),
     navList,
+    createAppSwitcher(APP_ID, { label: t('shell.apps') }),
   );
 
   // The page title is the one h1 of the page (decision G); `goto` writes it.
@@ -378,7 +379,7 @@ export function start(rootEl) {
           el(
             'span',
             { class: 'ch-brand' },
-            icon('timer', { weight: 'bold', className: 'ch-brand-icon' }),
+            icon(findApp(APP_ID).icon, { weight: 'bold', className: 'ch-brand-icon' }),
             t('app.name'),
           ),
         ),

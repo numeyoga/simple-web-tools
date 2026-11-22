@@ -63,18 +63,45 @@ test.describe('sidebar', () => {
         ratio: 1,
       });
     }
-    // The current section follows the navigation, on the link and nowhere else.
+    // The current section follows the navigation, on the button and nowhere else (the app
+    // switcher has its own current link, checked in its own test).
     for (const view of VIEWS) {
       await nav.getByRole('button', { name: view, exact: true }).click();
       await expect(nav.getByRole('button', { name: view, exact: true })).toHaveAttribute(
         'aria-current',
         'page',
       );
-      await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+      await expect(nav.locator('button[aria-current="page"]')).toHaveCount(1);
     }
     // The sidebar holds navigation only: no timer, no presence.
     await expect(nav.getByText('Aucun chrono actif')).toHaveCount(0);
     await expect(nav.getByRole('button', { name: /Pause|Reprendre|Arrêter/ })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('the sidebar shows the brand first and the app switcher last', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const { errors } = await openApp(page);
+    const nav = page.getByRole('navigation', { name: 'Navigation principale' });
+
+    const brand = nav.locator('.cv-sidebar__brand');
+    await expect(brand).toHaveText('Chrono');
+    await expect(brand.locator('i[aria-hidden="true"]')).toHaveCount(1);
+    await expect(nav.locator(':scope > :first-child')).toHaveClass(/cv-sidebar__brand/);
+
+    // The switcher is the last child, a list of the three apps, Chrono being the current one.
+    await expect(nav.locator(':scope > :last-child')).toHaveClass(/swt-switcher/);
+    const switcher = nav.getByRole('list', { name: 'Applications' });
+    const links = switcher.getByRole('link');
+    await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes']);
+    await expect(links).toHaveCount(3);
+    await expect(links.nth(0)).toHaveAttribute('href', './');
+    await expect(links.nth(1)).toHaveAttribute('href', '../locavern/');
+    await expect(links.nth(2)).toHaveAttribute('href', '../transient-notes/');
+    await expect(switcher.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(links.nth(0)).toHaveAttribute('aria-current', 'page');
+    await expect(links.nth(1)).not.toHaveAttribute('aria-current', 'page');
+    await expect(links.nth(2)).not.toHaveAttribute('aria-current', 'page');
     expect(errors).toEqual([]);
   });
 
