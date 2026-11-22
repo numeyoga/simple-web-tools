@@ -2,6 +2,7 @@
 // are read back: the file names (a safe name from the title, the local date) and the contents.
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { createNote, localDate, openApp, pasteImage, readStore, writeNote } from './support.js';
 
 /**
@@ -17,7 +18,7 @@ async function download(page, button, item) {
   const file = await pending;
   return {
     name: file.suggestedFilename(),
-    text: (await readFile(await file.path())).toString('utf8'),
+    text: (await readFile(await saveDownload(file))).toString('utf8'),
   };
 }
 

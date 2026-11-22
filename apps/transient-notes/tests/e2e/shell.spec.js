@@ -42,7 +42,8 @@ test('the five selections are visible at 1280 × 720 and the current one follows
       'aria-current',
       'page',
     );
-    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+    // The app switcher, in the same navigation, marks the current app: only the selections count.
+    await expect(nav.locator('button[aria-current="page"]')).toHaveCount(1);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
   }
 });

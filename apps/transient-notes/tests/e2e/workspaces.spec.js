@@ -2,6 +2,7 @@
 // renames, switches and deletes them, and exports or imports the JSON backup of the active one.
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import {
   PNG_BASE64,
   createNote,
@@ -173,7 +174,7 @@ test('backup: the JSON export of a workspace restores into another one', async (
   await dialog.getByRole('button', { name: 'Exporter JSON' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toMatch(/^transient-notes-default-\d{4}-\d{2}-\d{2}\.json$/);
-  const path = await file.path();
+  const path = await saveDownload(file);
   const backup = JSON.parse((await readFile(path)).toString('utf8'));
   expect(backup).toMatchObject({
     app: 'transient-notes',
@@ -243,7 +244,7 @@ test('backup: a note with a picture is exported, wiped, imported, and the pictur
   let dialog = await openWorkspaces(page);
   const download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Exporter JSON' }).click();
-  const path = await (await download).path();
+  const path = await saveDownload(await download);
   const backup = JSON.parse((await readFile(path)).toString('utf8'));
   expect(backup.data.assets).toHaveLength(1);
   expect(backup.data.assets[0]).toMatchObject({ id: asset.id, mime: 'image/png' });
