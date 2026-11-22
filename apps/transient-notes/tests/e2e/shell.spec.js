@@ -48,7 +48,7 @@ test('the five selections are visible at 1280 × 720 and the current one follows
   }
 });
 
-test('the sidebar shows the brand first and the app switcher last, with the four apps', async ({
+test('the sidebar shows the brand first and the app switcher last, with the five apps', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -64,12 +64,13 @@ test('the sidebar shows the brand first and the app switcher last, with the four
   await expect(apps).toBeVisible();
 
   const links = apps.getByRole('link');
-  await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes', 'Favoris']);
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes', 'Favoris', 'Dashboard']);
+  await expect(links).toHaveCount(5);
   await expect(links.nth(0)).toHaveAttribute('href', '../chrono/');
   await expect(links.nth(1)).toHaveAttribute('href', '../locavern/');
   await expect(links.nth(2)).toHaveAttribute('href', './');
   await expect(links.nth(3)).toHaveAttribute('href', '../favoris/');
+  await expect(links.nth(4)).toHaveAttribute('href', '../dashboard/');
   await expect(links.nth(2)).toHaveAttribute('aria-current', 'page');
   await expect(apps.locator('[aria-current="page"]')).toHaveCount(1);
   // The top bar still ends with the preferences button.
