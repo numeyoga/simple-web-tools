@@ -53,6 +53,7 @@ export default {
   shell: {
     skipLink: 'Skip to content',
     navLabel: 'Main navigation',
+    apps: 'Apps',
     menu: 'Menu',
     preferences: 'Preferences',
     workspace: 'Workspace',

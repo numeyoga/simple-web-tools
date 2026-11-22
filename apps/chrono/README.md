@@ -223,8 +223,9 @@ notifies `store.onTick`, for the running durations, in read-only tabs too. Datab
 batched and delayed by a few tens of milliseconds. The views (`adapters/dom/`) subscribe to the
 store and **render their whole content again** on every notification: no diff, no persistent local
 state. `lib.js` and `ui.js` provide the DOM helpers and primitives (Button, Input, Select,
-Badge, Kbd, Modal, Toast); `App.js` assembles the sidebar, the navigation and the shortcuts. No
-global is shared between modules.
+Badge, Kbd, Modal, Toast); `App.js` assembles the sidebar, the navigation and the shortcuts. The
+brand at the top of the sidebar and the links to the sibling apps at the bottom come from
+`@simple-web-tools/suite`. No global is shared between modules.
 
 **Interface and language.** Every UI string comes from the catalogs in `src/i18n/` through `t()`
 (decision 0002); a test fails on a literal in the views. The language is chosen once per page

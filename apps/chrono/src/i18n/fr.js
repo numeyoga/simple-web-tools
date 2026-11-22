@@ -51,6 +51,7 @@ export default {
   shell: {
     skipLink: 'Aller au contenu',
     navLabel: 'Navigation principale',
+    apps: 'Applications',
     menu: 'Menu',
     preferences: 'Préférences',
     workspace: 'Espace de sauvegarde',
