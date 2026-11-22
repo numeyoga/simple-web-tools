@@ -284,7 +284,6 @@ export default {
       other: '{count} clients déjà saisis, ou tape un nouveau nom',
     },
     noMatchingClient: 'Aucun client correspondant. Ce nom sera créé.',
-    noSuggestion: 'Aucune suggestion.',
     color: 'Couleur',
     customColor: 'Couleur personnalisée',
     nameEmpty: 'Le nom est vide. Saisis le nom du projet.',

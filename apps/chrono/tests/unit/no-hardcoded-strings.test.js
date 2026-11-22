@@ -18,6 +18,11 @@ const views = /** @type {Record<string, string>} */ (
  */
 const ALLOWED = [
   {
+    file: 'ui.js',
+    text: 'ch',
+    why: "the app's class prefix, given to the shared builders",
+  },
+  {
     file: 'QuickAdd.js',
     text: 'quick-add-',
     why: 'prefix of the generated name of a radio group',
