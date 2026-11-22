@@ -162,12 +162,14 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expect(topbar.locator('#theme-switch')).toHaveCount(0);
     await expect(topbar.locator('#topbar-backup-btn')).toHaveCount(0);
 
-    const gear = topbar.locator(':scope > :last-child');
+    // A tooltip is a popover element right after its trigger: it is not a control.
+    const controls = topbar.locator(':scope > :not(.lc-tooltip)');
+    const gear = controls.last();
     await expect(gear).toHaveAttribute('id', 'topbar-preferences-btn');
     await expect(gear).toHaveAccessibleName('Préférences');
     await expect(gear.locator('i.ph-gear')).toHaveCount(1);
     const search = topbar.locator('.cv-search');
-    await expect(topbar.locator(':scope > :nth-last-child(2)')).toHaveClass(/cv-search/);
+    await expect(controls.nth(-2)).toHaveClass(/cv-search/);
     await expect(search).toBeVisible();
 
     await gear.click();

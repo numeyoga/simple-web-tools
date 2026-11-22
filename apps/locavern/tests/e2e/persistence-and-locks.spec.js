@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { openBackup } from './support/shell.js';
 
@@ -42,7 +43,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     const downloadPromise = page2.waitForEvent('download');
     await page2.locator('#btn-export-archive').click();
     const download = await downloadPromise;
-    const zipPath = await download.path();
+    const zipPath = await saveDownload(download);
     expect(zipPath).toBeTruthy();
     await expect(page2.locator('#stat-last-backup-age')).toHaveText('À l’instant');
 
@@ -98,7 +99,7 @@ test.describe('Persistance IndexedDB, Web Locks multi-onglets et sauvegarde ZIP 
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#btn-export-archive').click();
     const download = await downloadPromise;
-    const zipPath = await download.path();
+    const zipPath = await saveDownload(download);
     expect(zipPath).toBeTruthy();
 
     // Réinitialiser puis créer un projet local distinct à préserver

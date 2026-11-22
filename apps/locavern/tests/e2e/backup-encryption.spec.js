@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { openBackup } from './support/shell.js';
 
@@ -40,7 +41,7 @@ test.describe('Chiffrement optionnel des sauvegardes ZIP (AES-GCM + PBKDF2)', ()
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#btn-export-archive').click();
     const download = await downloadPromise;
-    const encryptedZipPath = await download.path();
+    const encryptedZipPath = await saveDownload(download);
     expect(encryptedZipPath).toBeTruthy();
 
     // Vérifier que les champs sensibles ont été vidés après l’export

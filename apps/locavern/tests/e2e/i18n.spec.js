@@ -1,8 +1,9 @@
-// English and French interface: the language follows the browser, can be chosen in the display
+// English and French interface: the language follows the browser, can be chosen in the
 // preferences, and every view reads in English. The other suites run in French
 // (playwright.config.js sets the browser locale to fr-FR).
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { expect, test } from '@playwright/test';
+import { openBackup, openPreferences } from './support/shell.js';
 
 /** @typedef {import('@playwright/test').Page} Page */
 
@@ -107,13 +108,17 @@ test.describe('browser in English (en-US)', () => {
       'Whiteboards',
       'Archive',
     ]) {
-      await expect(nav.getByRole('link', { name: label })).toBeVisible();
+      await expect(nav.getByRole('link', { name: label, exact: true })).toBeVisible();
     }
-    for (const label of ['Backups', 'Trash', 'Display']) {
+    for (const label of ['Backups', 'Trash']) {
       await expect(nav.getByRole('button', { name: label })).toBeVisible();
     }
-    await expect(page.getByRole('switch', { name: 'Dark theme' })).toBeAttached();
-    await expect(page.getByRole('button', { name: 'Backups and import/export' })).toBeVisible();
+    // The preferences (and the theme they hold) are the gear of the top bar, not the sidebar.
+    await expect(
+      page.locator('header.cv-topbar').getByRole('button', { name: 'Preferences' }),
+    ).toBeVisible();
+    await expect(nav.getByRole('button', { name: 'Display' })).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Dark theme' })).toHaveCount(0);
     await expect(page.getByRole('region', { name: 'Notifications' })).toBeAttached();
 
     // The title of the document follows the view.
@@ -310,7 +315,7 @@ test.describe('browser in English (en-US)', () => {
     await openApp(page);
 
     // Backups and storage
-    await page.getByRole('button', { name: 'Backups and import/export' }).click();
+    await openBackup(page);
     const backup = page.getByRole('dialog', { name: 'Backups and storage' });
     await expect(backup).toBeVisible();
     for (const heading of [
@@ -363,9 +368,12 @@ test.describe('browser in English (en-US)', () => {
     await closeDialog(page);
 
     // Preferences
-    await page.getByRole('button', { name: 'Display' }).click();
+    await openPreferences(page);
     const prefs = page.getByRole('dialog', { name: 'Preferences' });
     await expect(prefs.getByLabel('Language / Langue')).toHaveValue('auto');
+    for (const theme of ['System', 'Light', 'Dark']) {
+      await expect(prefs.getByRole('radio', { name: theme, exact: true })).toBeAttached();
+    }
     await expect(prefs.getByRole('radio', { name: 'Comfortable' })).toBeAttached();
     await expect(prefs.getByLabel('Notification duration (seconds)')).toHaveValue('6');
     await expect(prefs.getByLabel('Trash retention (days)')).toHaveValue('30');
@@ -418,7 +426,7 @@ test.describe('browser in English (en-US)', () => {
     expect(mdText).toContain('# Planning notes');
     expect(mdText).toContain('> Project: Atlas · Updated: 2026-11-18');
 
-    await page.getByRole('button', { name: 'Backups and import/export' }).click();
+    await openBackup(page);
     const zip = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export ZIP archive' }).click();
     expect((await zip).suggestedFilename()).toBe('locavern-backup-2026-11-18.zip');
@@ -449,8 +457,8 @@ test.describe('browser in English (en-US)', () => {
         await goTo(page, view);
         await expectNoA11yViolations(page);
       }
-      for (const dialog of ['Backups and import/export', 'Display']) {
-        await page.getByRole('button', { name: dialog }).first().click();
+      for (const open of [openBackup, openPreferences]) {
+        await open(page);
         await expectNoA11yViolations(page);
         await closeDialog(page);
       }
@@ -511,7 +519,7 @@ test.describe('choosing the language in the preferences', () => {
     const stored = () => page.evaluate(() => localStorage.getItem('locavern-locale'));
     expect(await stored()).toBeNull();
 
-    await page.getByRole('button', { name: 'Display' }).click();
+    await openPreferences(page);
     const prefs = page.getByRole('dialog', { name: 'Preferences' });
     await prefs.getByLabel('Language / Langue').selectOption('fr');
     await expect(page.locator('#topbar-title')).toHaveText('Tâches');
@@ -521,7 +529,7 @@ test.describe('choosing the language in the preferences', () => {
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await expect(page.locator('#topbar-title')).toHaveText('Tâches');
-    await page.getByRole('button', { name: 'Affichage' }).click();
+    await openPreferences(page);
     const again = page.getByRole('dialog', { name: 'Préférences' });
     await expect(again.getByLabel('Langue / Language')).toHaveValue('fr');
 
