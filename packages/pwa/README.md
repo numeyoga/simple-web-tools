@@ -12,12 +12,12 @@ start with `<app id>-`. An app id must not start with another app's id followed 
 
 ## Entry points
 
-| Import                         | Contents                                                                                                                                           | Runs in         |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `@simple-web-tools/pwa`        | `cachePrefix`, `shellCacheName`, `isAppCache`, `staleCaches`, `precacheUrls`, `isHandledRequest`, `isTrustedClientMessage`, `BUILD_ID_PLACEHOLDER` | anywhere (pure) |
-| `@simple-web-tools/pwa/worker` | `registerShellWorker`                                                                                                                              | service worker  |
-| `@simple-web-tools/pwa/update` | `registerServiceWorker`, `setupServiceWorkerUpdates`                                                                                               | page            |
-| `@simple-web-tools/pwa/vite`   | `pwaPlugin`, `listFiles`, `buildIdOf`                                                                                                              | Node (build)    |
+| Import                         | Contents                                                                                                                                                                                                                                   | Runs in         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+| `@simple-web-tools/pwa`        | `cachePrefix`, `shellCacheName`, `isAppCache`, `staleCaches`, `precacheUrls`, `splitShellUrls`, `parseManifest`, `onDemandHrefs`, `isOnDemandUrl`, `carriedOverUrls`, `isHandledRequest`, `isTrustedClientMessage`, `BUILD_ID_PLACEHOLDER` | anywhere (pure) |
+| `@simple-web-tools/pwa/worker` | `registerShellWorker`                                                                                                                                                                                                                      | service worker  |
+| `@simple-web-tools/pwa/update` | `registerServiceWorker`, `setupServiceWorkerUpdates`                                                                                                                                                                                       | page            |
+| `@simple-web-tools/pwa/vite`   | `pwaPlugin`, `lazyChunksOf`, `listFiles`, `buildIdOf`                                                                                                                                                                                      | Node (build)    |
 
 The root entry has no DOM, no Cache API, no Node and no clock: it is safe in an app's
 `src/core` ([decision 0004](../../docs/decisions/0004-reference-architecture.md)). `/vite` imports
@@ -80,18 +80,50 @@ registerServiceWorker({
   release therefore changes the worker file, which is what makes the browser look for an update,
   and gets a new cache name.
 
+### Files cached on first use
+
+A heavy lazy library that most sessions never load (Slides' Mermaid: about ninety chunks, 5 MB)
+should not be downloaded at install. Two more options of `pwaPlugin` leave files **on demand**:
+
+```js
+pwaPlugin({
+  appId: 'slides',
+  csp: PROD_CSP,
+  onDemandModules: [/[\\/]node_modules[\\/]mermaid[\\/]/], // by module: whatever the chunks are called
+  onDemand: [/^assets\/some-lazy-/, (path) => path.endsWith('.wasm')], // by output path
+});
+```
+
+- `onDemand`: regular expressions or functions matched on the output path (`assets/x-1a2b.js`).
+- `onDemandModules`: regular expressions matched on module paths. The files taken are the chunks
+  holding such a module and every chunk that only those chunks load (`lazyChunksOf`), so the
+  hashed helper chunks of a library (diagram types, KaTeX, layout engines) are found without being
+  named, and a chunk the app's own code also loads (statically, or from another lazy chunk) stays
+  in the precache.
+
+These files are left out of the precache but still hashed into the build id. The manifest then
+becomes `{ "precache": [...], "onDemand": [...] }`; without any on-demand file it stays the plain
+array, so the other apps' manifests and workers behave as before. Worker and manifest ship
+together, so only the worker of the same build reads the new shape (`parseManifest`).
+
 ## What the worker does
 
 `registerShellWorker({ appId })`:
 
 - **install**: fetches `./precache-manifest.json` past the HTTP cache and caches every file it
   lists in `<app id>-shell-<build id>`. The first worker takes over at once (`skipWaiting`);
-  an update waits.
+  an update waits. When the manifest has on-demand files, it also keeps the manifest in that
+  cache, so the worker knows the list again after the browser stopped it, offline.
 - **message**: `{ type: 'SKIP_WAITING' }` activates the waiting worker, only when it comes from
   a page of the same origin inside the worker's scope (`isTrustedClientMessage`).
-- **activate**: deletes the other `<app id>-` caches (`staleCaches`), then claims the clients.
-- **fetch**: same-origin GET requests are served cache first; a navigation that fails offline
-  gets `index.html`; anything else that fails offline is a `503 Offline` response.
+- **activate**: copies the entries of the other `<app id>-` caches that are on demand in this build
+  too (same hashed name, same content: `carriedOverUrls`) into the new cache, so an update does not
+  download them again, then deletes those caches (`staleCaches`) and claims the clients.
+- **fetch**: same-origin GET requests are served cache first; an on-demand file that is not cached
+  yet is fetched and, if the answer is a 200, stored in the current cache (only files of the
+  manifest's list are, never any other URL); a navigation that fails offline gets `index.html`;
+  anything else that fails offline is a `503 Offline` response (so an on-demand file never used
+  while online is not there offline).
 
 ## Update flow
 
@@ -109,10 +141,12 @@ taken over, and checks for an update when the tab becomes visible again.
 npm test -w @simple-web-tools/pwa
 ```
 
-- `index.test.js`: the cache rules, once per app of the suite, and the precache list.
+- `index.test.js`: the cache rules, once per app of the suite, the precache list and the
+  on-demand rules (split, manifest shapes, lookup, what an update carries over).
 - `worker.test.js`: the worker against a fake scope, Cache Storage and network.
 - `update.test.js`: registration and update detection against a fake service worker container.
-- `vite.test.js`: the plugin's hooks against a temporary output folder.
+- `vite.test.js`: the plugin's hooks against a temporary output folder, and `lazyChunksOf` on
+  small fake bundles.
 
 The `offline-csp.spec.js` journey of each app covers the real browser: scope, cache name,
 offline reload, update toast and cache cleanup.

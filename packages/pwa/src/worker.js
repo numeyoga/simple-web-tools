@@ -5,9 +5,12 @@
 // makes the browser look for an update.
 import {
   BUILD_ID_PLACEHOLDER,
+  carriedOverUrls,
   isHandledRequest,
+  isOnDemandUrl,
   isTrustedClientMessage,
-  precacheUrls,
+  onDemandHrefs,
+  parseManifest,
   shellCacheName,
   staleCaches,
 } from './index.js';
@@ -41,10 +44,14 @@ const MANIFEST_URL = './precache-manifest.json';
  *
  * - install: fetches `precache-manifest.json` and caches every file it lists in
  *   `<app id>-shell-<build id>`. The first worker takes over at once; an update waits until the
- *   person agrees to reload.
+ *   person agrees to reload. When the manifest lists on-demand files (the app's `onDemand`
+ *   option in the Vite plugin), they are not fetched, but the manifest is kept in the cache so
+ *   that the worker knows them again after it was stopped, offline.
  * - message: `SKIP_WAITING` from a page inside this worker's scope activates the waiting worker.
- * - activate: deletes the other caches that start with `<app id>-`, never another app's.
- * - fetch: same-origin GET requests are served cache first; a navigation that fails offline gets
+ * - activate: copies the on-demand entries of the previous builds that are still on demand into
+ *   the new cache, then deletes the other caches that start with `<app id>-`, never another app's.
+ * - fetch: same-origin GET requests are served cache first; an on-demand file that is not cached
+ *   yet is fetched and stored in the current cache; a navigation that fails offline gets
  *   `index.html`.
  *
  * @param {{ appId: string, buildId?: string, scope?: WorkerScope }} options
@@ -57,6 +64,40 @@ export function registerShellWorker({
   scope = /** @type {WorkerScope} */ (/** @type {unknown} */ (self)),
 }) {
   const cacheName = shellCacheName(appId, buildId);
+  /** @type {Promise<Set<string>> | undefined} */
+  let onDemandList;
+
+  /**
+   * The on-demand files of this build, read once from the manifest kept in the cache. Empty for an
+   * app that has none (its manifest is not kept).
+   */
+  function onDemandFiles() {
+    onDemandList ??= (async () => {
+      const cache = await caches.open(cacheName);
+      const kept = await cache.match(MANIFEST_URL);
+      if (!kept) return new Set();
+      try {
+        const { onDemand } = parseManifest(await kept.json());
+        return onDemandHrefs(onDemand, scope.registration.scope);
+      } catch {
+        return new Set();
+      }
+    })();
+    return onDemandList;
+  }
+
+  /** Stores a copy of a response, without failing the request when the storage refuses it. */
+  async function remember(
+    /** @type {Cache} */ cache,
+    /** @type {Request} */ request,
+    /** @type {Response} */ response,
+  ) {
+    try {
+      await cache.put(request, response);
+    } catch {
+      // Quota or a closed cache: the response is still good for this page.
+    }
+  }
 
   scope.addEventListener('install', (/** @type {ExtendableEventLike} */ event) => {
     event.waitUntil(
@@ -64,14 +105,47 @@ export function registerShellWorker({
         // `reload` goes past the HTTP cache: the shell is made of this build's files only.
         const response = await fetch(MANIFEST_URL, { cache: 'reload' });
         if (!response.ok) throw new Error(`precache manifest: ${response.status}`);
-        const urls = precacheUrls(await response.json());
+        const kept = response.clone();
+        const { precache, onDemand } = parseManifest(await response.json());
         const cache = await caches.open(cacheName);
-        await cache.addAll(urls.map((url) => new Request(url, { cache: 'reload' })));
+        await cache.addAll(precache.map((url) => new Request(url, { cache: 'reload' })));
+        if (onDemand.length > 0) await cache.put(MANIFEST_URL, kept);
         // The first worker takes over at once; an update waits until the person agrees to reload.
         if (!scope.registration.active) await scope.skipWaiting();
       })(),
     );
   });
+
+  /**
+   * Copies the on-demand entries of the caches about to be deleted into this build's cache, when
+   * the same file is still on demand: the person who used a diagram does not download it again
+   * after an update. A failure only costs that download.
+   */
+  async function carryOver(/** @type {string[]} */ stale) {
+    const hrefs = await onDemandFiles();
+    if (hrefs.size === 0) return;
+    const cache = await caches.open(cacheName);
+    for (const name of stale) {
+      try {
+        const old = await caches.open(name);
+        const requests = await old.keys();
+        const wanted = new Set(
+          carriedOverUrls(
+            requests.map((request) => request.url),
+            hrefs,
+          ),
+        );
+        for (const request of requests) {
+          if (!wanted.has(request.url) || (await cache.match(request, { ignoreVary: true })))
+            continue;
+          const response = await old.match(request, { ignoreVary: true });
+          if (response) await cache.put(request, response);
+        }
+      } catch {
+        // Not copied: fetched again on next use.
+      }
+    }
+  }
 
   scope.addEventListener(
     'message',
@@ -94,6 +168,7 @@ export function registerShellWorker({
       (async () => {
         // Only this app's caches, never another app's: the cache storage is shared by the origin.
         const stale = staleCaches(appId, await caches.keys(), cacheName);
+        await carryOver(stale);
         await Promise.all(stale.map((name) => caches.delete(name)));
         await scope.clients.claim();
       })(),
@@ -112,7 +187,12 @@ export function registerShellWorker({
         });
         if (cached) return cached;
         try {
-          return await fetch(request);
+          const response = await fetch(request);
+          // An on-demand file is kept the first time it is used, so that it works offline next time.
+          if (response.status === 200 && isOnDemandUrl(request.url, await onDemandFiles())) {
+            await remember(cache, request, response.clone());
+          }
+          return response;
         } catch {
           // Offline: a page load gets the shell; anything else is simply unavailable.
           if (request.mode === 'navigate') {

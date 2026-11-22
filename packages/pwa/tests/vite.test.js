@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildIdOf, listFiles, pwaPlugin } from '../src/vite.js';
+import { buildIdOf, lazyChunksOf, listFiles, pwaPlugin } from '../src/vite.js';
 
 const CSP = "default-src 'none'; script-src 'self'";
 
@@ -111,6 +111,159 @@ describe('pwaPlugin', () => {
 
     put('index.html', 'two');
     expect(buildIdOf(join(root, 'dist'), ['./', './index.html'])).not.toBe(before);
+  });
+});
+
+describe('pwaPlugin with on-demand files', () => {
+  /** @param {Parameters<typeof pwaPlugin>[0]} options */
+  const build = (options) => {
+    put('index.html', '<html></html>');
+    put('assets/index-a1.js', 'app');
+    put('assets/mermaid.core-b2.js', 'mermaid');
+    put('assets/katex-c3.js', 'katex');
+    put('sw.js', 'const CACHE = "x-shell-__BUILD_ID__"');
+    const plugin = pwaPlugin(options);
+    closeBundle(plugin);
+    return JSON.parse(readFileSync(join(root, 'dist', 'precache-manifest.json'), 'utf8'));
+  };
+
+  it('keeps the manifest a plain array when nothing is on demand', () => {
+    expect(build({ appId: 'x', csp: CSP })).toEqual([
+      './',
+      './assets/index-a1.js',
+      './assets/katex-c3.js',
+      './assets/mermaid.core-b2.js',
+      './index.html',
+    ]);
+  });
+
+  it('lists the files that match a pattern or a function in a second list', () => {
+    const manifest = build({
+      appId: 'x',
+      csp: CSP,
+      onDemand: [/^assets\/mermaid/, (path) => path === 'assets/katex-c3.js'],
+    });
+
+    expect(manifest).toEqual({
+      precache: ['./', './assets/index-a1.js', './index.html'],
+      onDemand: ['./assets/katex-c3.js', './assets/mermaid.core-b2.js'],
+    });
+  });
+
+  it('hashes the on-demand files into the build id, though they are not precached', () => {
+    build({ appId: 'x', csp: CSP, onDemand: [/mermaid/] });
+    const stamped = () => readFileSync(join(root, 'dist', 'sw.js'), 'utf8');
+    const before = stamped();
+    expect(before).not.toContain('__BUILD_ID__');
+
+    put('sw.js', 'const CACHE = "x-shell-__BUILD_ID__"');
+    put('assets/mermaid.core-b2.js', 'a new mermaid');
+    closeBundle(pwaPlugin({ appId: 'x', csp: CSP, onDemand: [/mermaid/] }));
+
+    expect(stamped()).not.toBe(before);
+  });
+
+  it('takes the chunks that only the lazy modules need, from the bundle', () => {
+    const plugin = pwaPlugin({
+      appId: 'x',
+      csp: CSP,
+      onDemandModules: [/node_modules\/mermaid\//],
+    });
+    const generateBundle = /** @type {(options: unknown, bundle: unknown) => void} */ (
+      plugin.generateBundle
+    );
+    generateBundle.call(
+      {},
+      {},
+      {
+        'assets/index-a1.js': chunk('assets/index-a1.js', {
+          isEntry: true,
+          dynamicImports: ['assets/mermaid.core-b2.js'],
+        }),
+        'assets/mermaid.core-b2.js': chunk('assets/mermaid.core-b2.js', {
+          moduleIds: ['/p/node_modules/mermaid/x.js'],
+          imports: ['assets/katex-c3.js'],
+        }),
+        'assets/katex-c3.js': chunk('assets/katex-c3.js', {
+          moduleIds: ['/p/node_modules/katex/k.js'],
+        }),
+      },
+    );
+    put('index.html', '<html></html>');
+    put('assets/index-a1.js', 'app');
+    put('assets/mermaid.core-b2.js', 'mermaid');
+    put('assets/katex-c3.js', 'katex');
+    put('sw.js', '__BUILD_ID__');
+    closeBundle(plugin);
+
+    const manifest = JSON.parse(readFileSync(join(root, 'dist', 'precache-manifest.json'), 'utf8'));
+    expect(manifest.onDemand).toEqual(['./assets/katex-c3.js', './assets/mermaid.core-b2.js']);
+    expect(manifest.precache).toEqual(['./', './assets/index-a1.js', './index.html']);
+  });
+});
+
+/** @param {string} fileName @param {Record<string, unknown>} [parts] */
+function chunk(fileName, parts = {}) {
+  return {
+    type: 'chunk',
+    fileName,
+    isEntry: false,
+    imports: [],
+    dynamicImports: [],
+    moduleIds: [],
+    ...parts,
+  };
+}
+
+describe('lazyChunksOf', () => {
+  const lib = [/node_modules\/lib\//];
+
+  it('takes the lib chunks and what only they load', () => {
+    const bundle = {
+      'index.js': chunk('index.js', { isEntry: true, dynamicImports: ['lib.js'] }),
+      'lib.js': chunk('lib.js', {
+        moduleIds: ['/node_modules/lib/a.js'],
+        dynamicImports: ['diagram.js'],
+        imports: ['helper.js'],
+      }),
+      'diagram.js': chunk('diagram.js', {
+        moduleIds: ['/node_modules/lib/d.js'],
+        imports: ['helper.js'],
+      }),
+      'helper.js': chunk('helper.js', { moduleIds: ['/node_modules/other/h.js'] }),
+    };
+
+    expect([...lazyChunksOf(bundle, lib)].sort()).toEqual(['diagram.js', 'helper.js', 'lib.js']);
+  });
+
+  it('leaves out what the app also loads: statically from an entry, or from its own lazy chunk', () => {
+    const bundle = {
+      'index.js': chunk('index.js', {
+        isEntry: true,
+        imports: ['shared.js'],
+        dynamicImports: ['lib.js', 'example.js'],
+      }),
+      'lib.js': chunk('lib.js', {
+        moduleIds: ['/node_modules/lib/a.js'],
+        imports: ['shared.js', 'also-example.js', 'only-lib.js'],
+      }),
+      'example.js': chunk('example.js', { imports: ['also-example.js'] }),
+      'shared.js': chunk('shared.js', { moduleIds: ['/node_modules/lib/s.js'] }),
+      'also-example.js': chunk('also-example.js', { imports: ['deep.js'] }),
+      'deep.js': chunk('deep.js'),
+      'only-lib.js': chunk('only-lib.js'),
+    };
+
+    expect([...lazyChunksOf(bundle, lib)].sort()).toEqual(['lib.js', 'only-lib.js']);
+  });
+
+  it('ignores assets and finds nothing when no module matches', () => {
+    const bundle = {
+      'index.js': chunk('index.js', { isEntry: true }),
+      'logo.svg': { type: 'asset', fileName: 'logo.svg' },
+    };
+
+    expect(lazyChunksOf(bundle, lib).size).toBe(0);
   });
 });
 
