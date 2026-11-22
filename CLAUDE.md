@@ -17,8 +17,8 @@ Public monorepo of small local-first web apps. Read [CONTRIBUTING.md](CONTRIBUTI
 - English for code, comments, commits and docs. UI strings go through the translation
   catalog, never inline (decision 0002). Locavern, Chrono and Transient Notes have
   English and French catalogs and English docs.
-- No runtime framework, no CDN, no third-party request. New runtime dependencies need a
-  reason in the app README (decision 0003).
+- No runtime framework, no CDN, no third-party request; opt-in exceptions follow decision 0008.
+  New runtime dependencies need a reason in the app README (decision 0003).
 - `src/core` stays pure: no DOM, no IndexedDB, no `Date.now()`. Pass time in as an argument
   (decision 0004).
 - Every storage name is prefixed with the app name, because all apps share one origin
