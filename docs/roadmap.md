@@ -78,6 +78,121 @@ has no users, so no data is migrated and its history is not imported.
 
 Follow-ups that came out of this step are listed in [To do](todo.md).
 
+## 7. Shared app kit
+
+Three more apps are coming (steps 8 to 10). What every app copies today moves to shared code
+first, so that the new apps start from it instead of adding three more copies.
+
+- [ ] **CSS reset in Covenant.** Each app resets on its own (`html, body { margin: 0 }`,
+      `.ch-title-reset`, repeated `margin: 0`), and Locavern forgot it (fixed in `2ad3c67`).
+      Make the change in the `covenant-design-system` skill, then sync the package:
+  - a minimal modern reset in Covenant's base, inside `@layer cv-reset`: it beats the browser's
+    styles but loses to every unlayered rule, so no component or app rule changes. Body
+    margin; margins of headings, paragraphs, lists, `figure`, `blockquote`, `dl`, `dd`;
+    `img, picture, video, canvas` as `display: block; max-width: 100%`; `overflow-wrap` on
+    text; `text-wrap: balance` on headings. Inline `svg` is left alone (icons and logos);
+  - `.cv-prose`: the vertical rhythm of user content (notes, rich-text surface, Markdown
+    preview, slides), since the reset removes the browser's margins;
+  - the apps drop their own reset rules and use `.cv-prose` where they show user content;
+  - safety net: screenshots of the main views of the three apps, both themes, 1280 and 390 px,
+    taken before and compared after; any difference is explained or fixed.
+- [ ] **`packages/pwa`**: the offline shell rules (`src/core/pwa.js`), the worker source and
+      the Vite plugin (CSP meta tag, `precache-manifest.json`, build id stamp) are three
+      copies today. One package, parameterised by the app id and its CSP; the three apps use
+      it with no change in behaviour (same cache names, same tests passing).
+- [ ] **Share the DOM helpers** (from [To do](todo.md)): Chrono's `ui.js` and `lib.js`, copied
+      into Transient Notes, become a package with the no-`innerHTML` rule they enforce.
+- [ ] **Tooltip fix in Covenant** (from [To do](todo.md)): `liftTooltip` and `placeTooltip`
+      go to the skill, then the package, then the three apps.
+- [ ] **Opt-in third-party requests**: a decision record (0008) for features that contact a
+      third party only after the person turns them on, off by default, with the host named
+      in the setting and allowed by the app's CSP only. Favoris' site icons are the first
+      case (step 8); a future sync would be the next.
+
+## 8. Port Favoris
+
+A rewrite of [favoris](https://github.com/numeyoga/favoris): bookmark pages in several spaces,
+groups with a colour, a featured flag and folding, drag and drop, search, JSON import and
+export. Today it is one 1,600-line `index.html` with inline script and style, `localStorage`,
+Phosphor and IBM Plex from CDNs, site icons from Google and an optional Appwrite sync. The
+`favoris.html` page of the customizable dashboard is an older copy of it and is not ported.
+
+- [ ] `apps/favoris` (name "Favoris") on the reference architecture: Vite, `src/core` and
+      `src/adapters`, Covenant, `packages/pwa`, English and French catalogs, strict CSP.
+- [ ] Spaces become workspaces (`favoris__<id>`, one database each, one write lock); groups
+      and links in IndexedDB through `packages/storage`, with a schema version.
+- [ ] **Existing data**: the old app is served from `numeyoga.github.io/favoris/`, the same
+      origin as the suite, so its `localStorage` is readable. On first start, import
+      `favoris.spaces`, `favoris.v1:<id>` and the legacy `favoris.v1` into workspaces, keep the
+      old keys untouched, and test it with fixtures of the old format. The old JSON export
+      (`{ space, tags, links }`, no version) is accepted by the import.
+- [ ] Links accept `http:` and `https:` URLs only (the prototype lets an imported
+      `javascript:` URL through); imported records are validated one by one.
+- [ ] Site icons: a coloured initial by default; a preference "Load site icons from Google",
+      off by default, names the host and is the only reason `img-src` allows it (decision 0008).
+- [ ] Native `prompt` and `confirm` give way to Covenant dialogs; tooltips are Covenant's.
+- [ ] No sync in this step (see step 11).
+- [ ] Vitest for the core, the migration and the storage adapter; Playwright and axe journeys
+      in both themes, at 1280 and 390 px; docs; registered in `packages/suite`.
+
+## 9. Port Dashboard
+
+A rewrite of [customizable-dashboard](https://gitlab.com/wallartn/customizable-dashboard):
+one place to reach the links of many applications across environments. Templates define the
+environments, the metadata fields and the link patterns (`{env}`, `{slug}`, `{jiraKey}`,
+`{meta}`); each application fills them in and adds extra links. Admin screens for templates,
+metadata fields, tags, import and export, profiles and settings.
+
+- [ ] `apps/dashboard` (name "Dashboard") on the reference architecture, as in step 8.
+- [ ] Profiles become workspaces (`dashboard__<id>`); data in IndexedDB through
+      `packages/storage`, with a schema version.
+- [ ] **Existing data**: the old app is on GitLab Pages, another origin, so its data comes
+      over by its JSON export (`{ version: 1, exportedAt, data }`, or the bare object). The
+      import accepts it, with a test that loads that format; merge and replace are kept.
+- [ ] The prototype's dead tests (they load files that no longer exist) are not ported; the
+      core gets its own tests. Ctrl+K opens Covenant's command palette.
+- [ ] Vitest, Playwright and axe journeys, docs, registered in `packages/suite`.
+
+## 10. Port Slides
+
+A port of [presentation-engine](https://gitlab.com/wallartn/presentation-engine): Markdown
+slides read from a local folder (`slides.md` and its images), with a presenter window
+(notes, next slide, timers) kept in step through a `BroadcastChannel`, an overview and a
+print view. Its parser and state are already pure and its identifiers are English, so this
+is a port rather than a rewrite. It stores nothing.
+
+- [ ] `apps/slides` (name "Slides"): parser, frontmatter, directives and store move to
+      `src/core`; the folder reader, timers and views to `src/adapters`. The app chrome uses
+      Covenant; the slide themes stay the app's own CSS, built on Covenant tokens.
+- [ ] Runtime dependencies justified in the README (decision 0003): `marked`, `yaml`,
+      `highlight.js` (core and the registered grammars only) and `mermaid`.
+- [ ] **Mermaid on demand**: a lazy chunk, loaded only when a slide has a diagram and
+      precached for offline use. Its SVG carries inline styles, so `style-src` allows
+      `'unsafe-inline'` in this app only, with the reason in the README.
+- [ ] **Sanitize the slide HTML**: raw HTML in `slides.md` reaches `innerHTML` today
+      (`<img onerror>` would run). The rendered HTML goes through a sanitizer before it is
+      inserted; `script-src 'self'` stays the second line of defence. Remote images are
+      blocked by the CSP: document it and show a placeholder.
+- [ ] The `BroadcastChannel` is named with the app prefix; French strings move to catalogs.
+- [ ] Vitest for the core (the existing 19 tests, plus store, keyboard map, timers);
+      Playwright: load a folder, navigate, presenter sync, print; axe on the chrome.
+- [ ] Docs, registered in `packages/suite`.
+
+## 11. Retire the old sites
+
+- [ ] Favoris: the old Pages site (`numeyoga.github.io/favoris/`) shows a "this app has moved"
+      notice with a link. It must not redirect before the new app has imported the data:
+      the import runs in the new app, on the same origin, whatever the old one does.
+- [ ] Dashboard and presentation-engine: a notice on their GitLab Pages sites, with the
+      export steps for the dashboard.
+- [ ] Archive the three repositories, after the maintainer confirms.
+
+## 12. Sync (later)
+
+Favoris' prototype had an optional sync. It is not ported in step 8; if it comes back, it
+comes for the whole suite: one design (pluggable backend, per workspace, off by default,
+decision 0008), not one per app.
+
 ## Known issues inherited from the imported apps
 
 None at the moment.
