@@ -1,5 +1,12 @@
 /* Locavern application styles — built exclusively on Covenant --cv-* tokens */
 
+/* Covenant leaves the browser's 8px body margin: the shell is 100dvh tall, so the margin made
+   the page scroll by 16px. */
+html,
+body {
+  margin: 0;
+}
+
 :root {
   color-scheme: light dark;
 }

@@ -47,8 +47,11 @@ and task descriptions, which carries the Tiptap dependencies: see
 - The ZIP archive format is `schemaVersion: 2`. Clearing the site data in the browser erases
   Locavern's data: export a ZIP archive to keep a backup. See
   [Local storage, archive format and error messages](docs/reference/storage-limits-and-errors.md).
-- **Service worker**: cache `locavern-shell-v4`; on activation it deletes only the caches whose name
-  starts with `locavern-`. A strict Content Security Policy is injected at build time (no CDN, no
+- **Service worker** (`src/sw/sw.js`, built to `sw.js` at the root of the app): at build time a
+  plugin writes `precache-manifest.json` (every file of the output except the worker, source maps
+  and legacy font formats, the lazy chunks included) and stamps the worker with a hash of those
+  files, so every release installs a new worker. The cache is named `locavern-shell-<hash>`; on
+  activation the worker deletes only the other caches whose name starts with `locavern-`. A strict Content Security Policy is injected at build time (no CDN, no
   third-party request).
 
 ## Architecture
@@ -59,12 +62,14 @@ and task descriptions, which carries the Tiptap dependencies: see
 ```text
 index.html            Vite entry
 public/               theme-init.js (theme, text size and language before the first paint),
-                      sw.js (service worker), manifest, icons
+                      manifest, icons
 src/
   main.js             starts the app, wires the store to the adapters
   types.d.ts          data model
   core/               PURE business logic: store, model, schema, backup, crypto, dates, search,
-                      iCalendar and Markdown serialization, templates, whiteboard geometry
+                      iCalendar and Markdown serialization, templates, whiteboard geometry,
+                      offline shell rules (pwa.js)
+  sw/sw.js            service worker, built to `sw.js` at the root of the app
   adapters/           everything that touches the browser: IndexedDB, files, service worker,
     dom/              views and dialogs, SVG whiteboard engine, the editor's wiring to
                       `@simple-web-tools/rich-text` (the editor and the whiteboard screen are
