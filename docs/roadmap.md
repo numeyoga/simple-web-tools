@@ -100,10 +100,14 @@ first, so that the new apps start from it instead of adding three more copies.
       the Vite plugin (CSP meta tag, `precache-manifest.json`, build id stamp) are three
       copies today. One package, parameterised by the app id and its CSP; the three apps use
       it with no change in behaviour (same cache names, same tests passing).
-- [ ] **Share the DOM helpers** (from [To do](todo.md)): Chrono's `ui.js` and `lib.js`, copied
-      into Transient Notes, become a package with the no-`innerHTML` rule they enforce.
-- [ ] **Tooltip fix in Covenant** (from [To do](todo.md)): `liftTooltip` and `placeTooltip`
-      go to the skill, then the package, then the three apps.
+- [x] **`packages/dom`**: Chrono's `ui.js` and `lib.js`, copied into Transient Notes, are one
+      package with the no-`innerHTML` rule they enforce: the `el()` builder, and the Covenant
+      component builders (`createUi`) parameterised by the app's class prefix and translator.
+      Chrono and Transient Notes use it; formatting and project colours stay in the app.
+- [x] **Tooltip fix in Covenant**: `liftTooltip` and `placeTooltip` went to the skill (top layer,
+      the side with room), joined by Locavern's wrapper-less form (`data-cv-tooltip`,
+      `Covenant.setTooltip`), then to the package and to the three apps, which dropped their own
+      tooltip code.
 - [x] **Opt-in third-party requests**: [decision 0008](decisions/0008-opt-in-third-party-requests.md), for features that contact a
       third party only after the person turns them on, off by default, with the host named
       in the setting and allowed by the app's CSP only. Favoris' site icons are the first
