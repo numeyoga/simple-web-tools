@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, test } from '@playwright/test';
 
 /**
  * @typedef {object} PlaywrightPresetOptions
@@ -30,6 +30,13 @@ export function createPlaywrightConfig(options = {}) {
     /** @type {unknown} */ (globalThis)
   ).process?.env;
   const ci = Boolean(env?.CI);
+  // A remote browser (a shared `playwright run-server`): its loopback requests are tunnelled back
+  // to this machine, so the app is still served from 127.0.0.1, a secure context.
+  const wsEndpoint = env?.PLAYWRIGHT_WS_ENDPOINT;
+  const connectOptions = wsEndpoint ? { wsEndpoint, exposeNetwork: '<loopback>' } : undefined;
+  // The remote browser has its own time zone, while the tests build their dates in the local one
+  // (`new Date(2026, 10, 18, 14, 5)`): give it this machine's zone.
+  const timezoneId = wsEndpoint ? new Intl.DateTimeFormat().resolvedOptions().timeZone : undefined;
 
   return defineConfig({
     testDir,
@@ -41,6 +48,8 @@ export function createPlaywrightConfig(options = {}) {
     use: {
       baseURL,
       trace: 'on-first-retry',
+      connectOptions,
+      timezoneId,
     },
     projects: [
       {
@@ -55,4 +64,21 @@ export function createPlaywrightConfig(options = {}) {
       timeout: serverTimeout,
     },
   });
+}
+
+let downloadCount = 0;
+
+/**
+ * Saves a download into the output folder of the running test and returns its local path.
+ * `download.path()` is not available with a remote browser (`PLAYWRIGHT_WS_ENDPOINT`), while
+ * `saveAs()` works both ways. Call it from inside a test.
+ * @param {import('@playwright/test').Download} download
+ * @returns {Promise<string>} absolute path of the saved file
+ */
+export async function saveDownload(download) {
+  downloadCount += 1;
+  const name = `download-${downloadCount}-${download.suggestedFilename()}`;
+  const path = test.info().outputPath(name);
+  await download.saveAs(path);
+  return path;
 }
