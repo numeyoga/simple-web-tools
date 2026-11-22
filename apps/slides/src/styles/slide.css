@@ -1,0 +1,225 @@
+/* =============================================================================
+   The slides: a frame, and the typography of what the Markdown renders. Built on Covenant's tokens:
+   the theme of a slide is `data-theme` (light or dark) on its stage, which re-applies the whole
+   token set inside it, independently of the theme of the app. The text scales with the frame
+   (container query units, never below 0.875rem), so a slide looks the same on a laptop and on a
+   projector.
+   ============================================================================= */
+
+/* The frame: 16:9 inside the stage, or the whole stage when the ratio is "auto". */
+.sl-stage .sl-slide {
+  width: min(100cqw, 100cqh * 16 / 9);
+  aspect-ratio: 16 / 9;
+}
+.sl-stage[data-ratio='auto'] .sl-slide {
+  width: 100cqw;
+  height: 100cqh;
+  aspect-ratio: auto;
+}
+.sl-slide {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-bg);
+  color: var(--cv-fg);
+  box-shadow: var(--cv-shadow-lg);
+  container-type: size;
+  container-name: slide;
+}
+.sl-slide__content {
+  min-width: 0;
+  max-width: 100%;
+  align-self: center;
+  max-height: 100%;
+  overflow: auto;
+  padding: clamp(1rem, 5cqw, 3.5rem);
+  font-size: clamp(0.875rem, 2.4cqw, 2.25rem);
+  line-height: 1.5;
+}
+.sl-slide__content:focus-visible {
+  outline: 2px solid var(--cv-border-focus);
+  outline-offset: -2px;
+}
+
+/* Typography: sizes in em of the slide's own text size. */
+.sl-slide__content :where(h1, h2, h3, h4) {
+  font-weight: var(--cv-weight-semibold);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+.sl-slide__content h1 {
+  font-size: 1.9em;
+}
+.sl-slide__content h2 {
+  font-size: 1.5em;
+}
+.sl-slide__content h3 {
+  font-size: 1.2em;
+}
+.sl-slide__content :where(h1, h2)::after {
+  content: '';
+  display: block;
+  width: 2.5rem;
+  height: 3px;
+  margin-top: 0.4em;
+  border-radius: 2px;
+  background: var(--cv-accent-fill);
+}
+.sl-slide__content a {
+  color: var(--cv-fg-accent);
+  text-decoration: underline;
+}
+.sl-slide__content blockquote {
+  padding-left: 1em;
+  border-left: 3px solid var(--cv-accent-fill);
+  color: var(--cv-fg-muted);
+}
+.sl-slide__content :where(img, svg) {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--cv-radius-md);
+}
+.sl-slide__content hr {
+  border: 0;
+  border-top: 1px solid var(--cv-border-strong);
+}
+.sl-slide__content :not(pre) > code {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-sm);
+  background: var(--cv-surface-2);
+  font-size: 0.88em;
+}
+.sl-slide__code,
+.sl-slide__diagram {
+  padding: 1em 1.2em;
+  overflow: auto;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface-2);
+  font-size: 0.8em;
+  line-height: 1.5;
+}
+.sl-slide__code code {
+  border: 0;
+  background: none;
+  font-size: inherit;
+}
+.sl-slide__diagram {
+  display: flex;
+  justify-content: center;
+  border: 0;
+  background: none;
+}
+.sl-slide__diagram[data-processed] {
+  padding: 0;
+}
+.sl-slide__diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+.sl-slide__content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.sl-slide__content :where(th, td) {
+  padding: 0.5em 0.7em;
+  border: 1px solid var(--cv-border-strong);
+  text-align: left;
+}
+.sl-slide__content thead th {
+  background: var(--cv-surface-2);
+}
+
+/* Syntax highlighting (highlight.js), on Covenant's roles: the foreground colours of the status
+   roles are the only ones that are tested against the surfaces in both themes. */
+.hljs {
+  color: var(--cv-fg);
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--cv-fg-muted);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section,
+.hljs-link {
+  color: var(--cv-fg-accent);
+}
+.hljs-string,
+.hljs-name,
+.hljs-attribute,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-built_in,
+.hljs-addition {
+  color: var(--cv-fg-success);
+}
+.hljs-title,
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-tag,
+.hljs-function .hljs-title,
+.hljs-attr {
+  color: var(--cv-fg-info);
+}
+.hljs-number,
+.hljs-meta,
+.hljs-variable,
+.hljs-template-variable {
+  color: var(--cv-fg-warning);
+}
+.hljs-deletion {
+  color: var(--cv-fg-danger);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: var(--cv-weight-bold);
+}
+
+/* What replaces an image that is not shown, and a diagram that cannot be drawn. */
+.sl-blocked {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: flex-start;
+  gap: 0.6em;
+  padding: 0.8em 1em;
+  border: 1px dashed var(--cv-border-strong);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface-2);
+  font-size: 0.8em;
+  line-height: 1.4;
+}
+.sl-blocked__icon {
+  margin-top: 0.15em;
+  color: var(--cv-fg-muted);
+  font-size: 1.4em;
+}
+.sl-blocked__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.25em;
+}
+.sl-blocked__address {
+  overflow-wrap: anywhere;
+}
+.sl-diagram-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  color: var(--cv-fg-danger);
+  font-size: 0.8em;
+}
+
+/* Mermaid appends an empty tooltip element to the page for its click and link tooltips. Strict mode
+   turns those features off, and the element would add a few pixels of scroll to the page. */
+body > .mermaidTooltip {
+  display: none;
+}

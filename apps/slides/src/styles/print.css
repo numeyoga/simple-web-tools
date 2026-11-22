@@ -1,0 +1,92 @@
+/* =============================================================================
+   The print document: one A4 page per slide, the slide in the upper half and its public notes in the
+   lower half, always in the light theme, with no page background. The document (`.sl-print`) is in
+   the page all the time, out of sight and out of the flow, with a real layout (Mermaid measures its
+   labels there); only here is it shown, and everything else is hidden.
+   ============================================================================= */
+.sl-print {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 186mm;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  #root {
+    display: none !important;
+  }
+  .cv-toast-region,
+  .cv-toasts,
+  dialog {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  .sl-print {
+    position: static;
+    z-index: auto;
+    width: auto;
+    visibility: visible;
+  }
+
+  .sl-print__page {
+    display: grid;
+    height: 272mm;
+    grid-template-rows: 1fr 1fr;
+    gap: 8mm;
+    background: var(--cv-bg);
+    break-after: page;
+    color: var(--cv-fg);
+  }
+  .sl-print__page:last-child {
+    break-after: auto;
+  }
+
+  .sl-print__slide {
+    position: relative;
+    display: grid;
+    overflow: hidden;
+    align-items: center;
+    border: 1px solid var(--cv-border-strong);
+    border-radius: 2mm;
+  }
+  .sl-print__index {
+    position: absolute;
+    top: 2mm;
+    right: 3mm;
+    color: var(--cv-fg-muted);
+    font-size: 9pt;
+  }
+  .sl-print__slide .sl-slide__content {
+    max-height: none;
+    overflow: hidden;
+    padding: 8mm;
+    font-size: 11pt;
+  }
+  .sl-print__notes {
+    overflow: hidden;
+    border-top: 1px solid var(--cv-border-strong);
+    padding-top: 6mm;
+    font-size: 10pt;
+    line-height: 1.5;
+  }
+  .sl-print__notes--empty {
+    border-top-style: dashed;
+  }
+  .sl-print__page .sl-slide__diagram svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
