@@ -1,0 +1,465 @@
+/* =============================================================================
+   Dashboard: app styles, loaded after @simple-web-tools/covenant (tokens, components, fonts).
+   Layout glue and the few app-level pieces that Covenant has no component for. Rules:
+   semantic roles only (no hex, no primitive scale token), every size in rem, hover and press
+   are instant (motion belongs to overlays and toasts, and Covenant provides it).
+   A value that a view computes at run time is written through the CSSOM (`el()` with a `style`
+   object, a number being px at the standard scale, written in rem): the CSP forbids a `style`
+   attribute in markup.
+   ============================================================================= */
+
+/* --- Layout: flex, grid and spacing ------------------------------------- */
+.dsh-row {
+  display: flex;
+  flex-direction: row;
+}
+.dsh-stack {
+  display: flex;
+  flex-direction: column;
+}
+.dsh-center {
+  align-items: center;
+}
+.dsh-baseline {
+  align-items: baseline;
+}
+.dsh-align-end {
+  align-items: flex-end;
+}
+.dsh-between {
+  justify-content: space-between;
+}
+.dsh-wrap {
+  flex-wrap: wrap;
+}
+.dsh-grow {
+  min-width: 0;
+  flex: 1;
+}
+.dsh-self-start {
+  align-self: flex-start;
+}
+.dsh-shrink-0 {
+  flex-shrink: 0;
+}
+.dsh-end {
+  margin-left: auto;
+}
+.dsh-push {
+  margin-right: auto;
+}
+.dsh-fill {
+  align-self: stretch;
+  flex: 1;
+}
+
+.dsh-gap-1 {
+  gap: var(--cv-space-1);
+}
+.dsh-gap-2 {
+  gap: var(--cv-space-2);
+}
+.dsh-gap-3 {
+  gap: var(--cv-space-3);
+}
+.dsh-gap-4 {
+  gap: var(--cv-space-4);
+}
+.dsh-gap-5 {
+  gap: var(--cv-space-5);
+}
+.dsh-gap-6 {
+  gap: var(--cv-space-6);
+}
+.dsh-gap-7 {
+  gap: var(--cv-space-7);
+}
+
+.dsh-mt-auto {
+  margin-top: auto;
+}
+.dsh-mt-5 {
+  margin-top: var(--cv-space-5);
+}
+.dsh-mb-4 {
+  margin-bottom: var(--cv-space-4);
+}
+.dsh-mt-1 {
+  margin-top: var(--cv-space-1);
+}
+.dsh-mt-2 {
+  margin-top: var(--cv-space-2);
+}
+.dsh-mt-3 {
+  margin-top: var(--cv-space-3);
+}
+.dsh-mt-4 {
+  margin-top: var(--cv-space-4);
+}
+
+/* --- Typography ---------------------------------------------------------- */
+.dsh-meta {
+  font-size: var(--cv-text-xs);
+  line-height: 1.3;
+  color: var(--cv-fg-muted);
+}
+.dsh-subtle {
+  font-size: var(--cv-text-xs);
+  line-height: 1.3;
+  color: var(--cv-fg-subtle);
+}
+.dsh-strong {
+  font-weight: var(--cv-weight-medium);
+}
+.dsh-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dsh-accent-text {
+  color: var(--cv-fg-accent);
+}
+.dsh-danger-text {
+  color: var(--cv-fg-danger);
+}
+.dsh-warning-text {
+  color: var(--cv-fg-warning);
+}
+
+/* --- Messages -------------------------------------------------------------- */
+.dsh-loading {
+  padding: var(--cv-space-9);
+}
+.dsh-error-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-4);
+  max-width: 35rem;
+  margin: var(--cv-space-9) auto 0;
+  font-size: var(--cv-text-md);
+}
+.dsh-icon-xl {
+  font-size: 1.75rem;
+}
+
+/* --- Page: the Covenant shell (cv-shell) provides the grid, the sidebar and the top bar ---- */
+.dsh-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-6);
+}
+.dsh-min {
+  min-width: 0;
+}
+.dsh-center-x {
+  justify-content: center;
+}
+
+.dsh-block {
+  padding: var(--cv-space-4);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+.dsh-block--selected {
+  border-color: var(--cv-border-selected);
+  background: var(--cv-bg-accent-subtle);
+}
+.dsh-block--dashed {
+  border-style: dashed;
+  border-color: var(--cv-border-strong);
+  background: var(--cv-surface-2);
+}
+
+/* --- Density: how much room the rows of links and tables take. Comfortable is the default. --- */
+:root {
+  --dsh-row-pad: var(--cv-space-2);
+}
+:root[data-density='compact'] {
+  --dsh-row-pad: 0;
+}
+
+/* --- Sidebar: navigation only (brand, workspace, the applications, the administration) --- */
+.dsh-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-3);
+  font: var(--cv-weight-semibold) var(--cv-text-md) / 1 var(--cv-font-sans);
+}
+.dsh-sidebar-workspace {
+  padding-bottom: var(--cv-space-4);
+}
+.dsh-sidebar-apps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-2);
+  min-height: 0;
+}
+.dsh-nav-list {
+  max-height: 40vh;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.cv-sidebar ul {
+  padding: 0;
+  list-style: none;
+}
+.dsh-nav-count {
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-xs);
+}
+.dsh-nav-empty {
+  padding: var(--cv-space-2) var(--cv-space-3);
+}
+.dsh-nav-new {
+  align-self: flex-start;
+}
+.dsh-workspace {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* --- Top bar ------------------------------------------------------------------------ */
+.dsh-topbar-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+.dsh-topbar-name {
+  line-height: 1.1;
+}
+.cv-topbar .cv-topbar__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Preferences: the list of shortcuts ------------------------------------- */
+.dsh-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-2);
+  padding: var(--cv-space-3) var(--cv-space-4);
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface-2);
+  list-style: none;
+}
+
+/* --- Main region ------------------------------------------------------------------------- */
+.cv-shell__content.dsh-main {
+  max-width: none;
+  flex: 1;
+}
+.dsh-main > .cv-alert {
+  margin-bottom: var(--cv-space-2);
+}
+.dsh-description {
+  max-width: 45rem;
+  color: var(--cv-fg-muted);
+}
+
+/* --- An application: header, facts, tabs, links ---------------------------------------- */
+.dsh-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--cv-space-4);
+}
+.dsh-header > .dsh-grow {
+  flex: 1 1 18rem;
+  min-width: min(100%, 18rem);
+}
+.dsh-header > .dsh-end {
+  margin-left: auto;
+}
+.dsh-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: var(--cv-space-4);
+}
+.dsh-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--cv-space-4);
+  margin: 0;
+}
+.dsh-configure {
+  margin-top: var(--cv-space-3);
+}
+.dsh-fact {
+  min-width: 0;
+}
+.dsh-fact dd {
+  margin: var(--cv-space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.dsh-card {
+  min-width: 0;
+  border: 1px solid var(--cv-border);
+  border-radius: var(--cv-radius-md);
+  background: var(--cv-surface);
+}
+.dsh-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cv-space-3);
+  padding: var(--cv-space-3) var(--cv-space-4);
+  border-bottom: 1px solid var(--cv-border);
+}
+.dsh-card__body {
+  padding: var(--cv-space-4);
+}
+.dsh-card__flush {
+  min-width: 0;
+}
+.dsh-card__flush .cv-table-wrap {
+  border: 0;
+  border-radius: 0 0 var(--cv-radius-md) var(--cv-radius-md);
+}
+.dsh-card__empty {
+  padding: var(--cv-space-4);
+}
+.dsh-group {
+  min-width: 0;
+  padding: var(--cv-space-2) var(--cv-space-4) var(--cv-space-3);
+}
+.dsh-group__title {
+  display: flex;
+  align-items: center;
+  gap: var(--cv-space-2);
+  padding: var(--cv-space-2) 0;
+  color: var(--cv-fg-muted);
+}
+.dsh-group__count {
+  margin-left: var(--cv-space-1);
+  color: var(--cv-fg-subtle);
+}
+.dsh-rows {
+  padding: 0;
+  list-style: none;
+}
+.dsh-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: var(--cv-space-2);
+}
+.dsh-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cv-space-2) var(--cv-space-4);
+  min-height: 2rem;
+  padding: calc(var(--dsh-row-pad) + var(--cv-space-1)) var(--cv-space-2);
+  border-radius: var(--cv-radius-sm);
+}
+.dsh-link:hover {
+  background: var(--cv-surface-2);
+}
+.dsh-link__name {
+  display: flex;
+  flex: 0 1 13rem;
+  min-width: 0;
+  align-items: center;
+  gap: var(--cv-space-2);
+  font-weight: var(--cv-weight-medium);
+}
+.dsh-link__name.dsh-grow {
+  flex: 1;
+}
+.dsh-link__name > .cv-icon,
+.dsh-link__name > i {
+  flex: none;
+  color: var(--cv-fg-subtle);
+}
+.dsh-link__url {
+  flex: 1 1 12rem;
+  min-width: 0;
+  color: var(--cv-fg-muted);
+  font-size: var(--cv-text-xs);
+}
+.dsh-link__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cv-space-1);
+  flex: none;
+  margin-left: auto;
+}
+.dsh-disabled {
+  color: var(--cv-fg-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.dsh-plain-link {
+  color: var(--cv-fg);
+  text-decoration: none;
+}
+.dsh-plain-link:hover,
+.dsh-plain-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* --- Administration ------------------------------------------------------------------------ */
+.dsh-split {
+  display: grid;
+  grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+  gap: var(--cv-space-5);
+  align-items: start;
+}
+.dsh-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: var(--cv-space-5);
+  align-items: start;
+}
+.dsh-list {
+  padding: 0;
+  list-style: none;
+}
+.dsh-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+  gap: var(--cv-space-3);
+}
+.dsh-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cv-space-1);
+}
+.dsh-stat__value {
+  font: var(--cv-weight-semibold) var(--cv-text-xl) / 1.1 var(--cv-font-sans);
+}
+.dsh-table td {
+  white-space: normal;
+}
+.dsh-table td .cv-field {
+  min-width: 8rem;
+}
+.dsh-table td:nth-child(3) .cv-field {
+  min-width: 10rem;
+}
+.dsh-table td:nth-child(4) .cv-field {
+  min-width: 18rem;
+}
+
+@media (max-width: 1023px) {
+  .dsh-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 767px) {
+  /* Icon-only buttons on a small screen: the aria-label carries the name. */
+  .cv-topbar .dsh-btn-label,
+  .cv-topbar .cv-search__label,
+  .cv-topbar .cv-search .cv-kbd {
+    display: none;
+  }
+  .dsh-topbar-name {
+    display: none;
+  }
+}
