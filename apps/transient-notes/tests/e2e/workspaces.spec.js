@@ -87,6 +87,25 @@ test('workspaces: the choice is kept: a reload opens the workspace that was chos
   ]);
 });
 
+test('workspaces: Escape cancels a rename even while a tooltip shows under the pointer', async ({
+  page,
+}) => {
+  // Cause of a flake: the pointer rests where the "Renommer" button was, which is now "Valider".
+  // Its tooltip opens on hover, and Covenant hands the first Escape to the tooltip. Here the
+  // tooltip is waited for, so the order does not depend on the timing of the browser.
+  await openApp(page);
+  const dialog = await createWorkspace(page, 'Archive 2025', 'stay');
+  await dialog.getByRole('button', { name: 'Renommer' }).last().click();
+  await expect(page.getByRole('tooltip', { name: 'Valider' })).toBeVisible();
+  await dialog.getByRole('textbox', { name: 'Nom de l’espace' }).fill('Autre nom');
+
+  await page.keyboard.press('Escape');
+
+  await expect(dialog.getByRole('textbox', { name: 'Nom de l’espace' })).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Archive 2025')).toBeVisible();
+});
+
 test('workspaces: rename, delete after a confirmation, and never the active or the last one', async ({
   page,
 }) => {

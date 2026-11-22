@@ -293,9 +293,22 @@
     tipHide(entry);
     return true;
   }
-  /* Capture phase: Escape closes the tooltip first, and the dialog or menu behind it stays open. */
+  /* A text field has the focus and it is not the trigger of the tooltip: a tooltip left under a
+     resting pointer (the buttons of a row that was just redrawn) must not take the Escape of that field. */
+  function tipTextFieldFocused(entry) {
+    var a = document.activeElement;
+    if (!a || a === entry.trigger) return false;
+    if (a.isContentEditable || a.tagName === 'TEXTAREA') return true;
+    return a.tagName === 'INPUT' && !/^(button|checkbox|radio|submit|reset|file|image|color|range)$/.test(a.type);
+  }
+  /* Capture phase: Escape closes the tooltip first, and the dialog or menu behind it stays open.
+     Typing in a text field, Escape also reaches the field (it cancels its edit): the tooltip is only hidden. */
   window.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && tipEscape()) { tipSuppressCancelUntil = Date.now() + 400; e.preventDefault(); e.stopPropagation(); }
+    if (e.key !== 'Escape') return;
+    var current = tipCurrent();
+    var forField = !!current && tipTextFieldFocused(current);
+    if (!tipEscape() || forField) return;
+    tipSuppressCancelUntil = Date.now() + 400; e.preventDefault(); e.stopPropagation();
   }, true);
   window.addEventListener('keyup', function (e) {
     if (e.key === 'Escape' && Date.now() <= tipSuppressCancelUntil) { e.preventDefault(); e.stopPropagation(); }
