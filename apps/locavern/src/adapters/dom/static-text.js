@@ -1,6 +1,6 @@
 // The text of index.html. The page holds no text of its own: an element with `data-i18n="key"`
 // gets that message as its text, and `data-i18n-attrs="attribute:key;attribute:key"` sets
-// attributes (`aria-label`, `placeholder`, `data-lc-tooltip`). The keys are checked against the
+// attributes (`aria-label`, `placeholder`, `data-cv-tooltip`). The keys are checked against the
 // catalogs by tests/unit/i18n-catalogs.test.js, and the absence of any other text by
 // tests/unit/static-markup.test.js.
 

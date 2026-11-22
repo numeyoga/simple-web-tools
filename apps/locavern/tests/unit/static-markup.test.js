@@ -43,7 +43,7 @@ describe('index.html', () => {
   });
 
   test('writes no text in an attribute either', () => {
-    expect(html).not.toMatch(/\s(aria-label|title|placeholder|alt|data-lc-tooltip)="/);
+    expect(html).not.toMatch(/\s(aria-label|title|placeholder|alt|data-cv-tooltip)="/);
   });
 
   test('starts in English: the early script and the app set the language of the user', () => {

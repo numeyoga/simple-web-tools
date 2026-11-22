@@ -9,7 +9,6 @@ import {
 } from '../../core/store.js';
 import { instantiateWhiteboardTemplate } from '../../core/templates.js';
 import { createTemplatePicker } from './template-picker.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { saveArchiveBlob } from '../archive-file.js';
 import { ensureExportDirectoryPermission } from '../export-directory.js';
 import { mountWhiteboardCanvas } from '../whiteboard-canvas.js';
@@ -468,7 +467,7 @@ export function renderWhiteboardView({
         editRowBtn.type = 'button';
         editRowBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-note-row__edit';
         editRowBtn.setAttribute('aria-label', t('whiteboards.editNamed', { title: wb.title }));
-        setTooltip(editRowBtn, t('whiteboards.editTitle'));
+        window.Covenant?.setTooltip?.(editRowBtn, t('whiteboards.editTitle'));
         const penIc = document.createElement('i');
         penIc.className = 'ph ph-pencil-simple cv-icon';
         penIc.setAttribute('aria-hidden', 'true');
@@ -989,7 +988,7 @@ export function renderWhiteboardView({
 
     layout.append(listEl, editorCard);
     bodySlot.replaceChildren(layout);
-    initTooltips(bodySlot);
+    window.Covenant?.init?.(bodySlot);
   }
 
   projectFilter.addEventListener('change', () => {

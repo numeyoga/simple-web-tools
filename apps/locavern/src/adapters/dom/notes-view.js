@@ -11,7 +11,6 @@ import {
 } from '../../core/store.js';
 import { instantiateNoteTemplate } from '../../core/templates.js';
 import { createTemplatePicker } from './template-picker.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { saveArchiveBlob } from '../archive-file.js';
 import { mountRichTextEditor } from '../rich-text-lazy.js';
 import { confirmAction, notify } from './app-shell.js';
@@ -317,7 +316,7 @@ export function renderNotesView({
         editRowBtn.type = 'button';
         editRowBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm lc-note-row__edit';
         editRowBtn.setAttribute('aria-label', t('notes.editNamed', { title: note.title }));
-        setTooltip(editRowBtn, t('notes.editTitle'));
+        window.Covenant?.setTooltip?.(editRowBtn, t('notes.editTitle'));
         const penIc = document.createElement('i');
         penIc.className = 'ph ph-pencil-simple cv-icon';
         penIc.setAttribute('aria-hidden', 'true');
@@ -857,7 +856,7 @@ export function renderNotesView({
 
     layout.append(listEl, editorCard);
     bodySlot.replaceChildren(layout);
-    initTooltips(bodySlot);
+    window.Covenant?.init?.(bodySlot);
   }
 
   projectFilter.addEventListener('change', () => {

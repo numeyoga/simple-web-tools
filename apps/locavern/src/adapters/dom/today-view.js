@@ -8,7 +8,6 @@ import {
 } from '../../core/model.js';
 import { selectProjectById, selectTodaySummary } from '../../core/store.js';
 import { notify } from './app-shell.js';
-import { setTooltip } from './tooltip.js';
 import { format, t } from '../i18n.js';
 
 /**
@@ -287,7 +286,7 @@ export function renderTodayView({
       editBtn.type = 'button';
       editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
       editBtn.setAttribute('aria-label', t('common.editNamed', { title: task.title }));
-      setTooltip(editBtn, t('common.edit'));
+      window.Covenant?.setTooltip?.(editBtn, t('common.edit'));
       const editIc = document.createElement('i');
       editIc.className = 'ph ph-pencil-simple cv-icon';
       editIc.setAttribute('aria-hidden', 'true');
@@ -301,7 +300,7 @@ export function renderTodayView({
       doneBtn.type = 'button';
       doneBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
       doneBtn.setAttribute('aria-label', t('today.markDoneNamed', { title: task.title }));
-      setTooltip(doneBtn, t('today.markDone'));
+      window.Covenant?.setTooltip?.(doneBtn, t('today.markDone'));
       const checkIc = document.createElement('i');
       checkIc.className = 'ph ph-check cv-icon';
       checkIc.setAttribute('aria-hidden', 'true');
@@ -486,7 +485,7 @@ export function renderTodayView({
         editBtn.type = 'button';
         editBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon cv-btn--sm';
         editBtn.setAttribute('aria-label', t('common.editNamed', { title: item.title }));
-        setTooltip(editBtn, t('common.edit'));
+        window.Covenant?.setTooltip?.(editBtn, t('common.edit'));
         const editIc = document.createElement('i');
         editIc.className = 'ph ph-pencil-simple cv-icon';
         editIc.setAttribute('aria-hidden', 'true');

@@ -27,13 +27,13 @@ async function resetPointerState(page) {
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   });
-  await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+  await expect(page.locator('.cv-tooltip:popover-open')).toHaveCount(0);
 }
 
 /**
  * Helper to hover a button, wait for the hover delay, and assert the top-layer
- * tooltip of THAT button (linked through `interestfor`) displays the expected
- * text near the button without clipping.
+ * tooltip (Covenant's, one open at a time) displays the expected text near the
+ * button without clipping.
  * @param {import('@playwright/test').Page} page
  * @param {import('@playwright/test').Locator} trigger
  * @param {string | RegExp} expectedText
@@ -51,21 +51,24 @@ async function expectTooltipOnHover(page, trigger, expectedText) {
 
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
-  // The pointer must reach the trigger itself, not an overlay (toast, previous tooltip)
-  const reachesTrigger = await trigger.evaluate(
-    (el, { x, y }) => el.contains(document.elementFromPoint(x, y)),
-    { x: cx, y: cy },
-  );
-  expect(reachesTrigger, 'the trigger is covered at its center').toBe(true);
+  // The pointer must reach the trigger itself, not an overlay (toast, previous tooltip, the
+  // off-canvas sidebar that is still sliding away after a resize)
+  await expect
+    .poll(
+      () =>
+        trigger.evaluate((el, { x, y }) => el.contains(document.elementFromPoint(x, y)), {
+          x: cx,
+          y: cy,
+        }),
+      { message: 'the trigger is covered at its center' },
+    )
+    .toBe(true);
 
-  const tipId = await trigger.getAttribute('interestfor');
-  expect(tipId).toBeTruthy();
-  const tip = page.locator(`#${tipId}`);
+  const tip = page.locator('.cv-tooltip:popover-open');
 
   await page.mouse.move(cx, cy);
   await expect(tip).toBeVisible({ timeout: 2000 });
-  await expect(tip).toHaveAttribute('class', /lc-tooltip/);
-  await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(1);
+  await expect(tip).toHaveCount(1);
   await expect(tip).toContainText(expectedText);
 
   const tipBox = await tip.boundingBox();
@@ -124,9 +127,9 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     // Ne doit pas apparaître instantanément (délai anti-flash)
     await page.waitForTimeout(80);
-    await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+    await expect(page.locator('.cv-tooltip:popover-open')).toHaveCount(0);
 
-    const tip = page.locator('.lc-tooltip:popover-open');
+    const tip = page.locator('.cv-tooltip:popover-open');
     await expect(tip).toBeVisible({ timeout: 1500 });
     await expect(tip).toHaveText('Actions sur la tâche');
 
@@ -141,7 +144,7 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
 
     // Cliquer le bouton ferme l'infobulle et ouvre le menu ancré près du bouton
     await leftBtn.click();
-    await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+    await expect(page.locator('.cv-tooltip:popover-open')).toHaveCount(0);
 
     const leftMenuId = await leftBtn.getAttribute('popovertarget');
     expect(leftMenuId).toBeTruthy();
@@ -190,17 +193,17 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     await leftBtn.focus();
     await page.keyboard.press('Shift'); // assure contexte clavier récent
     await rightBtn.focus();
-    await expect(page.locator('.lc-tooltip:popover-open')).toHaveText('Actions sur la tâche');
+    await expect(page.locator('.cv-tooltip:popover-open')).toHaveText('Actions sur la tâche');
 
     await page.keyboard.press('Escape');
-    await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+    await expect(page.locator('.cv-tooltip:popover-open')).toHaveCount(0);
     await expect(rightBtn).toBeFocused();
 
     // Axe-core en thème sombre avec infobulle ouverte
     await setTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await rightBtn.focus();
-    await expect(page.locator('.lc-tooltip:popover-open')).toBeVisible();
+    await expect(page.locator('.cv-tooltip:popover-open')).toBeVisible();
     await expectNoA11yViolations(page);
     await page.keyboard.press('Escape');
 
@@ -256,7 +259,7 @@ test.describe('Menu Kanban positionné et infobulles accessibles sur les boutons
     );
     // Échap avec infobulle ouverte dans une dialog ferme l'infobulle SANS fermer la modale
     await page.keyboard.press('Escape');
-    await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+    await expect(page.locator('.cv-tooltip:popover-open')).toHaveCount(0);
     await expect(page.locator('#modal-backup')).toBeVisible();
     await page.locator('#modal-backup [data-cv-close]').first().click();
 

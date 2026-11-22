@@ -1,6 +1,5 @@
 import { mountRichTextEditor as mountSharedEditor } from '@simple-web-tools/rich-text/editor-lazy';
 import { showChunkError, showChunkLoading } from './dom/lazy-chunk-state.js';
-import { initTooltips, setTooltip } from './dom/tooltip.js';
 import { t } from './i18n.js';
 
 /**
@@ -53,8 +52,9 @@ export function mountRichTextEditor(options) {
   return mountSharedEditor({
     ...options,
     labels: editorLabels(),
-    setTooltip,
-    initTooltips,
+    // Covenant's tooltips (attribute form): the editor notes a text per button, then wires the toolbar.
+    setTooltip: (trigger, text) => window.Covenant?.setTooltip?.(trigger, text),
+    initTooltips: (root) => window.Covenant?.init?.(root),
     showLoading: showChunkLoading,
     showError: showChunkError,
   });

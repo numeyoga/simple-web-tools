@@ -19,7 +19,6 @@ import {
 } from '../storage-idb.js';
 import { errorText } from '../../core/messages.js';
 import { closeDialogById, confirmAction, notify } from './app-shell.js';
-import { initTooltips, setTooltip } from './tooltip.js';
 import { i18n, t } from '../i18n.js';
 
 const ONE_DECIMAL = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
@@ -92,7 +91,7 @@ function createPasswordField({ id, label, autocomplete, describedBy }) {
   toggleBtn.className = 'cv-btn cv-btn--ghost cv-btn--icon lc-password-toggle';
   toggleBtn.setAttribute('aria-pressed', 'false');
   toggleBtn.setAttribute('aria-label', t('backup.password.show', { label }));
-  setTooltip(toggleBtn, t('backup.password.showTooltip'));
+  window.Covenant?.setTooltip?.(toggleBtn, t('backup.password.showTooltip'));
 
   const icon = document.createElement('i');
   icon.className = 'ph ph-eye cv-icon';
@@ -107,7 +106,7 @@ function createPasswordField({ id, label, autocomplete, describedBy }) {
       'aria-label',
       revealed ? t('backup.password.hide', { label }) : t('backup.password.show', { label }),
     );
-    setTooltip(
+    window.Covenant?.setTooltip?.(
       toggleBtn,
       revealed ? t('backup.password.hideTooltip') : t('backup.password.showTooltip'),
     );
@@ -996,7 +995,7 @@ export function wireBackupModal({ db, store, appVersion, onBeforeReplace }) {
       importSection,
       resetSection,
     );
-    initTooltips(modalBody);
+    window.Covenant?.init?.(modalBody);
   }
 
   // Re-render whenever modal is opened

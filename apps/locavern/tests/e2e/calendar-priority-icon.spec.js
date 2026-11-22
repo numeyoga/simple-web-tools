@@ -70,9 +70,9 @@ for (const mode of ['week', 'month']) {
     for (const [priority, , tooltip] of PRIORITIES) {
       const mark = page.locator(`.lc-cal-task--${priority} .lc-cal-task__prio`);
       await page.mouse.move(0, 0);
-      await expect(page.locator('.lc-tooltip:popover-open')).toHaveCount(0);
+      await expect(page.locator('.cv-tooltip:popover-open')).toHaveCount(0);
       await mark.hover();
-      const tip = page.locator('.lc-tooltip:popover-open');
+      const tip = page.locator('.cv-tooltip:popover-open');
       await expect(tip).toHaveCount(1);
       await expect(tip).toHaveText(tooltip ?? '');
     }

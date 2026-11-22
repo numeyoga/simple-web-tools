@@ -1,5 +1,4 @@
 import { t } from '../i18n.js';
-import { initTooltips } from './tooltip.js';
 import { showChunkError, showChunkLoading } from './lazy-chunk-state.js';
 
 /**
@@ -61,7 +60,7 @@ export function renderWhiteboardView(options) {
       (module) => {
         if (cancelled) return;
         view = module.renderWhiteboardView(options);
-        initTooltips(container);
+        window.Covenant?.init?.(container);
       },
       () => {
         if (cancelled) return;

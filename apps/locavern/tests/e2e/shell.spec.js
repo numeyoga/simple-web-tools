@@ -179,7 +179,7 @@ test.describe('AppShell Covenant & accessibilité (Étape 1)', () => {
     await expect(topbar.locator('#topbar-backup-btn')).toHaveCount(0);
 
     // A tooltip is a popover element right after its trigger: it is not a control.
-    const controls = topbar.locator(':scope > :not(.lc-tooltip)');
+    const controls = topbar.locator(':scope > :not(.cv-tooltip)');
     const gear = controls.last();
     await expect(gear).toHaveAttribute('id', 'topbar-preferences-btn');
     await expect(gear).toHaveAccessibleName('Préférences');
