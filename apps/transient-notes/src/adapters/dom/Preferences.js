@@ -116,7 +116,7 @@ export function openPreferences() {
     el(
       'div',
       { class: 'tn-stack tn-gap-3' },
-      el('h3', { class: 'cv-label tn-title-reset' }, t('prefs.shortcuts')),
+      el('h3', { class: 'cv-label' }, t('prefs.shortcuts')),
       el(
         'ul',
         { class: 'tn-shortcuts tn-meta' },

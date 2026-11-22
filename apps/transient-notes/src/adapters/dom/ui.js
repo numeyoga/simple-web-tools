@@ -566,7 +566,7 @@ function Confirm(opts) {
     });
     const content = {
       title,
-      body: el('p', { class: 'tn-message' }, message),
+      body: el('p', null, message),
       footer: [cancel, confirmButton],
     };
     if (within) {

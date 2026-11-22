@@ -140,7 +140,7 @@ export function createNoteEditor(store, { toasts, onBack }) {
     onclick: () => void deleteCurrent(),
   });
 
-  const meta = el('p', { class: 'tn-meta tn-editor-meta' });
+  const meta = el('p', { class: 'tn-meta' });
   const editorBody = el('div', { class: 'tn-editor-body' });
 
   const header = el(
