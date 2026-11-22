@@ -139,11 +139,6 @@ Phosphor and IBM Plex from CDNs, site icons from Google and an optional Appwrite
 - [x] Vitest for the core, the migration and the storage adapter; Playwright and axe journeys
       in both themes, at 1280 and 390 px; docs; registered in `packages/suite`.
 
-Open question from this step: Google's favicon service redirects to `t<n>.gstatic.com`, which
-`img-src 'self' https://www.google.com` refuses (a CSP is checked again after a redirect), so the
-icons would not display for real. Allowing `t0` to `t3.gstatic.com` in `img-src` fixes it; see
-"Site icons" in the [Favoris README](../apps/favoris/README.md) and decision 0008.
-
 ## 9. Port Dashboard
 
 A rewrite of [customizable-dashboard](https://gitlab.com/wallartn/customizable-dashboard):

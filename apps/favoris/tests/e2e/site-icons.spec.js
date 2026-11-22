@@ -123,6 +123,34 @@ test('turned on, each link asks Google once, for its domain only; turned off, it
   expect(asked.length).toBe(total);
 });
 
+test('the icon still shows when Google redirects to gstatic.com, as the real service does', async ({
+  page,
+}) => {
+  const { violations } = await watchPage(page);
+  await page.route('https://www.google.com/**', (route) => {
+    const domain = new URL(route.request().url()).searchParams.get('domain');
+    return route.fulfill({
+      status: 301,
+      headers: { location: `https://t1.gstatic.com/faviconV2?url=https://${domain}` },
+    });
+  });
+  await page.route('https://t1.gstatic.com/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: PNG }),
+  );
+  await page.addInitScript(() => localStorage.setItem('favoris-site-icons', '1'));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+  // The redirected hop is checked against the CSP before it is fetched: what matters is that the
+  // browser goes to gstatic.com without a violation. Chromium may not route that second hop
+  // through page.route, so whether the picture itself arrives is not asserted.
+  const hop = page.waitForRequest((request) => request.url().startsWith('https://t1.gstatic.com/'));
+  await addLink(page, { name: 'Redirigé', url: 'https://redirect.example' });
+  await hop;
+  await page.waitForTimeout(300);
+  expect(violations).toEqual([]);
+});
+
 test('an icon that cannot load leaves the initial in place', async ({ page }) => {
   await page.route('https://www.google.com/**', (route) => route.abort());
   await page.addInitScript(() => localStorage.setItem('favoris-site-icons', '1'));
@@ -147,8 +175,15 @@ test('the Content Security Policy allows Google’s favicon service in img-src a
       return [name, sources];
     }),
   );
-  expect(directives['img-src']).toEqual(["'self'", 'https://www.google.com']);
+  expect(directives['img-src']).toEqual([
+    "'self'",
+    'https://www.google.com',
+    'https://t0.gstatic.com',
+    'https://t1.gstatic.com',
+    'https://t2.gstatic.com',
+    'https://t3.gstatic.com',
+  ]);
   for (const [name, sources] of Object.entries(directives)) {
-    if (name !== 'img-src') expect(sources.join(' '), name).not.toMatch(/google|https?:/);
+    if (name !== 'img-src') expect(sources.join(' '), name).not.toMatch(/google|gstatic|https?:/);
   }
 });

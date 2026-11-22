@@ -7,6 +7,15 @@ import { saveDownload } from '@simple-web-tools/test-utils/playwright';
 import { expectNoA11yViolations } from '@simple-web-tools/test-utils/axe';
 import { addGroup, addLink, openWorkspaces, waitForWrite, watchPage } from './support.js';
 
+/** Google's favicon service and the hosts it redirects to (decision 0008). */
+const GOOGLE_HOSTS = [
+  'https://www.google.com',
+  'https://t0.gstatic.com',
+  'https://t1.gstatic.com',
+  'https://t2.gstatic.com',
+  'https://t3.gstatic.com',
+];
+
 /** @typedef {import('@playwright/test').Page} Page */
 
 test.use({ reducedMotion: 'reduce' });
@@ -39,7 +48,7 @@ test.describe('strict Content Security Policy', () => {
       "default-src 'none'",
       "script-src 'self'",
       "style-src 'self'",
-      "img-src 'self' https://www.google.com",
+      "img-src 'self' https://www.google.com https://t0.gstatic.com https://t1.gstatic.com https://t2.gstatic.com https://t3.gstatic.com",
       "font-src 'self'",
       "connect-src 'self'",
       "worker-src 'self'",
@@ -52,9 +61,10 @@ test.describe('strict Content Security Policy', () => {
       expect(meta.split('; ')).toContain(directive);
     }
     // Nothing inline: no 'unsafe-inline', no 'unsafe-eval', no wildcard, no data: or blob:. The
-    // one remote host is Google's favicon service, in img-src only (decision 0008).
+    // remote hosts are Google's favicon service and its redirect targets, in img-src only
+    // (decision 0008).
     expect(meta).not.toMatch(/unsafe-|\*|data:|blob:/);
-    expect(meta.match(/https?:\/\/[^\s;]+/g)).toEqual(['https://www.google.com']);
+    expect(meta.match(/https?:\/\/[^\s;]+/g)).toEqual(GOOGLE_HOSTS);
     // And the page has no inline script or handler for the policy to refuse.
     expect(await page.locator('script:not([src])').count()).toBe(0);
     expect(await page.locator('[onclick], [onload], [onerror]').count()).toBe(0);
