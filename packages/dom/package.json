@@ -1,0 +1,30 @@
+{
+  "name": "@simple-web-tools/dom",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The DOM helpers of the Simple Web Tools apps: an element builder that never parses HTML, and the Covenant component builders",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numeyoga/simple-web-tools.git",
+    "directory": "packages/dom"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./ui": "./src/ui.js"
+  },
+  "scripts": {
+    "typecheck": "tsc -p jsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@simple-web-tools/config": "*",
+    "@simple-web-tools/covenant": "*",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
