@@ -28,7 +28,7 @@ a service worker with a strict Content Security Policy, the CSP only allows the 
 (`'self'`) for scripts, workers (`worker-src 'self'`) and the caching of static resources
 (`connect-src 'self'`), and blocks every request or resource from a third-party domain.
 
-During an online update, the service worker (`public/sw.js` and `src/adapters/sw-update.js`) does not
+During an online update, the service worker (`src/sw/sw.js`, from `@simple-web-tools/pwa`) does not
 call `skipWaiting()` automatically on an installed app, so that a new set of scripts never takes over
 in the middle of an open editing session; the switch is triggered by the user. Because all the apps
 share one origin, the worker only deletes caches whose name starts with `locavern-`.

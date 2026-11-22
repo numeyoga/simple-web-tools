@@ -5,6 +5,7 @@ import './styles/app.css';
 
 /** @import { HydratePayload, LocalRef, ActiveView, AssetMeta, Note, Task, TaskDueFilter, TaskPriority, TaskStatus, TaskStatusFilter, Whiteboard } from './types.d.ts' */
 
+import { registerServiceWorker } from '@simple-web-tools/pwa/update';
 import { getTodayIsoDate } from './core/dates.js';
 import {
   createDefaultTaskStatuses,
@@ -40,7 +41,6 @@ import {
   saveAssetBlob,
   waitForWriteLock,
 } from './adapters/storage-idb.js';
-import { setupServiceWorkerUpdates } from './adapters/sw-update.js';
 import { translateStaticMarkup } from './adapters/dom/static-text.js';
 import { hideAllTooltips, initTooltips } from './adapters/dom/tooltip.js';
 import {
@@ -1016,28 +1016,19 @@ async function bootstrap() {
   purgeOrphanedAssets();
   renderCurrentView();
 
-  if ('serviceWorker' in navigator && import.meta.env.PROD) {
-    const registerSw = () => {
-      void setupServiceWorkerUpdates({
-        register: () => navigator.serviceWorker.register('./sw.js', { scope: './' }),
-        onUpdateReady(applyUpdate) {
-          renderSwUpdateBanner(true, {
-            onReload() {
-              flushActiveViewHandles();
-              applyUpdate();
-            },
-          });
+  void registerServiceWorker({
+    enabled: import.meta.env.PROD,
+    onUpdateReady(applyUpdate) {
+      renderSwUpdateBanner(true, {
+        onReload() {
+          flushActiveViewHandles();
+          applyUpdate();
         },
-      }).then((dispose) => {
-        cleanupSwUpdates = dispose;
       });
-    };
-    if (document.readyState === 'complete') {
-      registerSw();
-    } else {
-      window.addEventListener('load', registerSw, { once: true });
-    }
-  }
+    },
+  }).then((dispose) => {
+    cleanupSwUpdates = dispose;
+  });
 }
 
 void bootstrap();
