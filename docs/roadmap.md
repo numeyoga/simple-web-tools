@@ -121,23 +121,28 @@ export. Today it is one 1,600-line `index.html` with inline script and style, `l
 Phosphor and IBM Plex from CDNs, site icons from Google and an optional Appwrite sync. The
 `favoris.html` page of the customizable dashboard is an older copy of it and is not ported.
 
-- [ ] `apps/favoris` (name "Favoris") on the reference architecture: Vite, `src/core` and
+- [x] `apps/favoris` (name "Favoris") on the reference architecture: Vite, `src/core` and
       `src/adapters`, Covenant, `packages/pwa`, English and French catalogs, strict CSP.
-- [ ] Spaces become workspaces (`favoris__<id>`, one database each, one write lock); groups
+- [x] Spaces become workspaces (`favoris__<id>`, one database each, one write lock); groups
       and links in IndexedDB through `packages/storage`, with a schema version.
-- [ ] **Existing data**: the old app is served from `numeyoga.github.io/favoris/`, the same
+- [x] **Existing data**: the old app is served from `numeyoga.github.io/favoris/`, the same
       origin as the suite, so its `localStorage` is readable. On first start, import
       `favoris.spaces`, `favoris.v1:<id>` and the legacy `favoris.v1` into workspaces, keep the
       old keys untouched, and test it with fixtures of the old format. The old JSON export
       (`{ space, tags, links }`, no version) is accepted by the import.
-- [ ] Links accept `http:` and `https:` URLs only (the prototype lets an imported
+- [x] Links accept `http:` and `https:` URLs only (the prototype lets an imported
       `javascript:` URL through); imported records are validated one by one.
-- [ ] Site icons: a coloured initial by default; a preference "Load site icons from Google",
+- [x] Site icons: a coloured initial by default; a preference "Load site icons from Google",
       off by default, names the host and is the only reason `img-src` allows it (decision 0008).
-- [ ] Native `prompt` and `confirm` give way to Covenant dialogs; tooltips are Covenant's.
-- [ ] No sync in this step (see step 11).
-- [ ] Vitest for the core, the migration and the storage adapter; Playwright and axe journeys
+- [x] Native `prompt` and `confirm` give way to Covenant dialogs; tooltips are Covenant's.
+- [x] No sync in this step (see step 11).
+- [x] Vitest for the core, the migration and the storage adapter; Playwright and axe journeys
       in both themes, at 1280 and 390 px; docs; registered in `packages/suite`.
+
+Open question from this step: Google's favicon service redirects to `t<n>.gstatic.com`, which
+`img-src 'self' https://www.google.com` refuses (a CSP is checked again after a redirect), so the
+icons would not display for real. Allowing `t0` to `t3.gstatic.com` in `img-src` fixes it; see
+"Site icons" in the [Favoris README](../apps/favoris/README.md) and decision 0008.
 
 ## 9. Port Dashboard
 
