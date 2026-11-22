@@ -89,7 +89,7 @@ test.describe('sidebar', () => {
     await expect(brand.locator('i[aria-hidden="true"]')).toHaveCount(1);
     await expect(nav.locator(':scope > :first-child')).toHaveClass(/cv-sidebar__brand/);
 
-    // The switcher is the last child, a list of the five apps, Chrono being the current one.
+    // The switcher is the last child, a list of the six apps, Chrono being the current one.
     await expect(nav.locator(':scope > :last-child')).toHaveClass(/swt-switcher/);
     const switcher = nav.getByRole('list', { name: 'Applications' });
     const links = switcher.getByRole('link');
@@ -99,8 +99,9 @@ test.describe('sidebar', () => {
       'Transient Notes',
       'Favoris',
       'Dashboard',
+      'Slides',
     ]);
-    await expect(links).toHaveCount(5);
+    await expect(links).toHaveCount(6);
     await expect(links.nth(0)).toHaveAttribute('href', './');
     await expect(links.nth(1)).toHaveAttribute('href', '../locavern/');
     await expect(links.nth(2)).toHaveAttribute('href', '../transient-notes/');
@@ -110,6 +111,7 @@ test.describe('sidebar', () => {
     await expect(links.nth(2)).not.toHaveAttribute('aria-current', 'page');
     await expect(links.nth(3)).toHaveAttribute('href', '../favoris/');
     await expect(links.nth(4)).toHaveAttribute('href', '../dashboard/');
+    await expect(links.nth(5)).toHaveAttribute('href', '../slides/');
     await expect(links.nth(3)).not.toHaveAttribute('aria-current', 'page');
     expect(errors).toEqual([]);
   });
