@@ -3,7 +3,7 @@
 import { expect, test } from '@playwright/test';
 import { openApp } from './support.js';
 
-test('the sidebar shows the brand first and the app switcher last, with the five apps', async ({
+test('the sidebar shows the brand first and the app switcher last, with the six apps', async ({
   page,
 }) => {
   const { errors } = await openApp(page);
@@ -17,13 +17,21 @@ test('the sidebar shows the brand first and the app switcher last, with the five
   await expect(nav.locator(':scope > :last-child')).toHaveClass(/swt-switcher/);
 
   const links = apps.getByRole('link');
-  await expect(links).toHaveText(['Chrono', 'Locavern', 'Transient Notes', 'Favoris', 'Dashboard']);
+  await expect(links).toHaveText([
+    'Chrono',
+    'Locavern',
+    'Transient Notes',
+    'Favoris',
+    'Dashboard',
+    'Slides',
+  ]);
   await expect(links.nth(0)).toHaveAttribute('href', '../chrono/');
   await expect(links.nth(1)).toHaveAttribute('href', '../locavern/');
   await expect(links.nth(2)).toHaveAttribute('href', '../transient-notes/');
   await expect(links.nth(3)).toHaveAttribute('href', '../favoris/');
   await expect(links.nth(4)).toHaveAttribute('href', './');
   await expect(links.nth(4)).toHaveAttribute('aria-current', 'page');
+  await expect(links.nth(5)).toHaveAttribute('href', '../slides/');
   await expect(apps.locator('[aria-current="page"]')).toHaveCount(1);
   // The top bar still ends with the preferences button.
   await expect(
