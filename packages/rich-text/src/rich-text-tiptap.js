@@ -269,11 +269,13 @@ export function mountRichTextEditor({
     editorProps: {
       attributes: editable
         ? {
+            class: 'cv-prose',
             role: 'textbox',
             'aria-multiline': 'true',
             'aria-label': ariaLabel,
           }
         : {
+            class: 'cv-prose',
             role: 'region',
             'aria-label': ariaLabel,
           },
