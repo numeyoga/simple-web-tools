@@ -296,11 +296,7 @@ export function createAttendanceWidget(store, opts) {
       const header = el(
         'div',
         { class: 'ch-row ch-center ch-wrap ch-gap-3 ch-live-head' },
-        el(
-          'h2',
-          { class: 'cv-overline ch-title-reset' },
-          t('timers.heading', { count: actives.length }),
-        ),
+        el('h2', { class: 'cv-overline' }, t('timers.heading', { count: actives.length })),
         actives.length > 1 && runningCount > 0
           ? el(
               'span',

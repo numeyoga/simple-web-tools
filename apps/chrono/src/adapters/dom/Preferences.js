@@ -117,7 +117,7 @@ export function openPreferences() {
     el(
       'div',
       { class: 'ch-stack ch-gap-3' },
-      el('h3', { class: 'cv-label ch-title-reset' }, t('prefs.shortcuts')),
+      el('h3', { class: 'cv-label' }, t('prefs.shortcuts')),
       el(
         'ul',
         { class: 'ch-shortcuts ch-meta' },

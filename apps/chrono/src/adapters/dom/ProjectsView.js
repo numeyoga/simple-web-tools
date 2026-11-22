@@ -265,7 +265,7 @@ export function createProjectsView(store, opts) {
     openProjectModal(null);
   }
 
-  const metaNode = el('p', { class: 'ch-figure ch-page-title' });
+  const metaNode = el('p', { class: 'ch-figure' });
   const gridSlot = el('div', null);
   host.append(
     // Header: built once, so the controls keep the focus when the grid changes

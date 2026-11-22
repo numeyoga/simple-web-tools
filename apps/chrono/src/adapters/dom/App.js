@@ -395,8 +395,8 @@ export function start(rootEl) {
             'div',
             { role: 'alert', class: 'ch-error-screen' },
             icon('warning', { className: 'ch-warning-text ch-icon-xl' }),
-            el('h1', { class: 'cv-h1 ch-page-title' }, message.title),
-            el('p', { class: 'ch-message' }, message.body),
+            el('h1', { class: 'cv-h1' }, message.title),
+            el('p', null, message.body),
             el(
               'div',
               null,

@@ -623,7 +623,7 @@ function Confirm(opts) {
     });
     const content = {
       title,
-      body: el('p', { class: 'ch-message' }, message),
+      body: el('p', null, message),
       footer: [cancel, confirmButton],
     };
     if (within) {

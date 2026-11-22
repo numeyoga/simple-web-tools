@@ -70,7 +70,7 @@ export function createTodosView(store, opts) {
     headerSlot.replaceChildren(
       el(
         'p',
-        { class: 'ch-figure ch-page-title' },
+        { class: 'ch-figure' },
         t('todos.summary', { open: formatNumber(open), done: formatNumber(done) }),
       ),
     );
@@ -408,11 +408,7 @@ export function createTodosView(store, opts) {
           el(
             'header',
             { class: `ch-card-header ch-gap-3${isOverdue ? ' ch-card-header--danger' : ''}` },
-            el(
-              'h2',
-              { class: `cv-overline ch-title-reset${isOverdue ? ' ch-danger-text' : ''}` },
-              label,
-            ),
+            el('h2', { class: `cv-overline${isOverdue ? ' ch-danger-text' : ''}` }, label),
             el('span', { class: 'cv-num ch-subtle' }, formatNumber(items.length)),
           ),
           el(

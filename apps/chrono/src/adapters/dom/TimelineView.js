@@ -1106,7 +1106,7 @@ export function createTimelineView(store, opts) {
           el(
             'div',
             null,
-            el('h2', { class: 'cv-h2 ch-page-title ch-capitalize' }, dayLabel),
+            el('h2', { class: 'cv-h2 ch-capitalize' }, dayLabel),
             el('div', { class: 'ch-meta ch-capitalize ch-mt-1' }, dayLabelDate),
           ),
           withFocusKey(
