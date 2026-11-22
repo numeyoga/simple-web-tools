@@ -28,6 +28,7 @@ export default {
     skipLink: 'Skip to content',
     navLabel: 'Main navigation',
     menu: 'Menu',
+    apps: 'Apps',
     preferences: 'Preferences',
     workspace: 'Workspace',
     loading: 'Loading…',
