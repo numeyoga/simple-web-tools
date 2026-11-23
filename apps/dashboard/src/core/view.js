@@ -52,6 +52,9 @@ export function rememberView(memory, appId, envKey) {
   if (memory.appId === appId && (envKey === null || memory.envs[appId] === envKey)) return memory;
   return {
     appId,
-    envs: envKey === null ? memory.envs : { ...memory.envs, [appId]: envKey },
+    envs:
+      envKey === null
+        ? memory.envs
+        : Object.fromEntries([...Object.entries(memory.envs), [appId, envKey]]),
   };
 }
