@@ -8,6 +8,9 @@
  * @property {Readonly<Record<string, string>>} envs the environment last opened, by application id
  */
 
+// Keys that would reach the object's prototype instead of naming an application.
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /** @returns {ViewMemory} */
 export const emptyViewMemory = () => ({ appId: null, envs: {} });
 
@@ -31,7 +34,7 @@ export function parseViewMemory(raw) {
   const clean = {};
   if (envs && typeof envs === 'object') {
     for (const [id, key] of Object.entries(envs)) {
-      if (typeof key === 'string') clean[id] = key;
+      if (typeof key === 'string' && !UNSAFE_KEYS.has(id)) clean[id] = key;
     }
   }
   return { appId: typeof appId === 'string' ? appId : null, envs: clean };
@@ -45,6 +48,7 @@ export function parseViewMemory(raw) {
  * @returns {ViewMemory}
  */
 export function rememberView(memory, appId, envKey) {
+  if (UNSAFE_KEYS.has(appId)) return memory;
   if (memory.appId === appId && (envKey === null || memory.envs[appId] === envKey)) return memory;
   return {
     appId,
