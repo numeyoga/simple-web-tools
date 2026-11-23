@@ -166,7 +166,7 @@ export async function start(rootEl) {
     { id: 'shell-nav', 'aria-label': t('shell.navLabel'), class: 'cv-sidebar' },
     createAppBrand(APP_ID),
     el('div', { class: 'fv-sidebar-workspace' }, workspaceChip()),
-    groupNav.el,
+    el('div', { class: 'swt-sidebar__body' }, groupNav.el),
     createAppSwitcher(APP_ID, { label: t('shell.apps') }),
   );
 

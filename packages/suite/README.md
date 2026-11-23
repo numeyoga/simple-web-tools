@@ -46,7 +46,13 @@ nav.append(createAppSwitcher('chrono', { label: t('suite.apps') })); // last chi
   the Covenant sidebar already is one. `margin-top: auto` pins it to the bottom of the
   sidebar, which is a flex column.
 
-Both build elements with `createElement` and `textContent` only, never `innerHTML`. `doc`
+- `.swt-sidebar__body` (class only, in `suite.css`): wrap the app's own navigation, everything
+  between the brand (and the workspace chip) and the switcher, in
+  `<div class="swt-sidebar__body">`. The body is the only part of the sidebar that scrolls, so
+  the brand and chip stay at the top and the switcher at the bottom, on desktop and in the
+  drawer. A sidebar without a body keeps Covenant's own scroll.
+
+Both builders build elements with `createElement` and `textContent` only, never `innerHTML`. `doc`
 defaults to `document`; pass another `Document` to build elsewhere (or in a test).
 
 ## Rules

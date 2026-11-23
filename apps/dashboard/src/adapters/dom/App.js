@@ -218,30 +218,34 @@ export async function start(rootEl) {
     el('div', { class: 'dsh-sidebar-workspace' }, workspaceChip()),
     el(
       'div',
-      { class: 'dsh-sidebar-apps' },
+      { class: 'swt-sidebar__body' },
       el(
         'div',
-        { class: 'cv-overline cv-sidebar__group dsh-row dsh-between', id: appsHeadingId },
-        t('nav.apps'),
-        appsCount,
+        { class: 'dsh-sidebar-apps' },
+        el(
+          'div',
+          { class: 'cv-overline cv-sidebar__group dsh-row dsh-between', id: appsHeadingId },
+          t('nav.apps'),
+          appsCount,
+        ),
+        filter,
+        appList,
+        UI.Button({
+          variant: 'ghost',
+          size: 'sm',
+          icon: 'plus',
+          children: t('nav.newApp'),
+          mutates: true,
+          className: 'dsh-nav-new',
+          onclick: () => {
+            closeNav();
+            newApp();
+          },
+        }),
       ),
-      filter,
-      appList,
-      UI.Button({
-        variant: 'ghost',
-        size: 'sm',
-        icon: 'plus',
-        children: t('nav.newApp'),
-        mutates: true,
-        className: 'dsh-nav-new',
-        onclick: () => {
-          closeNav();
-          newApp();
-        },
-      }),
+      el('div', { class: 'cv-overline cv-sidebar__group', id: adminHeadingId }, t('nav.admin')),
+      adminList,
     ),
-    el('div', { class: 'cv-overline cv-sidebar__group', id: adminHeadingId }, t('nav.admin')),
-    adminList,
     createAppSwitcher(APP_ID, { label: t('shell.apps') }),
   );
 

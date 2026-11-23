@@ -20,78 +20,80 @@
         <!-- Replaced at startup by the suite's brand (adapters/dom/app-shell.js, mountSuiteChrome). -->
         <div class="cv-sidebar__brand" id="shell-brand"></div>
 
-        <ul>
-          <li>
-            <a class="cv-nav-item" href="#today" data-nav-view="today">
-              <i class="ph ph-sun cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.today"></span>
-            </a>
-          </li>
-          <li>
-            <a class="cv-nav-item" href="#tasks" data-nav-view="tasks" aria-current="page">
-              <i class="ph ph-list-checks cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.tasks"></span>
-            </a>
-          </li>
-          <li>
-            <a class="cv-nav-item" href="#projects" data-nav-view="projects">
-              <i class="ph ph-folder-open cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.projects"></span>
-            </a>
-          </li>
-          <li>
-            <a class="cv-nav-item" href="#calendar" data-nav-view="calendar">
-              <i class="ph ph-calendar-blank cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.calendar"></span>
-            </a>
-          </li>
-          <li>
-            <a class="cv-nav-item" href="#notes" data-nav-view="notes">
-              <i class="ph ph-notebook cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.notes"></span>
-            </a>
-          </li>
-          <li>
-            <a class="cv-nav-item" href="#whiteboards" data-nav-view="whiteboards">
-              <i class="ph ph-chalkboard-simple cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.whiteboards"></span>
-            </a>
-          </li>
-          <li>
-            <a class="cv-nav-item" href="#archives" data-nav-view="archives">
-              <i class="ph ph-archive cv-icon" aria-hidden="true"></i>
-              <span data-i18n="common.archives"></span>
-              <span class="cv-badge lc-nav-badge" id="nav-archives-count" hidden>0</span>
-            </a>
-          </li>
-        </ul>
+        <div class="swt-sidebar__body">
+          <ul>
+            <li>
+              <a class="cv-nav-item" href="#today" data-nav-view="today">
+                <i class="ph ph-sun cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.today"></span>
+              </a>
+            </li>
+            <li>
+              <a class="cv-nav-item" href="#tasks" data-nav-view="tasks" aria-current="page">
+                <i class="ph ph-list-checks cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.tasks"></span>
+              </a>
+            </li>
+            <li>
+              <a class="cv-nav-item" href="#projects" data-nav-view="projects">
+                <i class="ph ph-folder-open cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.projects"></span>
+              </a>
+            </li>
+            <li>
+              <a class="cv-nav-item" href="#calendar" data-nav-view="calendar">
+                <i class="ph ph-calendar-blank cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.calendar"></span>
+              </a>
+            </li>
+            <li>
+              <a class="cv-nav-item" href="#notes" data-nav-view="notes">
+                <i class="ph ph-notebook cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.notes"></span>
+              </a>
+            </li>
+            <li>
+              <a class="cv-nav-item" href="#whiteboards" data-nav-view="whiteboards">
+                <i class="ph ph-chalkboard-simple cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.whiteboards"></span>
+              </a>
+            </li>
+            <li>
+              <a class="cv-nav-item" href="#archives" data-nav-view="archives">
+                <i class="ph ph-archive cv-icon" aria-hidden="true"></i>
+                <span data-i18n="common.archives"></span>
+                <span class="cv-badge lc-nav-badge" id="nav-archives-count" hidden>0</span>
+              </a>
+            </li>
+          </ul>
 
-        <div class="cv-overline cv-sidebar__group" data-i18n="shell.navData"></div>
-        <ul>
-          <li>
-            <button
-              type="button"
-              class="cv-nav-item lc-nav-btn"
-              id="nav-backup-btn"
-              data-cv-open="modal-backup"
-            >
-              <i class="ph ph-database cv-icon" aria-hidden="true"></i>
-              <span data-i18n="shell.navBackup"></span>
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="cv-nav-item lc-nav-btn"
-              id="nav-trash-btn"
-              data-cv-open="modal-trash"
-            >
-              <i class="ph ph-trash cv-icon" aria-hidden="true"></i>
-              <span data-i18n="shell.navTrash"></span>
-              <span class="cv-badge lc-nav-badge" id="nav-trash-count" hidden>0</span>
-            </button>
-          </li>
-        </ul>
+          <div class="cv-overline cv-sidebar__group" data-i18n="shell.navData"></div>
+          <ul>
+            <li>
+              <button
+                type="button"
+                class="cv-nav-item lc-nav-btn"
+                id="nav-backup-btn"
+                data-cv-open="modal-backup"
+              >
+                <i class="ph ph-database cv-icon" aria-hidden="true"></i>
+                <span data-i18n="shell.navBackup"></span>
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="cv-nav-item lc-nav-btn"
+                id="nav-trash-btn"
+                data-cv-open="modal-trash"
+              >
+                <i class="ph ph-trash cv-icon" aria-hidden="true"></i>
+                <span data-i18n="shell.navTrash"></span>
+                <span class="cv-badge lc-nav-badge" id="nav-trash-count" hidden>0</span>
+              </button>
+            </li>
+          </ul>
+        </div>
       </nav>
 
       <div class="cv-shell__scrim"></div>

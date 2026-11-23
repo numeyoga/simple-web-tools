@@ -79,7 +79,7 @@ export function start(rootEl) {
     { id: 'shell-nav', 'aria-label': t('shell.navLabel'), class: 'cv-sidebar' },
     createAppBrand(APP_ID),
     el('div', { class: 'tn-sidebar-workspace' }, workspaceChip()),
-    tree.el,
+    el('div', { class: 'swt-sidebar__body' }, tree.el),
     createAppSwitcher(APP_ID, { label: t('shell.apps') }),
   );
 
