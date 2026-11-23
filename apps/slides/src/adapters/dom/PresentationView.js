@@ -204,14 +204,18 @@ export function createPresentationView(actions) {
       }
 
       if (state.mode === 'overview' && !overview) {
-        overview = openOverview({
+        // A dialog reports that it closed a task after close(): by then a new overview may be
+        // open, and the old one must not forget it or close the overview mode under it.
+        const opened = openOverview({
           state,
           onPick: (picked) => dispatch({ type: 'navigate', index: picked }),
           onClose: () => {
+            if (overview !== opened) return;
             overview = null;
             dispatch({ type: 'close_overview' });
           },
         });
+        overview = opened;
       } else if (state.mode === 'presentation' && overview) {
         const closing = overview;
         overview = null;

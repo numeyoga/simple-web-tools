@@ -170,6 +170,26 @@ test.describe('overview', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expectSlide(page, 3);
   });
+
+  test('reopened before the closed one has finished, it is still the one O closes', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await loadExample(page);
+    await page.keyboard.press('o');
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+
+    // A dialog's close event comes a task after close(): Escape then O in the same task reopens
+    // the overview while the first one has not yet reported that it closed.
+    await page.evaluate(() => {
+      for (const key of ['Escape', 'o']) {
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      }
+    });
+    await expect(page.getByRole('dialog')).toHaveCount(1);
+    await page.keyboard.press('o');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  });
 });
 
 test('R fits the slide to the window and back to 16:9, F toggles full screen', async ({ page }) => {
