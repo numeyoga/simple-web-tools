@@ -28,6 +28,12 @@ jobs:
             MPL-2.0, OFL-1.1, CC0-1.0, CC-BY-4.0, Python-2.0, Unlicense
           # uri-js (eslint > ajv@6, development only) is reported as
           # "BSD-2-Clause AND BSD-2-Clause-Views": both permissive and MIT-compatible.
-          # Pinned to the exact version so that an update is reviewed again.
-          allow-dependencies-licenses: pkg:npm/uri-js@4.4.1
+          # robust-predicates (mermaid > d3 > delaunator, shipped in Slides) is reported as
+          # "LicenseRef-scancode-public-domain AND Unlicense": public domain, nothing to comply with.
+          # elkjs (mermaid, shipped in Slides' lazy ELK chunk) is "EPL-2.0 OR GPL-3.0-or-later";
+          # we take EPL-2.0, which allows redistributing the unmodified code with its licence,
+          # source on npm. Noted in apps/slides/README.md.
+          # Pinned to the exact versions so that an update is reviewed again.
+          allow-dependencies-licenses: >-
+            pkg:npm/uri-js@4.4.1, pkg:npm/robust-predicates@3.0.3, pkg:npm/elkjs@0.12.1
           comment-summary-in-pr: on-failure

@@ -241,3 +241,8 @@ what would otherwise be hand-written and risky; each is bundled, none makes a re
 | `highlight.js` | ^11.12.0 | BSD-3-Clause          | Syntax colours. Only `lib/core` and five grammars are imported, so the rest is not bundled.                                   |
 | `mermaid`      | 12.3.0   | MIT                   | Diagrams, from a lazy chunk cached on first use, not at install (see above). Pinned: the earlier version pinned it for a CVE. |
 | `dompurify`    | 3.4.17   | MPL-2.0 OR Apache-2.0 | Sanitizing HTML is the one thing not to write by hand. Pinned, and shared with Mermaid, which depends on it.                  |
+
+Mermaid brings `elkjs` (0.12.1, **EPL-2.0** OR GPL-3.0-or-later; we use it under EPL-2.0) for
+diagrams with `layout: elk`. It is bundled unmodified in its own lazy chunk; its source is the
+npm package. It is the one shipped licence outside the permissive list, so the dependency review
+allows it by exact version only.
