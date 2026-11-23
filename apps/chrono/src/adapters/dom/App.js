@@ -151,7 +151,7 @@ export function start(rootEl) {
   );
 
   const main = el('main', {
-    class: 'cv-shell__content',
+    class: 'cv-shell__content ch-main',
     id: 'shell-main',
     tabindex: -1,
   });
