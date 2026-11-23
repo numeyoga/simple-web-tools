@@ -309,7 +309,7 @@ export function mountWhiteboardCanvas({
   onToggleMaximize,
   onChange,
 }) {
-  const uid = `lc-wb-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = `lc-wb-${crypto.randomUUID().slice(0, 8)}`;
 
   /** @type {WhiteboardViewport} */
   let viewport = sanitizeWhiteboardViewport(initialViewport ?? DEFAULT_WHITEBOARD_VIEWPORT);

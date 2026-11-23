@@ -171,7 +171,7 @@ export function mountRichTextEditor({
   setTooltip,
   initTooltips,
 }) {
-  const uid = `lc-rt-${Math.random().toString(36).slice(2, 8)}`;
+  const uid = `lc-rt-${crypto.randomUUID().slice(0, 8)}`;
 
   const root = document.createElement('div');
   root.className = 'lc-editor';
