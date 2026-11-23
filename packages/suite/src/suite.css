@@ -6,7 +6,41 @@
   color: var(--cv-brand-accent);
 }
 
-/* `.cv-sidebar` is a flex column: the auto margin pins the group to the bottom. */
+/* Sidebar layout: the brand and the workspace chip stay at the top, the app switcher at the
+   bottom, and only the app's own navigation (`.swt-sidebar__body`) scrolls in between.
+   `.cv-sidebar` is a flex column that scrolls as a whole (Covenant); once it holds a body, the
+   body is the one scroller, so the sidebar itself is clipped instead. `:has()` keeps this
+   automatic: a sidebar without a body (e.g. Slides) keeps Covenant's own scroll. The height is
+   bounded in both layouts: 100vh when sticky, top/bottom 0 in the drawer below 1024 px. */
+.cv-shell > .cv-sidebar:has(> .swt-sidebar__body) {
+  overflow: hidden;
+}
+
+/* Brand, workspace chip and switcher never shrink. */
+.cv-sidebar:has(> .swt-sidebar__body) > :not(.swt-sidebar__body) {
+  flex: none;
+}
+
+/* A scroll container clips its children's focus rings (2 px outline + 2 px offset): the
+   padding gives them room and the negative margin keeps the items aligned with the rest. */
+.swt-sidebar__body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--cv-space-1);
+  min-height: 0;
+  margin: calc(-1 * var(--cv-space-3));
+  padding: var(--cv-space-3);
+  overflow-y: auto;
+  scroll-padding-block: var(--cv-space-3);
+}
+
+.swt-sidebar__body > * {
+  flex: none;
+}
+
+/* The body's flex growth pins the switcher to the bottom; without a body (Slides), the auto
+   margin does it. */
 .swt-switcher {
   margin-top: auto;
   padding-top: var(--cv-space-4);

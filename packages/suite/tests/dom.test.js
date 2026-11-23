@@ -112,4 +112,11 @@ describe('suite.css', () => {
     expect(css).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i);
     expect(css).not.toMatch(/var\(--cv-(neutral|accent|success|warning|danger|info)-[0-9]+\)/);
   });
+
+  it('makes the sidebar body the one scroller between the brand and the switcher', () => {
+    const css = fs.readFileSync(fromPackage('src/suite.css'), 'utf8');
+    expect(css).toMatch(/\.swt-sidebar__body \{[^}]*overflow-y: auto/);
+    expect(css).toMatch(/min-height: 0/);
+    expect(css).toMatch(/\.cv-sidebar:has\(> \.swt-sidebar__body\) \{\s*overflow: hidden/);
+  });
 });
