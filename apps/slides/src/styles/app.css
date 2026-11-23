@@ -43,7 +43,7 @@
 /* --- Home -------------------------------------------------------------------------------- */
 .cv-shell__content.sl-main {
   display: flex;
-  max-width: 72rem;
+  max-width: none;
   flex-direction: column;
   gap: var(--cv-space-6);
 }

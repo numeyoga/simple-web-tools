@@ -37,6 +37,11 @@ dialog::backdrop {
   border: 0;
 }
 
+/* The page uses the whole width: Covenant's container cap is lifted (as in Favoris and Dashboard). */
+.cv-shell__content.lc-main {
+  max-width: none;
+}
+
 .lc-nav-btn {
   width: 100%;
   border: 0;

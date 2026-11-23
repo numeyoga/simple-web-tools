@@ -37,7 +37,7 @@ export function createTodosView(store, opts) {
   /** @type {import('../../types.js').Project[] | null} */
   let lastProjectsRef = null;
 
-  const host = el('div', { class: 'ch-view ch-view--narrow' });
+  const host = el('div', { class: 'ch-view' });
   const headerSlot = el('div', null);
   const formSlot = el('div', null);
   const filtersSlot = el('div', null);

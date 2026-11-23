@@ -184,8 +184,9 @@
   flex-direction: column;
   gap: var(--cv-space-6);
 }
-.ch-view--narrow {
-  max-width: 57.5rem;
+/* The page uses the whole width: Covenant's container cap is lifted (as in Favoris and Dashboard). */
+.cv-shell__content.ch-main {
+  max-width: none;
 }
 
 /* --- Cards without padding: a header, then rows or a table ---------------- */
