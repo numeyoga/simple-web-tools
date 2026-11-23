@@ -75,4 +75,12 @@ describe('what was looked at last', () => {
     expect(rememberView(first, 'b', null)).toEqual({ appId: 'b', envs: { a: 'prod' } });
     expect(rememberView(first, 'a', 'dev')).toEqual({ appId: 'a', envs: { a: 'dev' } });
   });
+
+  test('ignores an application id that would reach the prototype', () => {
+    const first = rememberView(emptyViewMemory(), 'a', 'prod');
+    expect(rememberView(first, '__proto__', 'x')).toBe(first);
+    const parsed = parseViewMemory('{"appId":"a","envs":{"__proto__":"x","a":"prod"}}');
+    expect(Object.keys(parsed.envs)).toEqual(['a']);
+    expect(Object.getPrototypeOf(parsed.envs)).toBe(Object.prototype);
+  });
 });
